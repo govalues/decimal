@@ -978,7 +978,6 @@ func mulSlow(d, e Decimal, minScale int) (Decimal, error) {
 		dcoef *sint
 		ecoef *sint
 		neg   bool
-		coef  *sint
 		scale int
 	)
 
@@ -988,8 +987,7 @@ func mulSlow(d, e Decimal, minScale int) (Decimal, error) {
 	ecoef.setFint(e.coef)
 
 	// Coefficient
-	coef = new(sint)
-	coef.mul(dcoef, ecoef)
+	dcoef.mul(dcoef, ecoef)
 
 	// Sign
 	neg = d.IsNeg() != e.IsNeg()
@@ -997,7 +995,7 @@ func mulSlow(d, e Decimal, minScale int) (Decimal, error) {
 	// Scale
 	scale = d.Scale() + e.Scale()
 
-	return newDecimalFromRescaledSint(neg, coef, scale, minScale)
+	return newDecimalFromRescaledSint(neg, dcoef, scale, minScale)
 }
 
 // Pow returns (possibly rounded) d raised to the exp.
@@ -1105,7 +1103,6 @@ func addSlow(d, e Decimal, minScale int) (Decimal, error) {
 		dcoef *sint
 		ecoef *sint
 		neg   bool
-		coef  *sint
 		scale int
 	)
 
@@ -1134,14 +1131,13 @@ func addSlow(d, e Decimal, minScale int) (Decimal, error) {
 	}
 
 	// Coefficient
-	coef = new(sint)
 	if d.IsNeg() != e.IsNeg() {
-		coef.dist(dcoef, ecoef)
+		dcoef.dist(dcoef, ecoef)
 	} else {
-		coef.add(dcoef, ecoef)
+		dcoef.add(dcoef, ecoef)
 	}
 
-	return newDecimalFromRescaledSint(neg, coef, scale, minScale)
+	return newDecimalFromRescaledSint(neg, dcoef, scale, minScale)
 }
 
 // Sub returns (possibly rounded) difference of d and e.
@@ -1296,7 +1292,6 @@ func quoSlow(d, e Decimal, minScale int) (Decimal, error) {
 		dcoef *sint
 		ecoef *sint
 		neg   bool
-		coef  *sint
 		scale int
 	)
 
@@ -1310,13 +1305,12 @@ func quoSlow(d, e Decimal, minScale int) (Decimal, error) {
 	dcoef.lsh(dcoef, scale+e.Scale()-d.Scale())
 
 	// Coefficient
-	coef = new(sint)
-	coef.quoRem(dcoef, ecoef)
+	dcoef.quoRem(dcoef, ecoef)
 
 	// Sign
 	neg = d.IsNeg() != e.IsNeg()
 
-	return newDecimalFromRescaledSint(neg, coef, scale, minScale)
+	return newDecimalFromRescaledSint(neg, dcoef, scale, minScale)
 }
 
 // QuoRem returns the quotient and remainder of d and e such that d = q * e + r.
