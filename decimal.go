@@ -73,7 +73,7 @@ func newDecimalFromRescaledSint(neg bool, coef *sint, scale, minScale int) (Deci
 		coef.rshEven(coef, prec-MaxPrec)
 		scale = scale - (prec - MaxPrec)
 	}
-	// Handle the rare case when rshEven rounded a 19-digit coefficient 
+	// Handle the rare case when rshEven rounded a 19-digit coefficient
 	// to a 20-digit coefficient.
 	if coef.hasPrec(MaxPrec + 1) {
 		return newDecimalFromRescaledSint(neg, coef, scale, minScale)
@@ -928,11 +928,9 @@ func (d Decimal) Mul(e Decimal) Decimal {
 // This method is useful for financial calculations, where the scale should be
 // equal to or greater than the currency's scale.
 func (d Decimal) MulExact(e Decimal, scale int) Decimal {
-
 	if scale < 0 || MaxScale < scale {
 		panic(fmt.Sprintf("%q.MulExact(%q, %v) failed: %v", d, e, scale, ErrScaleRange))
 	}
-
 	f, err := mulFast(d, e, scale)
 	if err != nil {
 		f, err = mulSlow(d, e, scale)
@@ -978,7 +976,6 @@ func mulSlow(d, e Decimal, minScale int) (Decimal, error) {
 		dcoef *sint
 		ecoef *sint
 		neg   bool
-		coef  *sint
 		scale int
 	)
 
@@ -988,8 +985,7 @@ func mulSlow(d, e Decimal, minScale int) (Decimal, error) {
 	ecoef.setFint(e.coef)
 
 	// Coefficient
-	coef = new(sint)
-	coef.mul(dcoef, ecoef)
+	dcoef.mul(dcoef, ecoef)
 
 	// Sign
 	neg = d.IsNeg() != e.IsNeg()
@@ -997,7 +993,7 @@ func mulSlow(d, e Decimal, minScale int) (Decimal, error) {
 	// Scale
 	scale = d.Scale() + e.Scale()
 
-	return newDecimalFromRescaledSint(neg, coef, scale, minScale)
+	return newDecimalFromRescaledSint(neg, dcoef, scale, minScale)
 }
 
 // Pow returns (possibly rounded) d raised to the exp.
@@ -1032,11 +1028,9 @@ func (d Decimal) Add(e Decimal) Decimal {
 // This method is useful for financial calculations, where the scale should be
 // equal to or greater than the currency's scale.
 func (d Decimal) AddExact(e Decimal, scale int) Decimal {
-
 	if scale < 0 || MaxScale < scale {
 		panic(fmt.Sprintf("%q.AddExact(%q, %v) failed: %v", d, e, scale, ErrScaleRange))
 	}
-
 	f, err := addFast(d, e, scale)
 	if err != nil {
 		f, err = addSlow(d, e, scale)
@@ -1105,7 +1099,6 @@ func addSlow(d, e Decimal, minScale int) (Decimal, error) {
 		dcoef *sint
 		ecoef *sint
 		neg   bool
-		coef  *sint
 		scale int
 	)
 
@@ -1119,11 +1112,11 @@ func addSlow(d, e Decimal, minScale int) (Decimal, error) {
 	case d.Scale() == e.Scale():
 		scale = d.Scale()
 	case e.Scale() < d.Scale():
-		scale = d.Scale()
 		ecoef.lsh(ecoef, d.Scale()-e.Scale())
+		scale = d.Scale()
 	case d.Scale() < e.Scale():
-		scale = e.Scale()
 		dcoef.lsh(dcoef, e.Scale()-d.Scale())
+		scale = e.Scale()
 	}
 
 	// Sign
@@ -1134,14 +1127,13 @@ func addSlow(d, e Decimal, minScale int) (Decimal, error) {
 	}
 
 	// Coefficient
-	coef = new(sint)
 	if d.IsNeg() != e.IsNeg() {
-		coef.dist(dcoef, ecoef)
+		dcoef.dist(dcoef, ecoef)
 	} else {
-		coef.add(dcoef, ecoef)
+		dcoef.add(dcoef, ecoef)
 	}
 
-	return newDecimalFromRescaledSint(neg, coef, scale, minScale)
+	return newDecimalFromRescaledSint(neg, dcoef, scale, minScale)
 }
 
 // Sub returns (possibly rounded) difference of d and e.
@@ -1160,6 +1152,139 @@ func (d Decimal) SubExact(e Decimal, scale int) Decimal {
 	return d.AddExact(e.Neg(), scale)
 }
 
+// Fma returns (possibly rounded) [fused multiply-addition] of d, e, and f.
+// It computes d * e + f without any intermeddiate rounding.
+// This method is useful for improving the accuracy and performance of algorithms
+// that involve the accumulation of products, such as daily interest accrual.
+//
+// [fused multiply-addition]: https://en.wikipedia.org/wiki/Multiply%E2%80%93accumulate_operation#Fused_multiply%E2%80%93add
+func (d Decimal) Fma(e, f Decimal) Decimal {
+	return d.FmaExact(e, f, 0)
+}
+
+// FmaExact is similar to [Decimal.Fma], but it allows you to specify how many digits
+// after the decimal point should be considered significant.
+// If any of the significant digits are lost during rounding, the method will panic.
+// This method is useful for financial calculations, where the scale should be
+// equal to or greater than the currency's scale.
+func (d Decimal) FmaExact(e, f Decimal, scale int) Decimal {
+	if scale < 0 || MaxScale < scale {
+		panic(fmt.Sprintf("%q.FmaExact(%q, %q, %v) failed: %v", d, e, f, scale, ErrScaleRange))
+	}
+	g, err := fmaFast(d, e, f, scale)
+	if err != nil {
+		g, err = fmaSlow(d, e, f, scale)
+		if err != nil {
+			panic(fmt.Sprintf("%q.FmaExact(%q, %q, %v) failed: %v", d, e, f, scale, err))
+		}
+	}
+	return g
+}
+
+func fmaFast(d, e, f Decimal, minScale int) (Decimal, error) {
+
+	var (
+		dcoef fint
+		ecoef fint
+		fcoef fint
+		neg   bool
+		scale int
+		ok    bool
+	)
+
+	dcoef = d.coef
+	ecoef = e.coef
+	fcoef = f.coef
+
+	// Coefficient (Multiplication)
+	dcoef, ok = dcoef.mul(ecoef)
+	if !ok {
+		return Decimal{}, ErrCoefficientOverflow
+	}
+
+	// Alignment and scale
+	scale = d.Scale() + e.Scale()
+	switch {
+	case f.Scale() < scale:
+		fcoef, ok = fcoef.lsh(scale - f.Scale())
+		if !ok {
+			return Decimal{}, ErrCoefficientOverflow
+		}
+	case scale < f.Scale():
+		dcoef, ok = dcoef.lsh(f.Scale() - scale)
+		if !ok {
+			return Decimal{}, ErrCoefficientOverflow
+		}
+		scale = f.Scale()
+	}
+
+	// Sign
+	if dcoef > fcoef {
+		neg = d.IsNeg() != e.IsNeg()
+	} else {
+		neg = f.IsNeg()
+	}
+
+	// Coefficient (Addition)
+	if (d.IsNeg() != e.IsNeg()) != f.IsNeg() {
+		dcoef = dcoef.dist(fcoef)
+	} else {
+		dcoef, ok = dcoef.add(fcoef)
+		if !ok {
+			return Decimal{}, ErrCoefficientOverflow
+		}
+	}
+
+	return newDecimalFromRescaledFint(neg, dcoef, scale, minScale)
+}
+
+func fmaSlow(d, e, f Decimal, minScale int) (Decimal, error) {
+
+	var (
+		dcoef *sint
+		ecoef *sint
+		fcoef *sint
+		neg   bool
+		scale int
+	)
+
+	dcoef = new(sint)
+	ecoef = new(sint)
+	fcoef = new(sint)
+	dcoef.setFint(d.coef)
+	ecoef.setFint(e.coef)
+	fcoef.setFint(f.coef)
+
+	// Coefficient (Multiplication)
+	dcoef.mul(dcoef, ecoef)
+
+	// Alignment and scale
+	scale = d.Scale() + e.Scale()
+	switch {
+	case f.Scale() < scale:
+		fcoef.lsh(fcoef, scale-f.Scale())
+	case scale < f.Scale():
+		dcoef.lsh(dcoef, f.Scale()-scale)
+		scale = f.Scale()
+	}
+
+	// Sign
+	if dcoef.cmp(fcoef) > 0 {
+		neg = d.IsNeg() != e.IsNeg()
+	} else {
+		neg = f.IsNeg()
+	}
+
+	// Coefficient (Addition)
+	if (d.IsNeg() != e.IsNeg()) != f.IsNeg() {
+		dcoef.dist(dcoef, fcoef)
+	} else {
+		dcoef.add(dcoef, fcoef)
+	}
+
+	return newDecimalFromRescaledSint(neg, dcoef, scale, minScale)
+}
+
 // Quo returns (possibly rounded) quotient of d and e.
 //
 // Quo panics if:
@@ -1175,7 +1300,6 @@ func (d Decimal) Quo(e Decimal) Decimal {
 // This method is useful for financial calculations, where the scale should be
 // equal to or greater than the currency's scale.
 func (d Decimal) QuoExact(e Decimal, scale int) Decimal {
-
 	if scale < 0 || MaxScale < scale {
 		panic(fmt.Sprintf("%q.QuoExact(%q, %v) failed: %v", d, e, scale, ErrScaleRange))
 	}
@@ -1296,7 +1420,6 @@ func quoSlow(d, e Decimal, minScale int) (Decimal, error) {
 		dcoef *sint
 		ecoef *sint
 		neg   bool
-		coef  *sint
 		scale int
 	)
 
@@ -1310,13 +1433,12 @@ func quoSlow(d, e Decimal, minScale int) (Decimal, error) {
 	dcoef.lsh(dcoef, scale+e.Scale()-d.Scale())
 
 	// Coefficient
-	coef = new(sint)
-	coef.quoRem(dcoef, ecoef)
+	dcoef.quoRem(dcoef, ecoef)
 
 	// Sign
 	neg = d.IsNeg() != e.IsNeg()
 
-	return newDecimalFromRescaledSint(neg, coef, scale, minScale)
+	return newDecimalFromRescaledSint(neg, dcoef, scale, minScale)
 }
 
 // QuoRem returns the quotient and remainder of d and e such that d = q * e + r.

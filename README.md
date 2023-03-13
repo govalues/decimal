@@ -3,6 +3,7 @@
 [![godocb]][godoc]
 [![githubb]][github]
 [![goreportb]][goreport]
+[![codecovb]][codecov]
 
 Package decimal implements decimal floating-point numbers for Go.
 
@@ -89,3 +90,5 @@ Note: Before making any significant changes to the code, it is recommended to op
 [goreportb]: https://goreportcard.com/badge/github.com/govalues/decimal
 [github]: https://github.com/govalues/decimal/actions/workflows/go.yml
 [githubb]: https://github.com/govalues/decimal/actions/workflows/go.yml/badge.svg
+[codecovb]: https://codecov.io/gh/govalues/decimal/branch/main/graph/badge.svg?token=S8UVMYI9RC
+[codecov]: https://codecov.io/gh/govalues/decimal

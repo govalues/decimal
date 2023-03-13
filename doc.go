@@ -79,10 +79,10 @@ completed during the first step.
 
 The following rules are used to determine the significance of digits:
 
-   - [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.Pow], [Decimal.Quo], [Decimal.QuoRem]:
+   - [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.Fma], [Decimal.Pow], [Decimal.Quo], [Decimal.QuoRem]:
       All digits in the integer part are significant, while the digits in the
       fractional part are insignificant.
-   - [Decimal.AddExact], [Decimal.SubExact], [Decimal.MulExact], [Decimal.QuoExact]:
+   - [Decimal.AddExact], [Decimal.SubExact], [Decimal.MulExact], [Decimal.FmaExact], [Decimal.QuoExact]:
       All digits in the integer part are significant. The significance of digits
       in the fractional part is determined by the scale argument, which is typically
       equal to the scale of the currency.
@@ -112,10 +112,10 @@ Arithmetic operations panic in the following cases:
 
  2. Coefficient overflow.
     This error occurs when significant digits are lost during rounding to fit 19 digits.
-    This typically happens when dealing with extremely large amounts or high scales.
-    Refer to the supported ranges section.
-    If your application needs to handle numbers that are close to the minimum or
-    maximum values, this package may not be suitable.
+    This typically happens when dealing with large numbers or when you requested large number
+    of digits after the decimal point to be considered signigicant.
+    Refer to the supported ranges section, if your application needs to handle 
+    numbers that are close to the minimum or maximum values, this package may not be suitable.
     Consider using packages that store coefficients using [big.Int] type,
     such as [ShopSpring Decimal] or [CockroachDB Decimal].
 
