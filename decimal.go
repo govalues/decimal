@@ -1429,11 +1429,11 @@ func quoSlow(d, e Decimal, minScale int) (Decimal, error) {
 	ecoef.setFint(e.coef)
 
 	// Alignment and scale
-	scale = 2 * MaxPrec
+	scale = 2 * MaxPrec - d.Prec() + d.Scale()
 	dcoef.lsh(dcoef, scale+e.Scale()-d.Scale())
 
 	// Coefficient
-	dcoef.quoRem(dcoef, ecoef)
+	dcoef.quo(dcoef, ecoef)
 
 	// Sign
 	neg = d.IsNeg() != e.IsNeg()
