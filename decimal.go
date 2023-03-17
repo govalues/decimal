@@ -496,9 +496,9 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 	}
 
 	// Arithmetic sign
-	asign := 0
+	rsign := 0
 	if d.IsNeg() || state.Flag('+') || state.Flag(' ') {
-		asign = 1
+		rsign = 1
 	}
 
 	// Percentage sign
@@ -514,7 +514,7 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 	}
 
 	// Padding
-	width := lquote + asign + intdigs + dpoint + fracdigs + tzeroes + psign + tquote
+	width := lquote + rsign + intdigs + dpoint + fracdigs + tzeroes + psign + tquote
 	lspaces, tspaces, lzeroes := 0, 0, 0
 	if w, ok := state.Width(); ok && w > width {
 		switch {
@@ -566,7 +566,7 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 		buf[pos] = '0'
 		pos--
 	}
-	if asign > 0 {
+	if rsign > 0 {
 		if d.IsNeg() {
 			buf[pos] = '-'
 		} else if state.Flag(' ') {
