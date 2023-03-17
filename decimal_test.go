@@ -1192,7 +1192,7 @@ func TestDecimal_Mul(t *testing.T) {
 	})
 }
 
-func TestDecimal_Fma(t *testing.T) {
+func TestDecimal_FMA(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		cases := []struct {
@@ -1299,9 +1299,9 @@ func TestDecimal_Fma(t *testing.T) {
 			e := MustParse(c.e)
 			f := MustParse(c.f)
 			want := MustParse(c.want)
-			got := d.Fma(e, f)
+			got := d.FMA(e, f)
 			if got != want {
-				t.Errorf("%q.Fma(%q, %q) = %q, want %q", d, e, f, got, want)
+				t.Errorf("%q.FMA(%q, %q) = %q, want %q", d, e, f, got, want)
 			}
 		}
 	})
@@ -1324,10 +1324,10 @@ func TestDecimal_Fma(t *testing.T) {
 			t.Run(name, func(t *testing.T) {
 				defer func() {
 					if r := recover(); r == nil {
-						t.Errorf("%q.Fma(%q) did not panic", d, e)
+						t.Errorf("%q.FMA(%q) did not panic", d, e)
 					}
 				}()
-				d.Fma(e, f)
+				d.FMA(e, f)
 			})
 		}
 	})
@@ -2013,7 +2013,7 @@ func FuzzDecimal_Mul_FastVsSlow(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Fma_FastVsSlow(f *testing.F) {
+func FuzzDecimal_FMA_FastVsSlow(f *testing.F) {
 
 	for _, d := range corpus {
 		for _, e := range corpus {

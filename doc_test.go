@@ -133,19 +133,19 @@ func ExampleDecimal_MulExact() {
 	// Output: 17.10
 }
 
-func ExampleDecimal_Fma() {
+func ExampleDecimal_FMA() {
 	d := decimal.MustParse("5.7")
 	e := decimal.MustParse("3")
 	f := decimal.MustParse("2.8")
-	fmt.Println(d.Fma(e, f))
+	fmt.Println(d.FMA(e, f))
 	// Output: 19.9
 }
 
-func ExampleDecimal_FmaExact() {
+func ExampleDecimal_FMAExact() {
 	d := decimal.MustParse("5.7")
 	e := decimal.MustParse("3")
 	f := decimal.MustParse("2.8")
-	fmt.Println(d.FmaExact(e, f, 2))
+	fmt.Println(d.FMAExact(e, f, 2))
 	// Output: 19.90
 }
 

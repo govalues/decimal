@@ -1152,30 +1152,30 @@ func (d Decimal) SubExact(e Decimal, scale int) Decimal {
 	return d.AddExact(e.Neg(), scale)
 }
 
-// Fma returns (possibly rounded) [fused multiply-addition] of d, e, and f.
+// FMA returns (possibly rounded) [fused multiply-addition] of d, e, and f.
 // It computes d * e + f without any intermeddiate rounding.
 // This method is useful for improving the accuracy and performance of algorithms
 // that involve the accumulation of products, such as daily interest accrual.
 //
 // [fused multiply-addition]: https://en.wikipedia.org/wiki/Multiply%E2%80%93accumulate_operation#Fused_multiply%E2%80%93add
-func (d Decimal) Fma(e, f Decimal) Decimal {
-	return d.FmaExact(e, f, 0)
+func (d Decimal) FMA(e, f Decimal) Decimal {
+	return d.FMAExact(e, f, 0)
 }
 
-// FmaExact is similar to [Decimal.Fma], but it allows you to specify how many digits
+// FMAExact is similar to [Decimal.FMA], but it allows you to specify how many digits
 // after the decimal point should be considered significant.
 // If any of the significant digits are lost during rounding, the method will panic.
 // This method is useful for financial calculations, where the scale should be
 // equal to or greater than the currency's scale.
-func (d Decimal) FmaExact(e, f Decimal, scale int) Decimal {
+func (d Decimal) FMAExact(e, f Decimal, scale int) Decimal {
 	if scale < 0 || MaxScale < scale {
-		panic(fmt.Sprintf("%q.FmaExact(%q, %q, %v) failed: %v", d, e, f, scale, ErrScaleRange))
+		panic(fmt.Sprintf("%q.FMAExact(%q, %q, %v) failed: %v", d, e, f, scale, ErrScaleRange))
 	}
 	g, err := fmaFast(d, e, f, scale)
 	if err != nil {
 		g, err = fmaSlow(d, e, f, scale)
 		if err != nil {
-			panic(fmt.Sprintf("%q.FmaExact(%q, %q, %v) failed: %v", d, e, f, scale, err))
+			panic(fmt.Sprintf("%q.FMAExact(%q, %q, %v) failed: %v", d, e, f, scale, err))
 		}
 	}
 	return g
@@ -1429,7 +1429,7 @@ func quoSlow(d, e Decimal, minScale int) (Decimal, error) {
 	ecoef.setFint(e.coef)
 
 	// Alignment and scale
-	scale = 2 * MaxPrec - d.Prec() + d.Scale()
+	scale = 2*MaxPrec - d.Prec() + d.Scale()
 	dcoef.lsh(dcoef, scale+e.Scale()-d.Scale())
 
 	// Coefficient

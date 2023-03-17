@@ -79,10 +79,10 @@ completed during the first step.
 
 The following rules are used to determine the significance of digits:
 
-   - [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.Fma], [Decimal.Pow], [Decimal.Quo], [Decimal.QuoRem]:
+   - [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.FMA], [Decimal.Pow], [Decimal.Quo], [Decimal.QuoRem]:
       All digits in the integer part are significant, while the digits in the
       fractional part are insignificant.
-   - [Decimal.AddExact], [Decimal.SubExact], [Decimal.MulExact], [Decimal.FmaExact], [Decimal.QuoExact]:
+   - [Decimal.AddExact], [Decimal.SubExact], [Decimal.MulExact], [Decimal.FMAExact], [Decimal.QuoExact]:
       All digits in the integer part are significant. The significance of digits
       in the fractional part is determined by the scale argument, which is typically
       equal to the scale of the currency.
