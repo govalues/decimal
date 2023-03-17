@@ -1988,7 +1988,7 @@ func FuzzDecimal_Mul_FastVsSlow(f *testing.F) {
 
 			f, err := mulFast(d, e, scale)
 			if err != nil {
-				if errors.Is(err, ErrCoefficientOverflow) {
+				if errors.Is(err, errCoefficientOverflow) {
 					t.Skip() // Coefficient overflow is an expected error in fast multiplication
 				} else {
 					t.Errorf("mulFast(%q, %q, %v) failed: %v", d, e, scale, err)
@@ -2052,7 +2052,7 @@ func FuzzDecimal_FMA_FastVsSlow(f *testing.F) {
 
 			f, err := fmaFast(d, e, g, scale)
 			if err != nil {
-				if errors.Is(err, ErrCoefficientOverflow) {
+				if errors.Is(err, errCoefficientOverflow) {
 					t.Skip() // Coefficient overflow is an expected error in fast fused multiplication-addition
 				} else {
 					t.Errorf("fmaFast(%q, %q, %q, %v) failed: %v", d, e, g, scale, err)
@@ -2108,7 +2108,7 @@ func FuzzDecimal_Add_FastVsSlow(f *testing.F) {
 
 			f, err := addFast(d, e, scale)
 			if err != nil {
-				if errors.Is(err, ErrCoefficientOverflow) {
+				if errors.Is(err, errCoefficientOverflow) {
 					t.Skip() // Coefficient overflow is an expected error in fast addition
 				} else {
 					t.Errorf("addFast(%q, %q, %v) failed: %v", d, e, scale, err)
@@ -2168,7 +2168,7 @@ func FuzzDecimal_Quo_FastVsSlow(f *testing.F) {
 
 			f, err := quoFast(d, e, scale)
 			if err != nil {
-				if errors.Is(err, ErrCoefficientOverflow) {
+				if errors.Is(err, errCoefficientOverflow) {
 					t.Skip() // Coefficient overflow is an expected error in fast division
 				} else {
 					t.Errorf("quoFast(%q, %q, %v) failed: %v", d, e, scale, err)
@@ -2217,7 +2217,7 @@ func FuzzDecimal_Cmp_FastVsSlow(f *testing.F) {
 
 			f, err := cmpFast(d, e)
 			if err != nil {
-				if errors.Is(err, ErrCoefficientOverflow) {
+				if errors.Is(err, errCoefficientOverflow) {
 					t.Skip() // Coefficient overflow is an expected error in fast comparison
 				} else {
 					t.Errorf("cmpFast(%q, %q) failed: %v", d, e, err)
