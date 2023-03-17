@@ -380,6 +380,11 @@ func (z *sint) mul(x, y *sint) {
 	(*big.Int)(z).Mul((*big.Int)(x), (*big.Int)(y))
 }
 
+// quo calculates z = x / y
+func (z *sint) quo(x, y *sint) {
+	(*big.Int)(z).Quo((*big.Int)(x), (*big.Int)(y))
+}
+
 // quoRem calculates z and r such that x = z * y + r.
 func (z *sint) quoRem(x, y *sint) *sint {
 	_, r := (*big.Int)(z).QuoRem((*big.Int)(x), (*big.Int)(y), new(big.Int))

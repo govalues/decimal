@@ -5,12 +5,32 @@ import (
 	"testing"
 )
 
+func TestFint_lsh(t *testing.T) {
+	cases := []struct {
+		coef  fint
+		shift int
+		want  fint
+	}{
+		{0, 0, 0},
+		{10, 0, 10},
+		{0, 1, 0},
+		{10, 1, 100},
+	}
+	for _, c := range cases {
+		got, _ := c.coef.lsh(c.shift)
+		if got != c.want {
+			t.Errorf("%v.lsh(%v) = %v, want %v", c.coef, c.shift, got, c.want)
+		}
+	}
+}
+
 func TestFint_rshEven(t *testing.T) {
 	cases := []struct {
 		coef  fint
 		shift int
 		want  fint
 	}{
+		{1, 0, 1},
 		{20, 1, 2},
 		{18, 1, 2},
 		{15, 1, 2},
@@ -35,6 +55,7 @@ func TextFint_rshDown(t *testing.T) {
 		shift int
 		want  fint
 	}{
+		{1, 0, 1},
 		{20, 1, 2},
 		{18, 1, 1},
 		{15, 1, 1},
@@ -59,6 +80,7 @@ func TextFint_rshUp(t *testing.T) {
 		shift int
 		want  fint
 	}{
+		{1, 0, 1},
 		{20, 1, 2},
 		{18, 1, 2},
 		{15, 1, 2},
@@ -174,6 +196,7 @@ func TestSint_rshEven(t *testing.T) {
 		shift int
 		want  string
 	}{
+		{"1", 0, "1"},
 		{"18", 1, "2"},
 		{"15", 1, "2"},
 		{"12", 1, "1"},
