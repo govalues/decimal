@@ -1,5 +1,5 @@
 /*
-Package decimal implements decimal floating-point numbers.
+Package decimal implements immutable decimal floating-point numbers.
 
 This packages is designed specifically for use in transactional financial systems.
 The amounts involved in financial transactions typically do not exceed

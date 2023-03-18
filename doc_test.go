@@ -2,8 +2,63 @@ package decimal_test
 
 import (
 	"fmt"
+	"strings"
 	"github.com/govalues/decimal"
 )
+
+func evaluate(input string) (decimal.Decimal, error) {
+	tokens := strings.Fields(input)
+	stack := make([]decimal.Decimal, 0, len(tokens))
+	for i := len(tokens) - 1; i >= 0; i-- {
+		token := tokens[i]
+		switch token {
+		default:
+			d, err := decimal.Parse(token)
+			if err != nil {
+				return decimal.Decimal{}, fmt.Errorf("invalid number: %s", token)
+			}
+			stack = append(stack, d)
+		case "+", "-", "*", "/":
+			if len(stack) < 2 {
+				return decimal.Decimal{}, fmt.Errorf("invalid input")
+			}
+			e := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			d := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			var f decimal.Decimal
+			switch token {
+			case "+":
+				f = d.Add(e)
+			case "-":
+				f = d.Sub(e)
+			case "*":
+				f = d.Mul(e)
+			case "/":
+				f = d.Quo(e)
+			}
+			stack = append(stack, f)
+		}
+	}
+	if len(stack) != 1 {
+		return decimal.Decimal{}, fmt.Errorf("invalid input")
+	}
+	return stack[0], nil
+}
+
+// This example implements a simple calculator that evaluates mathematical
+// expressions written in postfix (or reverse Polish) notation.
+// The calculator can handle basic arithmetic operations such as addition,
+// subtraction, multiplication, and division.
+func Example_polishNotation() {
+	d, err := evaluate("* 10 + 1.2 3.4")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(d)
+	// Output:
+	// 46.0
+}
 
 // This example calculates an approximate value of pi using the Leibniz formula for pi.
 // The Leibniz formula is an infinite series that converges to pi/4, and is

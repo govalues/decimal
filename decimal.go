@@ -1435,7 +1435,7 @@ func quoSlow(d, e Decimal, minScale int) (Decimal, error) {
 	ecoef.setFint(e.coef)
 
 	// Alignment and scale
-	scale = 2 * MaxPrec
+	scale = 2 * MaxScale
 	dcoef.lsh(dcoef, scale+e.Scale()-d.Scale())
 
 	// Coefficient
