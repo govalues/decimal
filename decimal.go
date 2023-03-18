@@ -186,6 +186,9 @@ func parseFast(num string, minScale int) (Decimal, error) {
 		pos++
 		for pos < width && num[pos] >= '0' && num[pos] <= '9' {
 			hascoef = true
+			if scale >= 2*MaxPrec {
+				return Decimal{}, errCoefficientOverflow
+			}
 			coef, ok = coef.fsa(1, num[pos]-'0')
 			if !ok {
 				return Decimal{}, errCoefficientOverflow
@@ -234,6 +237,9 @@ func parseFast(num string, minScale int) (Decimal, error) {
 		scale = scale + exp
 	} else {
 		scale = scale - exp
+	}
+	if scale > 2*MaxPrec {
+		return Decimal{}, errCoefficientOverflow
 	}
 
 	return newDecimalFromRescaledFint(neg, coef, scale, minScale)
@@ -1429,7 +1435,7 @@ func quoSlow(d, e Decimal, minScale int) (Decimal, error) {
 	ecoef.setFint(e.coef)
 
 	// Alignment and scale
-	scale = 2*MaxPrec - d.Prec() + d.Scale()
+	scale = 2 * MaxPrec
 	dcoef.lsh(dcoef, scale+e.Scale()-d.Scale())
 
 	// Coefficient
