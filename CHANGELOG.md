@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.4] - 2023-03-19
+
+### Fixed
+
+- Fixed index out of range in decimal.Parse.
+- Rounding error in Decimal.Quo.
+
 ## [0.0.3] - 2023-03-18
 
 ### Changed
