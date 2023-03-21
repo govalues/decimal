@@ -1,9 +1,11 @@
-# Decimal
-
 [![godocb]][godoc]
-[![githubb]][github]
+![versionb]
 [![goreportb]][goreport]
+[![githubb]][github]
 [![codecovb]][codecov]
+[![licenseb]][license]
+
+# Decimal
 
 Package decimal implements immutable decimal floating-point numbers for Go.
 
@@ -59,15 +61,15 @@ pkg: github.com/govalues/benchmarks
 cpu: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx 
 ```
 
-| Expression           | Test Case             |     govalues | [cockroachdb] v3.1.2 | cockroachdb vs govalues | [shopspring] v1.3.1 |   shopspring vs govalues |
-| -------------------- | --------------------- | -----------: | -------------------: | ----------------------: | ------------------: | -----------------------: |
-| 1234567890.123456789 | Parse-8               | 108.5n ± 27% |         260.6n ± 18% | +140.30% (p=0.000 n=10) |        556.8n ± 19% |  +413.42% (p=0.000 n=10) |
-| 1234567890.123456789 | Decimal_String-8      | 140.9n ±  6% |         221.7n ± 10% |  +57.37% (p=0.000 n=10) |        373.6n ± 29% |  +165.21% (p=0.000 n=10) |
-| 2 * 3                | Decimal_Mul-8         | 18.77n ±  3% |         77.20n ±  9% | +311.43% (p=0.000 n=10) |       165.30n ±  5% |  +780.90% (p=0.000 n=10) |
-| 2 + 3                | Decimal_Add-8         | 17.09n ±  7% |         58.68n ± 10% | +243.46% (p=0.000 n=10) |       158.05n ±  3% |  +825.08% (p=0.000 n=10) |
-| 2 / 4                | Decimal_QuoFinite-8   | 40.62n ±  1% |        366.90n ±  3% | +803.25% (p=0.000 n=10) |       663.45n ±  4% | +1533.31% (p=0.000 n=10) |
-| 2 / 3                | Decimal_QuoInfinite-8 | 747.6n ±  5% |         970.5n ±  9% |  +29.81% (p=0.000 n=10) |       2923.0n ±  3% |  +290.96% (p=0.000 n=10) |
-| 1.1^60               | Decimal_Pow-8         | 1.093µ ±  4% |         3.078µ ±  6% | +181.61% (p=0.000 n=10) |       14.949µ ±  4% | +1267.70% (p=0.000 n=10) |
+| Expression                      | govalues | [cockroachdb] v3.1.2 | cockroachdb vs govalues | [shopspring] v1.3.1 | shopspring vs govalues |
+| ------------------------------- | -------: | -------------------: | ----------------------: | ------------------: | ---------------------: |
+| Parse("1234567890.123456789")   |   108.5n |               260.6n |                +140.30% |              556.8n |               +413.42% |
+| "1234567890.123456789".String() |   140.9n |               221.7n |                 +57.37% |              373.6n |               +165.21% |
+| 2 * 3                           |   18.77n |               77.20n |                +311.43% |             165.30n |               +780.90% |
+| 2 + 3                           |   17.09n |               58.68n |                +243.46% |             158.05n |               +825.08% |
+| 2 / 4                           |   40.62n |              366.90n |                +803.25% |             663.45n |              +1533.31% |
+| 2 / 3                           |   747.6n |               970.5n |                 +29.81% |             2923.0n |               +290.96% |
+| 1.1^60                          |   1.093µ |               3.078µ |                +181.61% |             14.949µ |              +1267.70% |
 
 The benchmark results shown in the table are provided for informational purposes only and may vary depending on your specific use case.
 
@@ -91,8 +93,11 @@ Note: Before making any significant changes to the code, it is recommended to op
 [goreport]: https://goreportcard.com/report/github.com/govalues/decimal
 [goreportb]: https://goreportcard.com/badge/github.com/govalues/decimal
 [github]: https://github.com/govalues/decimal/actions/workflows/go.yml
-[githubb]: https://github.com/govalues/decimal/actions/workflows/go.yml/badge.svg
-[codecovb]: https://codecov.io/gh/govalues/decimal/branch/main/graph/badge.svg?token=S8UVMYI9RC
+[githubb]: https://img.shields.io/github/actions/workflow/status/govalues/decimal/go.yml
 [codecov]: https://codecov.io/gh/govalues/decimal
+[codecovb]: https://img.shields.io/codecov/c/github/govalues/decimal/main
+[license]: https://en.wikipedia.org/wiki/MIT_License
+[licenseb]: https://img.shields.io/github/license/govalues/decimal
+[versionb]: https://img.shields.io/github/go-mod/go-version/govalues/decimal?label=go
 [cockroachdb]: https://pkg.go.dev/github.com/cockroachdb/apd
 [shopspring]: https://pkg.go.dev/github.com/shopspring/decimal

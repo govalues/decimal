@@ -15,17 +15,16 @@ func evaluate(input string) (decimal.Decimal, error) {
 		default:
 			d, err := decimal.Parse(token)
 			if err != nil {
-				return decimal.Decimal{}, fmt.Errorf("invalid number: %s", token)
+				return decimal.Decimal{}, fmt.Errorf("invalid decimal: %s", token)
 			}
 			stack = append(stack, d)
 		case "+", "-", "*", "/":
 			if len(stack) < 2 {
 				return decimal.Decimal{}, fmt.Errorf("invalid input")
 			}
+			d := stack[len(stack)-2]
 			e := stack[len(stack)-1]
-			stack = stack[:len(stack)-1]
-			d := stack[len(stack)-1]
-			stack = stack[:len(stack)-1]
+			stack = stack[:len(stack)-2]
 			var f decimal.Decimal
 			switch token {
 			case "+":
@@ -84,6 +83,19 @@ func ExampleNew() {
 	d := decimal.New(-1230, 3)
 	fmt.Println(d)
 	// Output: -1.230
+}
+
+func ExampleDecimal_ULP() {
+	d := decimal.MustParse("-1.23")
+	e := decimal.MustParse("0.0")
+	f := decimal.MustParse("15")
+	fmt.Println(d.ULP())
+	fmt.Println(e.ULP())
+	fmt.Println(f.ULP())
+	// Output:
+	// 0.01
+	// 0.1
+	// 1
 }
 
 func ExampleParse() {
