@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.6] - 2023-03-21
+
+### Added
+
+- Implemented Decimal.ULP method.
+
 ## [0.0.5] - 2023-03-19
 
 ### Added

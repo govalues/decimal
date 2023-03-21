@@ -2350,3 +2350,27 @@ func FuzzDecimal_Cmp_FastVsSlow(f *testing.F) {
 		},
 	)
 }
+
+func TestDecimal_ULP(t *testing.T) {
+	cases := []struct {
+		d, want string
+	}{
+		{"000", "1"},
+		{"00", "1"},
+		{"0", "1"},
+		{"0.0", "0.1"},
+		{"0.00", "0.01"},
+		{"0.000", "0.001"},
+		{"0.0000", "0.0001"},
+		{"0.00000", "0.00001"},
+		{"-1.23", "0.01"},
+	}
+	for _, c := range cases {
+		d := MustParse(c.d)
+		want := MustParse(c.want)
+		got := d.ULP()
+		if got != want {
+			t.Errorf("%q.ULP() = %q, want %q", c.d, got, want)
+		}
+	}
+}

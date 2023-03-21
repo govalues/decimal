@@ -143,19 +143,16 @@ func (x fint) rshDown(shift int) fint {
 
 // prec returns length of x in decimal digits.
 func (x fint) prec() int {
-	left := 0
-	right := len(pow10) - 1
-	for left <= right {
-		mid := left + (right-left)/2
+	left, right := 0, len(pow10)
+	for left < right {
+		mid := (left + right) / 2
 		if x < pow10[mid] {
-			right = mid - 1
-		} else if mid == len(pow10)-1 || x < pow10[mid+1] {
-			return mid + 1
+			right = mid
 		} else {
 			left = mid + 1
 		}
 	}
-	return 0
+	return left
 }
 
 // hasPrec returns true if x has given number of digits or more.
@@ -307,21 +304,19 @@ func (x *sint) prec() int {
 	if x.sign() < 0 {
 		panic("prec() failed: negative") // unexpected case by design
 	}
-	left, right := 0, len(sintPow10)-1
-	if x.cmp(sintPow10[right]) > 0 {
+	if maxSint := sintPow10[len(sintPow10)-1]; x.cmp(maxSint) > 0 {
 		panic("prec() failed: too long") // unexpected case by design
 	}
-	for left <= right {
-		mid := left + (right-left)/2
+	left, right := 0, len(sintPow10)
+	for left < right {
+		mid := (left + right) / 2
 		if x.cmp(sintPow10[mid]) < 0 {
-			right = mid - 1
-		} else if mid == len(sintPow10)-1 || x.cmp(sintPow10[mid+1]) < 0 {
-			return mid + 1
+			right = mid
 		} else {
 			left = mid + 1
 		}
 	}
-	return 0
+	return left
 }
 
 // hasPrec returns true if x has given number of digits or more.

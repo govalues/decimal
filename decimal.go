@@ -96,6 +96,13 @@ func New(coef int64, scale int) Decimal {
 	return d
 }
 
+// ULP (Unit in the Last Place) returns the smallest representable positive 
+// difference between d and the next larger decimal value with the same number 
+// of digits.
+func (d Decimal) ULP() Decimal {
+	return New(1, d.Scale())
+}
+
 // Parse converts a string to a (possibly rounded) decimal.
 // The input string must be in one of the following formats:
 //
@@ -623,22 +630,22 @@ func (d Decimal) Scale() int {
 // MinScale returns the smallest scale that d can be rescaled to without rounding.
 // Also see method [Decimal.Reduce].
 func (d Decimal) MinScale() int {
+	// Special case: no scale
 	if d.Scale() == 0 || d.IsZero() {
 		return 0
 	}
+	// General case
 	left, right := 0, d.Scale()
-	for left <= right {
-		mid := left + (right-left)/2
-		if d.coef%pow10[mid] == 0 {
-			if mid == d.Scale() || d.coef%pow10[mid+1] != 0 {
-				return d.Scale() - mid
-			}
-			left = mid + 1
+	for left < right {
+		mid := (left + right) / 2
+		pow := pow10[d.Scale()-mid]
+		if d.coef%pow == 0 {
+			right = mid
 		} else {
-			right = mid - 1
+			left = mid + 1
 		}
 	}
-	return d.Scale()
+	return left
 }
 
 // IsInt returns true if fractional part of d is zero.

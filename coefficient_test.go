@@ -190,6 +190,27 @@ func TestFint_hasPrec(t *testing.T) {
 	}
 }
 
+func TestSint_MustParseSint(t *testing.T) {
+	t.Run("panic", func(t *testing.T) {
+		cases := map[string]string{
+			"invalid char 1": "x1234",
+			"hex 1":          "0xab",
+			"binary 1":       "0b01",
+			"negative 1":     "-1",
+		}
+		for name, c := range cases {
+			t.Run(name, func(t *testing.T) {
+				defer func() {
+					if r := recover(); r == nil {
+						t.Errorf("mustParseSint(%q) did not panic", c)
+					}
+				}()
+				mustParseSint(c)
+			})
+		}
+	})
+}
+
 func TestSint_rshEven(t *testing.T) {
 	cases := []struct {
 		coef  string
