@@ -20,9 +20,9 @@ which reduces heap allocations, lowers memory consumption, and improves performa
 
 A [Decimal] value is represented as a struct with three parameters:
 
- 1. Sign: a boolean indicating whether the decimal is negative.
- 2. Coefficient: an uint64 value.
- 3. Scale: an integer indicating the position of the floating decimal point.
+ - Sign: a boolean indicating whether the decimal is negative.
+ - Coefficient: an uint64 value.
+ - Scale: an integer indicating the position of the floating decimal point.
 
 The scale field determines the position of the decimal point in the coefficient.
 For example, a decimal value with a scale of 2 represents a value that has two
@@ -96,9 +96,9 @@ evenly distributed between rounding up and rounding down.
 In addition to implicit half-to-even rounding, the Decimal package provides
 several methods for explicit rounding:
 
-  - [Decimal.Ceil]: rounds towards positive infinity. For example, the ceil of 1.5 is 2.
-  - [Decimal.Floor]: rounds towards negative infinity. For example, the floor of 1.5 is 1.
-  - [Decimal.Trunc]: rounds towards zero. For example, the trunc of 1.5 is 1.
+  - [Decimal.Ceil]: rounds towards positive infinity.
+  - [Decimal.Floor]: rounds towards negative infinity.
+  - [Decimal.Trunc]: rounds towards zero.
   - [Decimal.Round]: uses half-to-even rounding.
 
 # Errors

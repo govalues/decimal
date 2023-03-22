@@ -1,11 +1,11 @@
-[![godocb]][godoc]
-![versionb]
-[![goreportb]][goreport]
+# Decimal
+
 [![githubb]][github]
 [![codecovb]][codecov]
+[![goreportb]][goreport]
 [![licenseb]][license]
-
-# Decimal
+[![godocb]][godoc]
+[![versionb]][version]
 
 Package decimal implements immutable decimal floating-point numbers for Go.
 
@@ -46,7 +46,7 @@ power := x.Pow(5)
 ceil := x.Ceil(0)
 floor := x.Floor(0)
 trunc := x.Trunc(0)
-rounded := x.Round(0)
+round := x.Round(0)
 ```
 
 For more details on these and other methods, see the package documentation
@@ -88,16 +88,17 @@ To contribute to the project, follow these steps:
 
 Note: Before making any significant changes to the code, it is recommended to open an issue to discuss the proposed changes with the maintainers. This will help to ensure that the changes align with the project's goals and roadmap.
 
-[godoc]: https://pkg.go.dev/github.com/govalues/decimal?tab=doc
-[godocb]: https://img.shields.io/badge/go.dev-reference-blue
+[codecov]: https://codecov.io/gh/govalues/decimal
+[codecovb]: https://img.shields.io/codecov/c/github/govalues/decimal/main?color=brightcolor
 [goreport]: https://goreportcard.com/report/github.com/govalues/decimal
 [goreportb]: https://goreportcard.com/badge/github.com/govalues/decimal
 [github]: https://github.com/govalues/decimal/actions/workflows/go.yml
 [githubb]: https://img.shields.io/github/actions/workflow/status/govalues/decimal/go.yml
-[codecov]: https://codecov.io/gh/govalues/decimal
-[codecovb]: https://img.shields.io/codecov/c/github/govalues/decimal/main
-[license]: https://en.wikipedia.org/wiki/MIT_License
-[licenseb]: https://img.shields.io/github/license/govalues/decimal
+[godoc]: https://pkg.go.dev/github.com/govalues/decimal#section-documentation
+[godocb]: https://img.shields.io/badge/go.dev-reference-blue
+[version]: https://go.dev/dl
 [versionb]: https://img.shields.io/github/go-mod/go-version/govalues/decimal?label=go
+[license]: https://en.wikipedia.org/wiki/MIT_License
+[licenseb]: https://img.shields.io/github/license/govalues/decimal?color=blue
 [cockroachdb]: https://pkg.go.dev/github.com/cockroachdb/apd
 [shopspring]: https://pkg.go.dev/github.com/shopspring/decimal

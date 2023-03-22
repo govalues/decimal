@@ -721,7 +721,7 @@ func (d Decimal) Round(scale int) Decimal {
 	// Result
 	f, err = newDecimal(d.IsNeg(), coef, scale)
 	if err != nil {
-		panic(fmt.Sprintf("%q.Round(%v) failed: %v", d, scale, err))
+		panic(fmt.Sprintf("%q.Round(%v) failed: %v", d, scale, err)) // unexpected by design
 	}
 	return f
 }
@@ -774,7 +774,7 @@ func (d Decimal) Trunc(scale int) Decimal {
 	// Result
 	f, err = newDecimal(d.IsNeg(), coef, scale)
 	if err != nil {
-		panic(fmt.Sprintf("%q.Trunc(%v) failed: %v", d, scale, err))
+		panic(fmt.Sprintf("%q.Trunc(%v) failed: %v", d, scale, err)) // unexpected by design
 	}
 	return f
 }
@@ -822,7 +822,7 @@ func (d Decimal) Ceil(scale int) Decimal {
 	// Result
 	f, err = newDecimal(d.IsNeg(), coef, scale)
 	if err != nil {
-		panic(fmt.Sprintf("%q.Ceil(%v) failed: %v", d, scale, err))
+		panic(fmt.Sprintf("%q.Ceil(%v) failed: %v", d, scale, err)) // unexpected by design
 	}
 	return f
 }
@@ -870,7 +870,7 @@ func (d Decimal) Floor(scale int) Decimal {
 	// Result
 	f, err = newDecimal(d.IsNeg(), coef, scale)
 	if err != nil {
-		panic(fmt.Sprintf("%q.Floor(%v) failed: %v", d, scale, err))
+		panic(fmt.Sprintf("%q.Floor(%v) failed: %v", d, scale, err)) // unexpected by design
 	}
 	return f
 }
@@ -896,6 +896,19 @@ func (d Decimal) Abs() Decimal {
 		panic(fmt.Sprintf("%q.Abs() failed: %v", d, err)) // unexpected by design
 	}
 	return f
+}
+
+// CopySign returns d with the same sign as e. 
+// If e is zero, sign of d remains unchanged.
+func (d Decimal) CopySign(e Decimal) Decimal {
+	switch {
+	case e.IsZero():
+		return d
+	case d.IsNeg() != e.IsNeg():
+		return d.Neg()
+	default:
+		return d
+	}
 }
 
 // Sign returns:

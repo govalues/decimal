@@ -1574,6 +1574,31 @@ func TestDecimal_Abs(t *testing.T) {
 	}
 }
 
+func TestDecimal_CopySign(t *testing.T) {
+	cases := []struct {
+		d, e, want string
+	}{
+		{"10", "1", "10"},
+		{"10", "0", "10"},
+		{"10", "-1", "-10"},
+		{"0", "1", "0"},
+		{"0", "0", "0"},
+		{"0", "-1", "0"},
+		{"-10", "1", "10"},
+		{"-10", "0", "-10"},
+		{"-10", "-1", "-10"},
+	}
+	for _, c := range cases {
+		d := MustParse(c.d)
+		e := MustParse(c.e)
+		want := MustParse(c.want)
+		got := d.CopySign(e)
+		if got != want {
+			t.Errorf("%q.CopySign(%q) = %q, want %q", d, e, got, want)
+		}
+	}
+}
+
 func TestDecimal_Neg(t *testing.T) {
 	cases := []struct {
 		d, want string
