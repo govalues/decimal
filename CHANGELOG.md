@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.7] - 2023-03-22
+
+### Added
+
+- Implemented Decimal.CopySign method.
+
 ## [0.0.6] - 2023-03-21
 
 ### Added
