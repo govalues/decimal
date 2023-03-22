@@ -22,8 +22,8 @@ func evaluate(input string) (decimal.Decimal, error) {
 			if len(stack) < 2 {
 				return decimal.Decimal{}, fmt.Errorf("invalid input")
 			}
-			d := stack[len(stack)-2]
-			e := stack[len(stack)-1]
+			d := stack[len(stack)-1]
+			e := stack[len(stack)-2]
 			stack = stack[:len(stack)-2]
 			var f decimal.Decimal
 			switch token {
@@ -465,6 +465,16 @@ func ExampleDecimal_Abs() {
 	d := decimal.MustParse("-15.67")
 	fmt.Println(d.Abs())
 	// Output: 15.67
+}
+
+func ExampleDecimal_CopySign() {
+	d := decimal.MustParse("23.00")
+	e := decimal.MustParse("-15.67")
+	fmt.Println(d.CopySign(e))
+	fmt.Println(e.CopySign(d))
+	// Output:
+	// -23.00
+	// 15.67
 }
 
 func ExampleDecimal_Neg() {
