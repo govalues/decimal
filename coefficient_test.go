@@ -42,7 +42,11 @@ func TestFint_rshEven(t *testing.T) {
 		{9999999999999999999, 19, 1},
 	}
 	for _, c := range cases {
-		got := c.coef.rshEven(c.shift)
+		got, ok := c.coef.rshEven(c.shift)
+		if !ok {
+			t.Errorf("%v.rshEven(%v) failed", c.coef, c.shift)
+			continue
+		}
 		if got != c.want {
 			t.Errorf("%v.rshEven(%v) = %v, want %v", c.coef, c.shift, got, c.want)
 		}
@@ -67,7 +71,11 @@ func TextFint_rshDown(t *testing.T) {
 		{9999999999999999999, 19, 0},
 	}
 	for _, c := range cases {
-		got := c.coef.rshDown(c.shift)
+		got, ok := c.coef.rshDown(c.shift)
+		if !ok {
+			t.Errorf("%v.rshDown(%v) failed", c.coef, c.shift)
+			continue
+		}
 		if got != c.want {
 			t.Errorf("%v.rshDown(%v) = %v, want %v", c.coef, c.shift, got, c.want)
 		}
@@ -92,7 +100,11 @@ func TextFint_rshUp(t *testing.T) {
 		{9999999999999999999, 19, 1},
 	}
 	for _, c := range cases {
-		got := c.coef.rshUp(c.shift)
+		got, ok := c.coef.rshUp(c.shift)
+		if !ok {
+			t.Errorf("%v.rshUp(%v) failed", c.coef, c.shift)
+			continue
+		}
 		if got != c.want {
 			t.Errorf("%v.rshUp(%v) = %v, want %v", c.coef, c.shift, got, c.want)
 		}
@@ -150,6 +162,62 @@ func TestFint_prec(t *testing.T) {
 		got := c.coef.prec()
 		if got != c.want {
 			t.Errorf("%v.prec() = %v, want %v", c.coef, got, c.want)
+		}
+	}
+}
+
+func TestFint_tzeros(t *testing.T) {
+	cases := []struct {
+		coef fint
+		want int
+	}{
+		{0, 0},
+		{1, 0},
+		{9, 0},
+		{10, 1},
+		{99, 0},
+		{100, 2},
+		{999, 0},
+		{1000, 3},
+		{9999, 0},
+		{10000, 4},
+		{99999, 0},
+		{100000, 5},
+		{999999, 0},
+		{1000000, 6},
+		{9999999, 0},
+		{10000000, 7},
+		{99999999, 0},
+		{100000000, 8},
+		{999999999, 0},
+		{1000000000, 9},
+		{9999999999, 0},
+		{10000000000, 10},
+		{99999999999, 0},
+		{100000000000, 11},
+		{999999999999, 0},
+		{1000000000000, 12},
+		{9999999999999, 0},
+		{10000000000000, 13},
+		{99999999999999, 0},
+		{100000000000000, 14},
+		{999999999999999, 0},
+		{1000000000000000, 15},
+		{9999999999999999, 0},
+		{10000000000000000, 16},
+		{99999999999999999, 0},
+		{100000000000000000, 17},
+		{999999999999999999, 0},
+		{1000000000000000000, 18},
+		{2000000000000000002, 0},
+		{9999999999999999999, 0},
+		{10000000000000000000, 19},
+		{math.MaxUint64, 0},
+	}
+	for _, c := range cases {
+		got := c.coef.tzeros()
+		if got != c.want {
+			t.Errorf("%v.tzeros() = %v, want %v", c.coef, got, c.want)
 		}
 	}
 }

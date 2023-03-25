@@ -2311,9 +2311,14 @@ func FuzzDecimal_Quo_FastVsSlow(f *testing.F) {
 
 			f, err := quoFast(d, e, scale)
 			if err != nil {
-				if errors.Is(err, errCoefficientOverflow) {
+				switch {
+				case errors.Is(err, errCoefficientOverflow):
 					t.Skip() // Coefficient overflow is an expected error in fast division
-				} else {
+				case errors.Is(err, errScaleRange):
+					t.Skip() // Scale out of range is an expected error in fast division
+				case errors.Is(err, errInexactDivision):
+					t.Skip() // InexactDivision is an expected error in fast division
+				default:
 					t.Errorf("quoFast(%q, %q, %v) failed: %v", d, e, scale, err)
 				}
 				return

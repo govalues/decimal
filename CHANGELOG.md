@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.8] - 2023-03-25
+
+### Changed
+
+- Simplified Decimal.Quo method.
+
 ## [0.0.7] - 2023-03-22
 
 ### Added

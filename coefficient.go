@@ -61,6 +61,18 @@ func (x fint) mul(y fint) (fint, bool) {
 	return z, true
 }
 
+// quo calculates x / y and checks if it is an exact division.
+func (x fint) quo(y fint) (fint, bool) {
+	if y == 0 {
+		return 0, false
+	}
+	z := x / y
+	if y*z != x {
+		return 0, false
+	}
+	return z, true
+}
+
 // dist calculates abs(x - y).
 func (x fint) dist(y fint) fint {
 	if x > y {
@@ -104,9 +116,12 @@ func (x fint) isOdd() bool {
 }
 
 // rshEven (Shift Right) calculates x / 10^shift and rounds result using "half to even" rule.
-func (x fint) rshEven(shift int) fint {
-	if shift == 0 {
-		return x
+func (x fint) rshEven(shift int) (fint, bool) {
+	switch {
+	case shift == 0:
+		return x, true
+	case shift >= len(pow10):
+		return 0, false
 	}
 	y := pow10[shift]
 	z := x / y
@@ -115,13 +130,16 @@ func (x fint) rshEven(shift int) fint {
 	if y < r || (y == r && z.isOdd()) { // half-to-even
 		z++
 	}
-	return z
+	return z, true
 }
 
 // rshUp (Shift Right) calculates x / 10^shift and rounds result away from 0.
-func (x fint) rshUp(shift int) fint {
-	if shift == 0 {
-		return x
+func (x fint) rshUp(shift int) (fint, bool) {
+	switch {
+	case shift == 0:
+		return x, true
+	case shift >= len(pow10):
+		return 0, false
 	}
 	y := pow10[shift]
 	z := x / y
@@ -129,16 +147,19 @@ func (x fint) rshUp(shift int) fint {
 	if r > 0 {
 		z++
 	}
-	return z
+	return z, true
 }
 
 // rshDown (Shift Right) calculates x / 10^shift and rounds result towards 0.
-func (x fint) rshDown(shift int) fint {
-	if shift == 0 {
-		return x
+func (x fint) rshDown(shift int) (fint, bool) {
+	switch {
+	case shift == 0:
+		return x, true
+	case shift >= len(pow10):
+		return 0, false
 	}
 	y := pow10[shift]
-	return x / y
+	return x / y, true
 }
 
 // prec returns length of x in decimal digits.
@@ -153,6 +174,21 @@ func (x fint) prec() int {
 		}
 	}
 	return left
+}
+
+// tzeroes returns number of trailing zeros in x
+func (x fint) tzeros() int {
+	left, right := 1, x.prec()
+	for left < right {
+		mid := (right + left) / 2
+		pow := pow10[mid]
+		if x%pow == 0 {
+			left = mid + 1
+		} else {
+			right = mid
+		}
+	}
+	return left - 1
 }
 
 // hasPrec returns true if x has given number of digits or more.
