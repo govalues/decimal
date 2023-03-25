@@ -25,6 +25,7 @@ var (
 	errInvalidDecimal      = errors.New("invalid decimal")
 	errScaleRange          = errors.New("scale out of range")
 	errExponentRange       = errors.New("exponent out of range")
+	errInexactDivision     = errors.New("inexact division")
 	errDivisionByZero      = errors.New("division by zero")
 )
 
@@ -42,12 +43,15 @@ func newDecimal(neg bool, coef fint, scale int) (Decimal, error) {
 }
 
 func newDecimalFromRescaledFint(neg bool, coef fint, scale, minScale int) (Decimal, error) {
+	var ok bool
 	switch {
 	case scale > MaxScale:
-		coef = coef.rshEven(scale - MaxScale)
+		coef, ok = coef.rshEven(scale - MaxScale)
+		if !ok {
+			return Decimal{}, errScaleRange
+		}
 		scale = MaxScale
 	case scale < minScale:
-		var ok bool
 		coef, ok = coef.lsh(minScale - scale)
 		if !ok {
 			return Decimal{}, errCoefficientOverflow
@@ -96,8 +100,8 @@ func New(coef int64, scale int) Decimal {
 	return d
 }
 
-// ULP (Unit in the Last Place) returns the smallest representable positive 
-// difference between d and the next larger decimal value with the same number 
+// ULP (Unit in the Last Place) returns the smallest representable positive
+// difference between d and the next larger decimal value with the same number
 // of digits.
 func (d Decimal) ULP() Decimal {
 	return New(1, d.Scale())
@@ -635,17 +639,11 @@ func (d Decimal) MinScale() int {
 		return 0
 	}
 	// General case
-	left, right := 0, d.Scale()
-	for left < right {
-		mid := (left + right) / 2
-		pow := pow10[d.Scale()-mid]
-		if d.coef%pow == 0 {
-			right = mid
-		} else {
-			left = mid + 1
-		}
+	z := d.coef.tzeros()
+	if z > d.Scale() {
+		return 0
 	}
-	return left
+	return d.Scale() - z
 }
 
 // IsInt returns true if fractional part of d is zero.
@@ -710,7 +708,10 @@ func (d Decimal) Round(scale int) Decimal {
 	case scale == d.Scale():
 		return d
 	case scale < d.Scale():
-		coef = coef.rshEven(d.Scale() - scale)
+		coef, ok = coef.rshEven(d.Scale() - scale)
+		if !ok {
+			panic(fmt.Sprintf("%q.Round(%v) failed: %v", d, scale, errScaleRange)) // unexpected by design
+		}
 	case d.Scale() < scale:
 		coef, ok = coef.lsh(scale - d.Scale())
 		if !ok {
@@ -763,7 +764,10 @@ func (d Decimal) Trunc(scale int) Decimal {
 	case scale == d.Scale():
 		return d
 	case scale < d.Scale():
-		coef = coef.rshDown(d.Scale() - scale)
+		coef, ok = coef.rshDown(d.Scale() - scale)
+		if !ok {
+			panic(fmt.Sprintf("%q.Trunc(%v) failed: %v", d, scale, errScaleRange)) // unexpected by design
+		}
 	case d.Scale() < scale:
 		coef, ok = coef.lsh(scale - d.Scale())
 		if !ok {
@@ -808,9 +812,12 @@ func (d Decimal) Ceil(scale int) Decimal {
 		return d
 	case scale < d.Scale():
 		if d.IsNeg() {
-			coef = coef.rshDown(d.Scale() - scale)
+			coef, ok = coef.rshDown(d.Scale() - scale)
 		} else {
-			coef = coef.rshUp(d.Scale() - scale)
+			coef, ok = coef.rshUp(d.Scale() - scale)
+		}
+		if !ok {
+			panic(fmt.Sprintf("%q.Ceil(%v) failed: %v", d, scale, errScaleRange)) // unexpected by design
 		}
 	case d.Scale() < scale:
 		coef, ok = coef.lsh(scale - d.Scale())
@@ -856,9 +863,12 @@ func (d Decimal) Floor(scale int) Decimal {
 		return d
 	case scale < d.Scale():
 		if d.IsNeg() {
-			coef = coef.rshUp(d.Scale() - scale)
+			coef, ok = coef.rshUp(d.Scale() - scale)
 		} else {
-			coef = coef.rshDown(d.Scale() - scale)
+			coef, ok = coef.rshDown(d.Scale() - scale)
+		}
+		if !ok {
+			panic(fmt.Sprintf("%q.Floor(%v) failed: %v", d, scale, errScaleRange)) // unexpected by design
 		}
 	case d.Scale() < scale:
 		coef, ok = coef.lsh(scale - d.Scale())
@@ -898,7 +908,7 @@ func (d Decimal) Abs() Decimal {
 	return f
 }
 
-// CopySign returns d with the same sign as e. 
+// CopySign returns d with the same sign as e.
 // If e is zero, sign of d remains unchanged.
 func (d Decimal) CopySign(e Decimal) Decimal {
 	switch {
@@ -974,7 +984,6 @@ func mulFast(d, e Decimal, minScale int) (Decimal, error) {
 		ecoef fint
 		neg   bool
 		scale int
-		coef  fint
 		ok    bool
 	)
 
@@ -982,7 +991,7 @@ func mulFast(d, e Decimal, minScale int) (Decimal, error) {
 	ecoef = e.coef
 
 	// Coefficient
-	coef, ok = dcoef.mul(ecoef)
+	dcoef, ok = dcoef.mul(ecoef)
 	if !ok {
 		return Decimal{}, errCoefficientOverflow
 	}
@@ -993,7 +1002,7 @@ func mulFast(d, e Decimal, minScale int) (Decimal, error) {
 	// Scale
 	scale = d.Scale() + e.Scale()
 
-	return newDecimalFromRescaledFint(neg, coef, scale, minScale)
+	return newDecimalFromRescaledFint(neg, dcoef, scale, minScale)
 }
 
 func mulSlow(d, e Decimal, minScale int) (Decimal, error) {
@@ -1074,7 +1083,6 @@ func addFast(d, e Decimal, minScale int) (Decimal, error) {
 		ecoef fint
 		neg   bool
 		scale int
-		coef  fint
 		ok    bool
 	)
 
@@ -1108,15 +1116,15 @@ func addFast(d, e Decimal, minScale int) (Decimal, error) {
 
 	// Coefficient
 	if d.IsNeg() != e.IsNeg() {
-		coef = dcoef.dist(ecoef)
+		dcoef = dcoef.dist(ecoef)
 	} else {
-		coef, ok = dcoef.add(ecoef)
+		dcoef, ok = dcoef.add(ecoef)
 		if !ok {
 			return Decimal{}, errCoefficientOverflow
 		}
 	}
 
-	return newDecimalFromRescaledFint(neg, coef, scale, minScale)
+	return newDecimalFromRescaledFint(neg, dcoef, scale, minScale)
 }
 
 func addSlow(d, e Decimal, minScale int) (Decimal, error) {
@@ -1376,68 +1384,43 @@ func quoFast(d, e Decimal, minScale int) (Decimal, error) {
 		ecoef fint
 		neg   bool
 		scale int
-		coef  fint
 		ok    bool
 	)
 
 	dcoef = d.coef
 	ecoef = e.coef
 
+	// Scale
+	scale = d.Scale() - e.Scale()
+
 	// Dividend alignment
-	for dcoef < ecoef {
-		dcoef, ok = dcoef.lsh(1)
+	if p := MaxPrec - dcoef.prec(); p > 0 {
+		dcoef, ok = dcoef.lsh(p)
 		if !ok {
 			return Decimal{}, errCoefficientOverflow
 		}
-		scale++
+		scale = scale + p
 	}
 
 	// Divisor alignment
-	for t, ok := ecoef.lsh(1); t <= dcoef; t, ok = t.lsh(1) {
+	if t := ecoef.tzeros(); t > 0 {
+		ecoef, ok = ecoef.rshDown(t)
 		if !ok {
-			return Decimal{}, errCoefficientOverflow
+			return Decimal{}, errScaleRange
 		}
-		ecoef = t
-		scale--
+		scale = scale + t
 	}
 
-	// Long division
-	earlybreak := (len(pow10) - 1) - (d.Scale() + e.Scale()) + MaxScale // thershold to prevent "index out of range" during rescaling
-	for {
-		for ecoef <= dcoef {
-			dcoef = dcoef - ecoef // overflow is impossible
-			coef, ok = coef.add(1)
-			if !ok {
-				return Decimal{}, errCoefficientOverflow
-			}
-		}
-		if dcoef == 0 && scale >= 0 {
-			break // exact division
-		}
-		if scale >= earlybreak || coef.hasPrec(MaxPrec) {
-			break // inexact division
-		}
-		coef, ok = coef.lsh(1)
-		if !ok {
-			return Decimal{}, errCoefficientOverflow
-		}
-		dcoef, ok = dcoef.lsh(1)
-		if !ok {
-			return Decimal{}, errCoefficientOverflow
-		}
-		scale++
-	}
-	if dcoef != 0 { // inexact division, there is a reminder
-		return Decimal{}, errCoefficientOverflow
+	// Coefficient
+	dcoef, ok = dcoef.quo(ecoef)
+	if !ok {
+		return Decimal{}, errInexactDivision // inexact division
 	}
 
 	// Sign
 	neg = d.IsNeg() != e.IsNeg()
 
-	// Scale
-	scale = scale + d.Scale() - e.Scale()
-
-	return newDecimalFromRescaledFint(neg, coef, scale, minScale)
+	return newDecimalFromRescaledFint(neg, dcoef, scale, minScale)
 }
 
 func quoSlow(d, e Decimal, minScale int) (Decimal, error) {
@@ -1454,8 +1437,10 @@ func quoSlow(d, e Decimal, minScale int) (Decimal, error) {
 	dcoef.setFint(d.coef)
 	ecoef.setFint(e.coef)
 
-	// Alignment and scale
+	// Scale
 	scale = 2 * MaxScale
+
+	// Divident alignment
 	dcoef.lsh(dcoef, scale+e.Scale()-d.Scale())
 
 	// Coefficient

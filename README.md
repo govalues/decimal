@@ -61,15 +61,15 @@ pkg: github.com/govalues/benchmarks
 cpu: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx 
 ```
 
-| Expression                      | govalues | [cockroachdb] v3.1.2 | cockroachdb vs govalues | [shopspring] v1.3.1 | shopspring vs govalues |
-| ------------------------------- | -------: | -------------------: | ----------------------: | ------------------: | ---------------------: |
-| Parse("1234567890.123456789")   |   108.5n |               260.6n |                +140.30% |              556.8n |               +413.42% |
-| "1234567890.123456789".String() |   140.9n |               221.7n |                 +57.37% |              373.6n |               +165.21% |
-| 2 * 3                           |   18.77n |               77.20n |                +311.43% |             165.30n |               +780.90% |
-| 2 + 3                           |   17.09n |               58.68n |                +243.46% |             158.05n |               +825.08% |
-| 2 / 4                           |   40.62n |              366.90n |                +803.25% |             663.45n |              +1533.31% |
-| 2 / 3                           |   747.6n |               970.5n |                 +29.81% |             2923.0n |               +290.96% |
-| 1.1^60                          |   1.093µ |               3.078µ |                +181.61% |             14.949µ |              +1267.70% |
+| Test Case           | Expression | govalues | [cockroachdb] v3.1.2 | cockroachdb vs govalues | [shopspring] v1.3.1 | shopspring vs govalues |
+| ------------------- | ---------- | -------: | -------------------: | ----------------------: | ------------------: | ---------------------: |
+| Decimal_Add         | 2 + 3      |   16.32n |               46.76n |                +186.49% |             138.75n |               +750.18% |
+| Decimal_Mul         | 2 * 3      |   15.81n |               51.41n |                +225.21% |             135.90n |               +759.58% |
+| Decimal_QuoFinite   | 2 / 4      |   78.36n |              379.50n |                +384.30% |             641.60n |               +718.79% |
+| Decimal_QuoInfinite | 2 / 3      |   573.7n |               948.4n |                 +65.31% |             2828.5n |               +393.03% |
+| Decimal_Pow         | 1.1^60     |   1.029µ |               3.078µ |                +199.08% |             19.949µ |              +1838.68% |
+| Parse               | -          |   106.6n |               252.1n |                +136.60% |              497.5n |               +366.92% |
+| Decimal_String      | -          |   138.2n |               194.8n |                 +40.99% |              329.3n |               +138.28% |
 
 The benchmark results shown in the table are provided for informational purposes only and may vary depending on your specific use case.
 
