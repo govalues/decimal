@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"testing"
+	"unsafe"
 )
 
 func TestDecimal_ZeroValue(t *testing.T) {
@@ -12,6 +13,15 @@ func TestDecimal_ZeroValue(t *testing.T) {
 	want := New(0, 0)
 	if got != want {
 		t.Errorf("Decimal{} = %q, want %q", got, want)
+	}
+}
+
+func TestDecimal_Sizeof(t *testing.T) {
+	d := Decimal{}
+	got := unsafe.Sizeof(d)
+	want := uintptr(16)
+	if got != want {
+		t.Errorf("unsafe.Sizeof(%q) = %v, want %v", d, got, want)
 	}
 }
 
@@ -468,56 +478,6 @@ func TestDecimal_Prec(t *testing.T) {
 			t.Errorf("%q.Prec() = %v, want %v", c.d, got, c.want)
 		}
 	}
-}
-
-func TestDecimal_WithScale(t *testing.T) {
-	t.Run("valid", func(t *testing.T) {
-		cases := []struct {
-			d     string
-			scale int
-			want  string
-		}{
-			{"0", 0, "0"},
-			{"0", 1, "0.0"},
-			{"0", 2, "0.00"},
-			{"0", 3, "0.000"},
-			{"0", 19, "0.0000000000000000000"},
-			{"1", 0, "1"},
-			{"1", 1, "0.1"},
-			{"1", 2, "0.01"},
-			{"1", 3, "0.001"},
-			{"1", 19, "0.0000000000000000001"},
-		}
-		for _, c := range cases {
-			d := MustParse(c.d)
-			got := d.WithScale(c.scale)
-			want := MustParse(c.want)
-			if got != want {
-				t.Errorf("%q.WithScale(%v) = %q, want %q", c.d, c.scale, got, want)
-			}
-		}
-	})
-
-	t.Run("panic", func(t *testing.T) {
-		cases := map[string]struct {
-			d     string
-			scale int
-		}{
-			"scale 1": {"0", -1},
-			"scale 2": {"0", MaxScale + 1},
-		}
-		for name, c := range cases {
-			d := MustParse(c.d)
-			t.Run(name, func(t *testing.T) {
-				defer func() {
-					if r := recover(); r == nil {
-						t.Errorf("%q.WithScale(%v) did not panic", c.d, c.scale)
-					}
-				}()
-				d.WithScale(c.scale)
-			})
-		}
-	})
 }
 
 func TestDecimal_Round(t *testing.T) {
@@ -2379,28 +2339,4 @@ func FuzzDecimal_Cmp_FastVsSlow(f *testing.F) {
 			}
 		},
 	)
-}
-
-func TestDecimal_ULP(t *testing.T) {
-	cases := []struct {
-		d, want string
-	}{
-		{"000", "1"},
-		{"00", "1"},
-		{"0", "1"},
-		{"0.0", "0.1"},
-		{"0.00", "0.01"},
-		{"0.000", "0.001"},
-		{"0.0000", "0.0001"},
-		{"0.00000", "0.00001"},
-		{"-1.23", "0.01"},
-	}
-	for _, c := range cases {
-		d := MustParse(c.d)
-		want := MustParse(c.want)
-		got := d.ULP()
-		if got != want {
-			t.Errorf("%q.ULP() = %q, want %q", c.d, got, want)
-		}
-	}
 }

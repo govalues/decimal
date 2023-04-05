@@ -10,8 +10,8 @@ import (
 // The zero value for Decimal represents the value 0.
 type Decimal struct {
 	neg   bool // indicates whether the decimal is negative
-	coef  fint // the coefficient of the decimal
 	scale int8 // the position of the floating decimal point
+	coef  fint // the coefficient of the decimal
 }
 
 const (
@@ -98,6 +98,17 @@ func New(coef int64, scale int) Decimal {
 		panic(fmt.Sprintf("New(%v, %v) failed: %v", coef, scale, err))
 	}
 	return d
+}
+
+// Zero returns decimal with a value 0 but the same scale as d.
+func (d Decimal) Zero() Decimal {
+	return New(0, d.Scale())
+}
+
+// One returns decimal with a value 1 but the same scale as d.
+func (d Decimal) One() Decimal {
+	coef := int64(pow10[d.Scale()])
+	return New(coef, d.Scale())
 }
 
 // ULP (Unit in the Last Place) returns the smallest representable positive
@@ -376,32 +387,15 @@ func MustParse(num string) Decimal {
 func (d Decimal) String() string {
 
 	var (
-		buf   []byte
+		buf   [24]byte
 		pos   int
-		width int
 		coef  uint64
 		scale int
 	)
 
-	scale = d.Scale()
+	pos = len(buf) - 1
 	coef = d.Coef()
-
-	// Buffer
-	width = d.Prec()
-	if width < scale {
-		width = scale
-	}
-	if scale > 0 {
-		width++ // for decimal point
-	}
-	if d.LessThanOne() {
-		width++ // for leading 0
-	}
-	if d.IsNeg() {
-		width++ // for sign
-	}
-	buf = make([]byte, width)
-	pos = width - 1
+	scale = d.Scale()
 
 	// Coefficient
 	for {
@@ -429,9 +423,11 @@ func (d Decimal) String() string {
 	// Sign
 	if d.IsNeg() {
 		buf[pos] = '-'
+		pos--
 	}
 
-	return string(buf)
+	// Convert bytes to string without extra allocation
+	return string(buf[pos+1:])
 }
 
 // UnmarshalText implements [encoding.TextUnmarshaler] interface.
@@ -502,7 +498,7 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 	if dprec := d.Prec(); dprec > fracdigs {
 		intdigs = dprec - fracdigs
 	}
-	if d.LessThanOne() {
+	if d.WithinOne() {
 		intdigs++ // leading 0
 	}
 
@@ -651,31 +647,14 @@ func (d Decimal) IsInt() bool {
 	return d.coef%pow10[d.Scale()] == 0
 }
 
-// IsOne returns true if d is positive one or negative one.
+// IsOne returns true if d == -1 or d == 1.
 func (d Decimal) IsOne() bool {
 	return d.coef == pow10[d.Scale()]
 }
 
-// LessThanOne returns true if d greater than negative one and less than positive one.
-func (d Decimal) LessThanOne() bool {
+// WithinOne returns true if -1 < d < 1.
+func (d Decimal) WithinOne() bool {
 	return d.coef < pow10[d.Scale()]
-}
-
-// WithScale returns d with specified scale.
-// Also see method [Decimal.Round].
-//
-// WithScale panics if the scale is less than 0 or greater than [MaxScale].
-func (d Decimal) WithScale(scale int) Decimal {
-	if scale < 0 || MaxScale < scale {
-		panic(fmt.Sprintf("%q.WithScale(%v) failed: %v", d, scale, errScaleRange))
-	}
-
-	// Result
-	f, err := newDecimal(d.IsNeg(), d.coef, scale)
-	if err != nil {
-		panic(fmt.Sprintf("%q.WithScale(%v) failed: %v", d, scale, err)) // unexpected by design
-	}
-	return f
 }
 
 // Round returns d that is rounded to the specified number of digits after
@@ -728,7 +707,7 @@ func (d Decimal) Round(scale int) Decimal {
 }
 
 // Quantize returns d that is rounded to the same scale as e.
-// The sign and coefficient of y are ignored.
+// The sign and coefficient of e are ignored.
 // Also see method [Decimal.Round].
 //
 // Qunatize panics if the integer part of d has more than ([MaxPrec] - e.Scale()) digits.
@@ -909,7 +888,7 @@ func (d Decimal) Abs() Decimal {
 }
 
 // CopySign returns d with the same sign as e.
-// If e is zero, sign of d remains unchanged.
+// If e is zero, sign of the result remains unchanged.
 func (d Decimal) CopySign(e Decimal) Decimal {
 	switch {
 	case e.IsZero():
@@ -936,17 +915,17 @@ func (d Decimal) Sign() int {
 	return 1
 }
 
-// IsPos returns true if d is greater than zero.
+// IsPos returns true if d > 0.
 func (d Decimal) IsPos() bool {
 	return d.coef != 0 && !d.neg
 }
 
-// IsNeg returns true if d is less than zero.
+// IsNeg returns true if d < 0.
 func (d Decimal) IsNeg() bool {
 	return d.neg
 }
 
-// IsZero returns true if d is zero.
+// IsZero returns true if d == 0.
 func (d Decimal) IsZero() bool {
 	return d.coef == 0
 }
@@ -1322,8 +1301,8 @@ func fmaSlow(d, e, f Decimal, minScale int) (Decimal, error) {
 // Quo returns (possibly rounded) quotient of d and e.
 //
 // Quo panics if:
-//   - the integer part of the quotient has more than [MaxPrec] digits;
-//   - the divisor is 0.
+//   - the integer part of the result has more than [MaxPrec] digits;
+//   - e is 0.
 func (d Decimal) Quo(e Decimal) Decimal {
 	return d.QuoExact(e, 0)
 }

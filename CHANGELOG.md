@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.0.9] - 2023-04-05
+
+### Added
+
+- Implemented Decimal.One method.
+- Implemented Decimal.Zero method.
+
+### Changed
+
+- Reduced memory consumption.
+- Renamed Decimal.LessThanOne to Decimal.WithinOne.
+
+### Deleted
+
+- Removed Decimal.WithScale.
+
 ## [0.0.8] - 2023-03-25
 
 ### Changed
