@@ -85,9 +85,35 @@ func ExampleNew() {
 	// Output: -1.230
 }
 
+func ExampleDecimal_Zero() {
+	d := decimal.MustParse("-1.23")
+	e := decimal.MustParse("0.4")
+	f := decimal.MustParse("15")
+	fmt.Println(d.Zero())
+	fmt.Println(e.Zero())
+	fmt.Println(f.Zero())
+	// Output:
+	// 0.00
+	// 0.0
+	// 0
+}
+
+func ExampleDecimal_One() {
+	d := decimal.MustParse("-1.23")
+	e := decimal.MustParse("0.4")
+	f := decimal.MustParse("15")
+	fmt.Println(d.One())
+	fmt.Println(e.One())
+	fmt.Println(f.One())
+	// Output:
+	// 1.00
+	// 1.0
+	// 1
+}
+
 func ExampleDecimal_ULP() {
 	d := decimal.MustParse("-1.23")
-	e := decimal.MustParse("0.0")
+	e := decimal.MustParse("0.4")
 	f := decimal.MustParse("15")
 	fmt.Println(d.ULP())
 	fmt.Println(e.ULP())
@@ -201,19 +227,19 @@ func ExampleDecimal_MulExact() {
 }
 
 func ExampleDecimal_FMA() {
-	d := decimal.MustParse("5.7")
+	d := decimal.MustParse("2")
 	e := decimal.MustParse("3")
-	f := decimal.MustParse("2.8")
+	f := decimal.MustParse("4")
 	fmt.Println(d.FMA(e, f))
-	// Output: 19.9
+	// Output: 10
 }
 
 func ExampleDecimal_FMAExact() {
-	d := decimal.MustParse("5.7")
+	d := decimal.MustParse("2")
 	e := decimal.MustParse("3")
-	f := decimal.MustParse("2.8")
+	f := decimal.MustParse("4")
 	fmt.Println(d.FMAExact(e, f, 2))
-	// Output: 19.90
+	// Output: 10.00
 }
 
 func ExampleDecimal_Pow() {
@@ -320,25 +346,6 @@ func ExampleDecimal_Min() {
 	e := decimal.MustParse("-15.67")
 	fmt.Println(d.Min(e))
 	// Output: -15.67
-}
-
-func ExampleDecimal_WithScale() {
-	d := decimal.MustParse("15.679")
-	fmt.Println(d.WithScale(6))
-	fmt.Println(d.WithScale(5))
-	fmt.Println(d.WithScale(4))
-	fmt.Println(d.WithScale(3))
-	fmt.Println(d.WithScale(2))
-	fmt.Println(d.WithScale(1))
-	fmt.Println(d.WithScale(0))
-	// Output:
-	// 0.015679
-	// 0.15679
-	// 1.5679
-	// 15.679
-	// 156.79
-	// 1567.9
-	// 15679
 }
 
 func ExampleDecimal_Round() {
@@ -555,13 +562,13 @@ func ExampleDecimal_IsOne() {
 	// false
 }
 
-func ExampleDecimal_LessThanOne() {
+func ExampleDecimal_WithinOne() {
 	d := decimal.MustParse("1")
 	e := decimal.MustParse("0.9")
 	f := decimal.MustParse("-1")
-	fmt.Println(d.LessThanOne())
-	fmt.Println(e.LessThanOne())
-	fmt.Println(f.LessThanOne())
+	fmt.Println(d.WithinOne())
+	fmt.Println(e.WithinOne())
+	fmt.Println(f.WithinOne())
 	// Output:
 	// false
 	// true
