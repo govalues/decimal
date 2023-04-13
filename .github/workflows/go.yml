@@ -1,5 +1,9 @@
-on: [push, pull_request]
-name: decimal
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+name: money
 jobs:
   test:
     strategy:
@@ -8,9 +12,29 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/setup-go@v3
+
+    - name: Setup Go
+      uses: actions/setup-go@v4
       with:
         go-version: ${{ matrix.go-version }}
-    - uses: actions/checkout@v3
-    - run: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
-    - uses: codecov/codecov-action@v3
+
+    - name: Check out code
+      uses: actions/checkout@v3
+
+    - name: Verify code formatting
+      run: gofmt -s -w . && git diff --exit-code
+      
+    - name: Verify dependency consistency
+      run: go mod tidy && git diff --exit-code
+
+    - name: Verify generated code
+      run: go generate ./... && git diff --exit-code
+
+    - name: Verify potential issues
+      run: go vet ./...
+      
+    - name: Run tests with coverage
+      run: go test -v -count=1 -race -shuffle=on -coverprofile=coverage.txt -covermode=atomic ./...
+
+    - name: Upload test coverage
+      uses: codecov/codecov-action@v3

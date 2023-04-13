@@ -319,10 +319,10 @@ func newSint(i uint) *sint {
 func mustParseSint(str string) *sint {
 	z, ok := new(big.Int).SetString(str, 10)
 	if !ok {
-		panic(fmt.Sprintf("SetString(%q, 10) failed", str))
+		panic(fmt.Sprintf("mustParseSint(%q) failed: parsing error", str)) // unexpected by design
 	}
 	if z.Sign() < 0 {
-		panic(fmt.Sprintf("newFromString(%q) failed: negative", str))
+		panic(fmt.Sprintf("mustParseSint(%q) failed: negative number", str)) // unexpected by design
 	}
 	return (*sint)(z)
 }
@@ -338,10 +338,10 @@ func (x *sint) cmp(y *sint) int {
 // prec returns length of sint in decimal digits.
 func (x *sint) prec() int {
 	if x.sign() < 0 {
-		panic("prec() failed: negative") // unexpected case by design
+		panic("prec() failed: negative number") // unexpected by design
 	}
 	if maxSint := sintPow10[len(sintPow10)-1]; x.cmp(maxSint) > 0 {
-		panic("prec() failed: too long") // unexpected case by design
+		panic("prec() failed: number overflow") // unexpected by design
 	}
 	left, right := 0, len(sintPow10)
 	for left < right {

@@ -5,9 +5,28 @@ import (
 	"fmt"
 )
 
-// Decimal type is a representation of a finite floating-point decimal.
+// Decimal type is a representation of a finite floating-point decimal number.
+// The zero value is the numberic value of 0.
 // It is designed to be safe for concurrent use by multiple goroutines.
-// The zero value for Decimal represents the value 0.
+//
+// A decimal type is a struct with three parameters:
+//
+//   - Sign: a boolean indicating whether the decimal is negative.
+//   - Scale: an integer indicating the position of the floating decimal point.
+//   - Coefficient: an integer value of the decimal without the decimal point.
+//
+// The scale field determines the position of the decimal point in the coefficient.
+// For example, a decimal value with a scale of 2 represents a value that has two
+// digits after the decimal point.
+// The coefficient field is the integer value of the decimal without the decimal point.
+// For example, a decimal with a coefficient of 12345 and a scale of 2 represents
+// the value 123.45.
+// Such approach allows for multiple representations of the same numerical value.
+// For example, 1, 1.0, and 1.00 all have the same value, but they
+// have different scales and coefficients.
+//
+// One important aspect of the decimal is that it does not support
+// special values such as NaN, Infinity, or signed zeros.
 type Decimal struct {
 	neg   bool // indicates whether the decimal is negative
 	scale int8 // the position of the floating decimal point
@@ -31,7 +50,7 @@ var (
 
 func newDecimal(neg bool, coef fint, scale int) (Decimal, error) {
 	switch {
-	case scale < 0 || MaxScale < scale:
+	case scale < 0 || scale > MaxScale:
 		return Decimal{}, errScaleRange
 	case coef > maxCoef:
 		return Decimal{}, errCoefficientOverflow
@@ -63,8 +82,8 @@ func newDecimalFromRescaledFint(neg bool, coef fint, scale, minScale int) (Decim
 
 func newDecimalFromRescaledSint(neg bool, coef *sint, scale, minScale int) (Decimal, error) {
 	prec := coef.prec()
-	if MaxPrec-minScale < prec-scale {
-		return Decimal{}, fmt.Errorf("given %v significant digit(s) after decimal point, integer part of decimal.Decimal can have at most %v digit(s), actually it had %v digit(s): %w", minScale, MaxPrec-minScale, prec-scale, errCoefficientOverflow)
+	if prec-scale > MaxPrec-minScale {
+		return Decimal{}, fmt.Errorf("with %v significant digit(s) after the decimal point, the integer part of a %T can have at most %v digit(s), but it has %v digit(s): %w", minScale, Decimal{}, MaxPrec-minScale, prec-scale, errCoefficientOverflow)
 	}
 	switch {
 	case scale < minScale:
@@ -142,8 +161,8 @@ func (d Decimal) ULP() Decimal {
 //   - if string does not represent a valid decimal number.
 //   - if integer part of the result has more than [MaxPrec] digits.
 //   - if exponent is less than -2 * [MaxScale] or greater than 2 * [MaxScale].
-func Parse(num string) (Decimal, error) {
-	return ParseExact(num, 0)
+func Parse(dec string) (Decimal, error) {
+	return ParseExact(dec, 0)
 }
 
 // ParseExact is similar to [Parse], but it allows you to specify how many digits
@@ -151,13 +170,13 @@ func Parse(num string) (Decimal, error) {
 // If any of the significant digits are lost during rounding, the method will return error.
 // This method is useful for financial calculations, where the scale should be
 // equal to or greater than the currency's scale.
-func ParseExact(num string, scale int) (Decimal, error) {
+func ParseExact(dec string, scale int) (Decimal, error) {
 	if scale < 0 || MaxScale < scale {
 		return Decimal{}, errScaleRange
 	}
-	d, err := parseFast(num, scale)
+	d, err := parseFast(dec, scale)
 	if err != nil {
-		d, err = parseSlow(num, scale)
+		d, err = parseSlow(dec, scale)
 		if err != nil {
 			return Decimal{}, err
 		}
@@ -165,7 +184,7 @@ func ParseExact(num string, scale int) (Decimal, error) {
 	return d, nil
 }
 
-func parseFast(num string, minScale int) (Decimal, error) {
+func parseFast(dec string, minScale int) (Decimal, error) {
 	var (
 		pos     int
 		width   int
@@ -180,23 +199,23 @@ func parseFast(num string, minScale int) (Decimal, error) {
 		ok      bool
 	)
 
-	width = len(num)
+	width = len(dec)
 
 	// Sign
 	switch {
 	case pos == width:
 		// skip
-	case num[pos] == '-':
+	case dec[pos] == '-':
 		neg = true
 		pos++
-	case num[pos] == '+':
+	case dec[pos] == '+':
 		pos++
 	}
 
 	// Integer
-	for pos < width && num[pos] >= '0' && num[pos] <= '9' {
+	for pos < width && dec[pos] >= '0' && dec[pos] <= '9' {
 		hascoef = true
-		coef, ok = coef.fsa(1, num[pos]-'0')
+		coef, ok = coef.fsa(1, dec[pos]-'0')
 		if !ok {
 			return Decimal{}, errCoefficientOverflow
 		}
@@ -204,14 +223,14 @@ func parseFast(num string, minScale int) (Decimal, error) {
 	}
 
 	// Fraction
-	if pos < width && num[pos] == '.' {
+	if pos < width && dec[pos] == '.' {
 		pos++
-		for pos < width && num[pos] >= '0' && num[pos] <= '9' {
+		for pos < width && dec[pos] >= '0' && dec[pos] <= '9' {
 			hascoef = true
 			if scale >= 2*MaxPrec {
 				return Decimal{}, errCoefficientOverflow
 			}
-			coef, ok = coef.fsa(1, num[pos]-'0')
+			coef, ok = coef.fsa(1, dec[pos]-'0')
 			if !ok {
 				return Decimal{}, errCoefficientOverflow
 			}
@@ -221,22 +240,22 @@ func parseFast(num string, minScale int) (Decimal, error) {
 	}
 
 	// Exponential part
-	if pos < width && (num[pos] == 'e' || num[pos] == 'E') {
+	if pos < width && (dec[pos] == 'e' || dec[pos] == 'E') {
 		hase = true
 		pos++
 		// Sign
 		switch {
 		case pos == width:
 			// skip
-		case num[pos] == '-':
+		case dec[pos] == '-':
 			eneg = true
 			pos++
-		case num[pos] == '+':
+		case dec[pos] == '+':
 			pos++
 		}
 		// Integer
-		for pos < width && num[pos] >= '0' && num[pos] <= '9' {
-			exp = exp*10 + int(num[pos]-'0')
+		for pos < width && dec[pos] >= '0' && dec[pos] <= '9' {
+			exp = exp*10 + int(dec[pos]-'0')
 			if exp > 2*MaxScale {
 				return Decimal{}, errExponentRange
 			}
@@ -246,7 +265,7 @@ func parseFast(num string, minScale int) (Decimal, error) {
 	}
 
 	if pos != width {
-		return Decimal{}, fmt.Errorf("invalid character %q: %w", num[pos], errInvalidDecimal)
+		return Decimal{}, fmt.Errorf("invalid character %q: %w", dec[pos], errInvalidDecimal)
 	}
 	if !hascoef {
 		return Decimal{}, fmt.Errorf("no coefficient: %w", errInvalidDecimal)
@@ -267,7 +286,7 @@ func parseFast(num string, minScale int) (Decimal, error) {
 	return newDecimalFromRescaledFint(neg, coef, scale, minScale)
 }
 
-func parseSlow(num string, minScale int) (Decimal, error) {
+func parseSlow(dec string, minScale int) (Decimal, error) {
 	var (
 		pos     int
 		width   int
@@ -282,60 +301,60 @@ func parseSlow(num string, minScale int) (Decimal, error) {
 	)
 
 	coef = new(sint)
-	width = len(num)
+	width = len(dec)
 
 	// Sign
 	switch {
 	case pos == width:
 		// skip
-	case num[pos] == '-':
+	case dec[pos] == '-':
 		neg = true
 		pos++
-	case num[pos] == '+':
+	case dec[pos] == '+':
 		pos++
 	}
 
 	// Integer
-	for pos < width && num[pos] >= '0' && num[pos] <= '9' {
+	for pos < width && dec[pos] >= '0' && dec[pos] <= '9' {
 		hascoef = true
 		if coef.hasPrec(2 * MaxPrec) {
 			return Decimal{}, errCoefficientOverflow
 		}
-		coef.fsa(1, num[pos]-'0')
+		coef.fsa(1, dec[pos]-'0')
 		pos++
 	}
 
 	// Fraction
-	if pos < width && num[pos] == '.' {
+	if pos < width && dec[pos] == '.' {
 		pos++
-		for pos < width && num[pos] >= '0' && num[pos] <= '9' {
+		for pos < width && dec[pos] >= '0' && dec[pos] <= '9' {
 			hascoef = true
 			if scale >= 2*MaxPrec {
 				return Decimal{}, errCoefficientOverflow
 			}
-			coef.fsa(1, num[pos]-'0')
+			coef.fsa(1, dec[pos]-'0')
 			scale++
 			pos++
 		}
 	}
 
 	// Exponential part
-	if pos < width && (num[pos] == 'e' || num[pos] == 'E') {
+	if pos < width && (dec[pos] == 'e' || dec[pos] == 'E') {
 		hasesym = true
 		pos++
 		// Sign
 		switch {
 		case pos == width:
 			// skip
-		case num[pos] == '-':
+		case dec[pos] == '-':
 			eneg = true
 			pos++
-		case num[pos] == '+':
+		case dec[pos] == '+':
 			pos++
 		}
 		// Integer
-		for pos < width && num[pos] >= '0' && num[pos] <= '9' {
-			exp = exp*10 + int(num[pos]-'0')
+		for pos < width && dec[pos] >= '0' && dec[pos] <= '9' {
+			exp = exp*10 + int(dec[pos]-'0')
 			if exp > 2*MaxScale {
 				return Decimal{}, errExponentRange
 			}
@@ -345,7 +364,7 @@ func parseSlow(num string, minScale int) (Decimal, error) {
 	}
 
 	if pos != width {
-		return Decimal{}, fmt.Errorf("invalid character %q: %w", num[pos], errInvalidDecimal)
+		return Decimal{}, fmt.Errorf("invalid character %q: %w", dec[pos], errInvalidDecimal)
 	}
 	if !hascoef {
 		return Decimal{}, fmt.Errorf("no coefficient: %w", errInvalidDecimal)
@@ -365,10 +384,10 @@ func parseSlow(num string, minScale int) (Decimal, error) {
 
 // MustParse is like [Parse] but panics if the string cannot be parsed.
 // It simplifies safe initialization of global variables holding decimals.
-func MustParse(num string) Decimal {
-	d, err := Parse(num)
+func MustParse(dec string) Decimal {
+	d, err := Parse(dec)
 	if err != nil {
-		panic(fmt.Sprintf("MustParse(%q) failed: %v", num, err))
+		panic(fmt.Sprintf("MustParse(%q) failed: %v", dec, err))
 	}
 	return d
 }
@@ -426,7 +445,7 @@ func (d Decimal) String() string {
 		pos--
 	}
 
-	// Convert bytes to string without extra allocation
+	// Convert bytes to string
 	return string(buf[pos+1:])
 }
 
@@ -694,7 +713,7 @@ func (d Decimal) Round(scale int) Decimal {
 	case d.Scale() < scale:
 		coef, ok = coef.lsh(scale - d.Scale())
 		if !ok {
-			panic(fmt.Sprintf("%q.Round(%v) failed: integer part of a decimal.Decimal can have at most %v digit(s), actually it had %v digit(s): %v", d, scale, MaxPrec-scale, d.Prec()-d.Scale(), errCoefficientOverflow))
+			panic(fmt.Sprintf("%q.Round(%v) failed: the integer part of a %T can have at most %v digit(s), but it has %v digit(s): %v", d, scale, d, MaxPrec-scale, d.Prec()-d.Scale(), errCoefficientOverflow))
 		}
 	}
 
@@ -750,7 +769,7 @@ func (d Decimal) Trunc(scale int) Decimal {
 	case d.Scale() < scale:
 		coef, ok = coef.lsh(scale - d.Scale())
 		if !ok {
-			panic(fmt.Sprintf("%q.Trunc(%v) failed: integer part of a decimal.Decimal can have at most %v digit(s), actually it had %v digit(s): %v", d, scale, MaxPrec-scale, d.Prec()-d.Scale(), errCoefficientOverflow))
+			panic(fmt.Sprintf("%q.Trunc(%v) failed: the integer part of a %T can have at most %v digit(s), but it has %v digit(s): %v", d, scale, d, MaxPrec-scale, d.Prec()-d.Scale(), errCoefficientOverflow))
 		}
 	}
 
@@ -801,7 +820,7 @@ func (d Decimal) Ceil(scale int) Decimal {
 	case d.Scale() < scale:
 		coef, ok = coef.lsh(scale - d.Scale())
 		if !ok {
-			panic(fmt.Sprintf("%q.Ceil(%v) failed: integer part of a decimal.Decimal can have at most %v digit(s), actually it had %v digit(s): %v", d, scale, MaxPrec-scale, d.Prec()-d.Scale(), errCoefficientOverflow))
+			panic(fmt.Sprintf("%q.Ceil(%v) failed: the integer part of a %T can have at most %v digit(s), but it has %v digit(s): %v", d, scale, d, MaxPrec-scale, d.Prec()-d.Scale(), errCoefficientOverflow))
 		}
 	}
 
@@ -852,7 +871,7 @@ func (d Decimal) Floor(scale int) Decimal {
 	case d.Scale() < scale:
 		coef, ok = coef.lsh(scale - d.Scale())
 		if !ok {
-			panic(fmt.Sprintf("%q.Floor(%v) failed: integer part of decimal.Decimal can have at most %v digit(s), actually it had %v digit(s): %v", d, scale, MaxPrec-scale, d.Prec()-d.Scale(), errCoefficientOverflow))
+			panic(fmt.Sprintf("%q.Floor(%v) failed: the integer part of %T can have at most %v digit(s), but it has %v digit(s): %v", d, scale, d, MaxPrec-scale, d.Prec()-d.Scale(), errCoefficientOverflow))
 		}
 	}
 
