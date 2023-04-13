@@ -2,8 +2,8 @@ package decimal_test
 
 import (
 	"fmt"
-	"strings"
 	"github.com/govalues/decimal"
+	"strings"
 )
 
 func evaluate(input string) (decimal.Decimal, error) {
