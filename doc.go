@@ -16,29 +16,6 @@ which reduces heap allocations, lowers memory consumption, and improves performa
   - Does not support special values such as NaN, Infinity, or signed zeros,
     ensuring that arithmetic operations always produce well-defined results.
 
-# Representation
-
-A [Decimal] value is represented as a struct with three parameters:
-
- - Sign: a boolean indicating whether the decimal is negative.
- - Coefficient: an uint64 value.
- - Scale: an integer indicating the position of the floating decimal point.
-
-The scale field determines the position of the decimal point in the coefficient.
-For example, a decimal value with a scale of 2 represents a value that has two
-digits after the decimal point.
-The coefficient field is the integer value of the decimal without the decimal point.
-For example, a decimal with a coefficient of 12345 and a scale of 2 represents
-the value 123.45.
-Such approach allows for multiple representations of the same numerical value.
-For example, 1, 1.0, and 1.00 all represent the same value, but they
-have different scales and coefficients.
-
-One important aspect of the [Decimal] is that it does not support
-special values such as NaN, Infinity, or signed zeros.
-This makes the representation simpler and more efficient, and it ensures that
-arithmetic operations always produce well-defined results.
-
 # Supported Ranges
 
 The range of a decimal value depends on its scale and the size of its coefficient.
@@ -59,7 +36,7 @@ Here are some examples of ranges supported for frequently used scales:
 # Operations
 
 Arithmetic operations in this package are based on [General Decimal Arithmetic]
-and generally involve two steps:
+and usually involve two steps:
 
  1. The operation is first performed using only uint64 variables.
     If no overflow occurs, the result is returned.
@@ -99,7 +76,7 @@ several methods for explicit rounding:
   - [Decimal.Ceil]: rounds towards positive infinity.
   - [Decimal.Floor]: rounds towards negative infinity.
   - [Decimal.Trunc]: rounds towards zero.
-  - [Decimal.Round]: uses half-to-even rounding.
+  - [Decimal.Round], [Decimal.Quantize]: use half-to-even rounding.
 
 # Errors
 

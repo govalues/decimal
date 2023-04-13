@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.10] - 2023-04-13
+
+### Changed
+
+- Reviewed and improved documentation.
+- Improved continuous integration.
+
 ## [0.0.9] - 2023-04-05
 
 ### Added
