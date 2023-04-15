@@ -286,6 +286,96 @@ func TestDecimal_String(t *testing.T) {
 	})
 }
 
+func TestDecimal_Float64(t *testing.T) {
+	tests := []struct {
+		decimal   string
+		wantFloat float64
+		wantOk    bool
+	}{
+		{"9999999999999999999", 9999999999999999999, true},
+		{"1000000000000000000", 1000000000000000000, true},
+		{"1", 1, true},
+		{"0.9999999999999999999", 0.9999999999999999999, true},
+		{"0.0000000000000000001", 0.0000000000000000001, true},
+
+		{"-9999999999999999999", -9999999999999999999, true},
+		{"-1000000000000000000", -1000000000000000000, true},
+		{"-1", -1, true},
+		{"-0.9999999999999999999", -0.9999999999999999999, true},
+		{"-0.0000000000000000001", -0.0000000000000000001, true},
+	}
+	for _, tt := range tests {
+		d := MustParse(tt.decimal)
+		gotFloat, gotOk := d.Float64()
+		if gotFloat != tt.wantFloat || gotOk != tt.wantOk {
+			t.Errorf("%q.Float64() = [%v %v], want [%v %v]", d, gotFloat, gotOk, tt.wantFloat, tt.wantOk)
+		}
+	}
+}
+
+func TestDecimal_Int64(t *testing.T) {
+	tests := []struct {
+		decimal           string
+		wantInt, wantFrac int64
+		wantOk            bool
+	}{
+		// Zeroes
+		{"0", 0, 0, true},
+		{"0.0", 0, 0, true},
+		{"00.0", 0, 0, true},
+		{"0.00", 0, 0, true},
+
+		// Powers of 10
+		{"1000", 1000, 0, true},
+		{"100", 100, 0, true},
+		{"10", 10, 0, true},
+		{"1", 1, 0, true},
+		{"0.1", 0, 1, true},
+		{"0.01", 0, 1, true},
+		{"0.001", 0, 1, true},
+		{"0.0001", 0, 1, true},
+		{"0.10", 0, 10, true},
+		{"0.100", 0, 100, true},
+		{"0.1000", 0, 1000, true},
+
+		// Signs
+		{"0.1", 0, 1, true},
+		{"1.0", 1, 0, true},
+		{"1.1", 1, 1, true},
+		{"-0.1", 0, -1, true},
+		{"-1.0", -1, 0, true},
+		{"-1.1", -1, -1, true},
+
+		// Edge cases
+		{"9223372036854775807", 9223372036854775807, 0, true},
+		{"-9223372036854775808", -9223372036854775808, 0, true},
+
+		{"9223372036854775808", 0, 0, false},
+		{"-9223372036854775809", 0, 0, false},
+		{"922337203685477580.8", 922337203685477580, 8, true},
+		{"-922337203685477580.9", -922337203685477580, -9, true},
+		{"9.223372036854775808", 9, 223372036854775808, true},
+		{"-9.223372036854775809", -9, -223372036854775809, true},
+		{"0.9223372036854775808", 0, 0, false},
+		{"-0.9223372036854775809", 0, 0, false},
+
+		{"0.9223372036854775807", 0, 9223372036854775807, true},
+		{"-0.9223372036854775808", 0, -9223372036854775808, true},
+
+		{"9999999999999999999", 0, 0, false},
+		{"-9999999999999999999", 0, 0, false},
+		{"0.9999999999999999999", 0, 0, false},
+		{"-0.9999999999999999999", 0, 0, false},
+	}
+	for _, tt := range tests {
+		d := MustParse(tt.decimal)
+		gotInt, gotFrac, gotOk := d.Int64()
+		if gotInt != tt.wantInt || gotFrac != tt.wantFrac || gotOk != tt.wantOk {
+			t.Errorf("%q.Int64 = [%v %v %v], want [%v %v %v]", d, gotInt, gotFrac, gotOk, tt.wantInt, tt.wantFrac, tt.wantOk)
+		}
+	}
+}
+
 func TestDecimal_Format(t *testing.T) {
 
 	cases := []struct {
@@ -2089,7 +2179,7 @@ func FuzzDecimal_Mul_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			f, err := mulFast(d, e, scale)
+			f, err := tryFastMul(d, e, scale)
 			if err != nil {
 				if errors.Is(err, errCoefficientOverflow) {
 					t.Skip() // Coefficient overflow is an expected error in fast multiplication
@@ -2099,7 +2189,7 @@ func FuzzDecimal_Mul_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			s, err := mulSlow(d, e, scale)
+			s, err := trySlowMul(d, e, scale)
 			if err != nil {
 				t.Errorf("mulSlow(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
@@ -2153,7 +2243,7 @@ func FuzzDecimal_FMA_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			f, err := fmaFast(d, e, g, scale)
+			f, err := tryFastFMA(d, e, g, scale)
 			if err != nil {
 				if errors.Is(err, errCoefficientOverflow) {
 					t.Skip() // Coefficient overflow is an expected error in fast fused multiplication-addition
@@ -2163,7 +2253,7 @@ func FuzzDecimal_FMA_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			s, err := fmaSlow(d, e, g, scale)
+			s, err := trySlowFMA(d, e, g, scale)
 			if err != nil {
 				t.Errorf("fmaSlow(%q, %q, %q, %v) failed: %v", d, e, g, scale, err)
 				return
@@ -2209,7 +2299,7 @@ func FuzzDecimal_Add_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			f, err := addFast(d, e, scale)
+			f, err := tryFastAdd(d, e, scale)
 			if err != nil {
 				if errors.Is(err, errCoefficientOverflow) {
 					t.Skip() // Coefficient overflow is an expected error in fast addition
@@ -2219,7 +2309,7 @@ func FuzzDecimal_Add_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			s, err := addSlow(d, e, scale)
+			s, err := trySlowAdd(d, e, scale)
 			if err != nil {
 				t.Errorf("addSlow(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
@@ -2269,7 +2359,7 @@ func FuzzDecimal_Quo_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			f, err := quoFast(d, e, scale)
+			f, err := tryFastQuo(d, e, scale)
 			if err != nil {
 				switch {
 				case errors.Is(err, errCoefficientOverflow):
@@ -2284,7 +2374,7 @@ func FuzzDecimal_Quo_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			s, err := quoSlow(d, e, scale)
+			s, err := trySlowQuo(d, e, scale)
 			if err != nil {
 				t.Errorf("quoSlow(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
@@ -2323,7 +2413,7 @@ func FuzzDecimal_Cmp_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			f, err := cmpFast(d, e)
+			f, err := tryFastCmp(d, e)
 			if err != nil {
 				if errors.Is(err, errCoefficientOverflow) {
 					t.Skip() // Coefficient overflow is an expected error in fast comparison
@@ -2333,7 +2423,7 @@ func FuzzDecimal_Cmp_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			s := cmpSlow(d, e)
+			s := slowCmp(d, e)
 			if s != f {
 				t.Errorf("cmpSlow(%q, %q) = %v, whereas cmpFast(%q, %q) = %v", d, e, s, d, e, f)
 			}

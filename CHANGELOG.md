@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.0.11] - 2023-04-15
+
+### Added
+
+- Implemented Decimal.Int64 method.
+- Implemented Decimal.Float64 method.
+
+### Changed
+
+- Reviewed and improved documentation.
+
 ## [0.0.10] - 2023-04-13
 
 ### Changed
