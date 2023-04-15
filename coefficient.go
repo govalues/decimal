@@ -9,7 +9,7 @@ import (
 type fint uint64
 
 const (
-	maxFint = fint(9999999999999999999)
+	maxFint = fint(9_999_999_999_999_999_999)
 )
 
 var (
@@ -338,10 +338,10 @@ func (x *sint) cmp(y *sint) int {
 // prec returns length of sint in decimal digits.
 func (x *sint) prec() int {
 	if x.sign() < 0 {
-		panic("prec() failed: negative number") // unexpected by design
+		panic(fmt.Sprintf("%v.prec() failed: negative number", x)) // unexpected by design
 	}
-	if maxSint := sintPow10[len(sintPow10)-1]; x.cmp(maxSint) > 0 {
-		panic("prec() failed: number overflow") // unexpected by design
+	if max := sintPow10[len(sintPow10)-1]; x.cmp(max) > 0 {
+		panic(fmt.Sprintf("%v.prec() failed: number overflow", x)) // unexpected by design
 	}
 	left, right := 0, len(sintPow10)
 	for left < right {

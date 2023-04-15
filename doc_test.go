@@ -154,6 +154,32 @@ func ExampleDecimal_String() {
 	// Output: 1234567890.123456789
 }
 
+func ExampleDecimal_Float64() {
+	d := decimal.MustParse("0.1")
+	e := decimal.MustParse("123.456")
+	f := decimal.MustParse("1234567890.123456789")
+	fmt.Println(d.Float64())
+	fmt.Println(e.Float64())
+	fmt.Println(f.Float64())
+	// Output:
+	// 0.1 true
+	// 123.456 true
+	// 1.2345678901234567e+09 true
+}
+
+func ExampleDecimal_Int64() {
+	d := decimal.MustParse("123.4")
+	e := decimal.MustParse("123.45")
+	f := decimal.MustParse("123.456")
+	fmt.Println(d.Int64())
+	fmt.Println(e.Int64())
+	fmt.Println(f.Int64())
+	// Output:
+	// 123 4 true
+	// 123 45 true
+	// 123 456 true
+}
+
 func ExampleDecimal_UnmarshalText() {
 	d := &decimal.Decimal{}
 	b := []byte("-15.67")
