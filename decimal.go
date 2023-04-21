@@ -467,9 +467,10 @@ func (d Decimal) Float64() (f float64, ok bool) {
 	return z, true
 }
 
-// Int64 returns a pair of int64 values, where the first represents
-// the integer part and the second represents the fractional part of the decimal,
-// such that d = i + f / 10^scale.
+// Int64 returns a pair of int64 values representing the integer part i and the
+// fractional part f of the decimal.
+// The relationship can be expressed as d = i + f / 10^scale, where the scale
+// can be obtained using the [Decimal.Scale] method.
 // If the result cannot be accurately represented as a pair of int64 values,
 // the method returns false.
 func (d Decimal) Int64() (i int64, f int64, ok bool) {
@@ -1516,16 +1517,17 @@ func trySlowQuo(d, e Decimal, minScale int) (Decimal, error) {
 	return newDecimalFromRescaledSint(neg, dcoef, scale, minScale)
 }
 
-// QuoRem returns the quotient and remainder of decimals d and e such that d = q * e + r.
+// QuoRem returns the quotient q and remainder r of decimals d and e
+// such that d = q * e + r.
 //
 // QuoRem panics if:
-//   - the integer part of the quotient has more than [MaxPrec] digits;
+//   - the integer part of the quotient q has more than [MaxPrec] digits;
 //   - the divisor e is zero.
-//     To avoid this panic, use the [Decimal.IsZero] to verify that the decimal
+//     To avoid this panic, use the [Decimal.IsZero] to verify that the decimal e
 //     is not zero before calling Quo.
-func (d Decimal) QuoRem(e Decimal) (Decimal, Decimal) {
-	q := d.Quo(e).Trunc(0)
-	r := d.Sub(e.Mul(q))
+func (d Decimal) QuoRem(e Decimal) (q Decimal, r Decimal) {
+	q = d.Quo(e).Trunc(0)
+	r = d.Sub(e.Mul(q))
 	return q, r
 }
 
