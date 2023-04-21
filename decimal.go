@@ -1518,13 +1518,13 @@ func trySlowQuo(d, e Decimal, minScale int) (Decimal, error) {
 }
 
 // QuoRem returns the quotient q and remainder r of decimals d and e
-// such that d = q * e + r.
+// such that d = e * q + r.
 //
 // QuoRem panics if:
 //   - the integer part of the quotient q has more than [MaxPrec] digits;
 //   - the divisor e is zero.
 //     To avoid this panic, use the [Decimal.IsZero] to verify that the decimal e
-//     is not zero before calling Quo.
+//     is not zero before calling QuoRem.
 func (d Decimal) QuoRem(e Decimal) (q Decimal, r Decimal) {
 	q = d.Quo(e).Trunc(0)
 	r = d.Sub(e.Mul(q))
