@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.12] - 2024-04-21
+
+### Changed
+
+- Testing on Windows and macOS.
+- Improved documentation.
+
 ## [0.0.11] - 2023-04-15
 
 ### Added
