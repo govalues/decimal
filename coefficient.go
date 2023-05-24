@@ -12,30 +12,28 @@ const (
 	maxFint = fint(9_999_999_999_999_999_999)
 )
 
-var (
-	pow10 = [...]fint{
-		1,                    // 10^0
-		10,                   // 10^1
-		100,                  // 10^2
-		1000,                 // 10^3
-		10000,                // 10^4
-		100000,               // 10^5
-		1000000,              // 10^6
-		10000000,             // 10^7
-		100000000,            // 10^8
-		1000000000,           // 10^9
-		10000000000,          // 10^10
-		100000000000,         // 10^11
-		1000000000000,        // 10^12
-		10000000000000,       // 10^13
-		100000000000000,      // 10^14
-		1000000000000000,     // 10^15
-		10000000000000000,    // 10^16
-		100000000000000000,   // 10^17
-		1000000000000000000,  // 10^18
-		10000000000000000000, // 10^19
-	}
-)
+var pow10 = [...]fint{
+	1,                    // 10^0
+	10,                   // 10^1
+	100,                  // 10^2
+	1000,                 // 10^3
+	10000,                // 10^4
+	100000,               // 10^5
+	1000000,              // 10^6
+	10000000,             // 10^7
+	100000000,            // 10^8
+	1000000000,           // 10^9
+	10000000000,          // 10^10
+	100000000000,         // 10^11
+	1000000000000,        // 10^12
+	10000000000000,       // 10^13
+	100000000000000,      // 10^14
+	1000000000000000,     // 10^15
+	10000000000000000,    // 10^16
+	100000000000000000,   // 10^17
+	1000000000000000000,  // 10^18
+	10000000000000000000, // 10^19
+}
 
 // add calculates x + y and checks overflow.
 func (x fint) add(y fint) (fint, bool) {
@@ -77,9 +75,8 @@ func (x fint) quo(y fint) (fint, bool) {
 func (x fint) dist(y fint) fint {
 	if x > y {
 		return x - y
-	} else {
-		return y - x
 	}
+	return y - x
 }
 
 // lsh (Shift Left) calculates x * 10^shift and checks overflow.
@@ -319,34 +316,34 @@ func newSint(i uint) *sint {
 func mustParseSint(str string) *sint {
 	z, ok := new(big.Int).SetString(str, 10)
 	if !ok {
-		panic(fmt.Sprintf("mustParseSint(%q) failed: parsing error", str)) // unexpected by design
+		panic(fmt.Sprintf("mustParseSint(%q) failed: parsing error", str)) // unexpected
 	}
 	if z.Sign() < 0 {
-		panic(fmt.Sprintf("mustParseSint(%q) failed: negative number", str)) // unexpected by design
+		panic(fmt.Sprintf("mustParseSint(%q) failed: negative number", str)) // unexpected
 	}
 	return (*sint)(z)
 }
 
-func (x *sint) sign() int {
-	return (*big.Int)(x).Sign()
+func (z *sint) sign() int {
+	return (*big.Int)(z).Sign()
 }
 
-func (x *sint) cmp(y *sint) int {
-	return (*big.Int)(x).Cmp((*big.Int)(y))
+func (z *sint) cmp(x *sint) int {
+	return (*big.Int)(z).Cmp((*big.Int)(x))
 }
 
 // prec returns length of sint in decimal digits.
-func (x *sint) prec() int {
-	if x.sign() < 0 {
-		panic(fmt.Sprintf("%v.prec() failed: negative number", x)) // unexpected by design
+func (z *sint) prec() int {
+	if z.sign() < 0 {
+		panic(fmt.Sprintf("%v.prec() failed: negative number", z)) // unexpected
 	}
-	if max := sintPow10[len(sintPow10)-1]; x.cmp(max) > 0 {
-		panic(fmt.Sprintf("%v.prec() failed: number overflow", x)) // unexpected by design
+	if max := sintPow10[len(sintPow10)-1]; z.cmp(max) > 0 {
+		panic(fmt.Sprintf("%v.prec() failed: number overflow", z)) // unexpected
 	}
 	left, right := 0, len(sintPow10)
 	for left < right {
 		mid := (left + right) / 2
-		if x.cmp(sintPow10[mid]) < 0 {
+		if z.cmp(sintPow10[mid]) < 0 {
 			right = mid
 		} else {
 			left = mid + 1
@@ -356,11 +353,11 @@ func (x *sint) prec() int {
 }
 
 // hasPrec returns true if x has given number of digits or more.
-func (x *sint) hasPrec(prec int) bool {
+func (z *sint) hasPrec(prec int) bool {
 	if prec < 1 {
 		return true
 	}
-	return x.cmp(sintPow10[prec-1]) >= 0
+	return z.cmp(sintPow10[prec-1]) >= 0
 }
 
 func (z *sint) setSint(x *sint) {
@@ -372,8 +369,8 @@ func (z *sint) setFint(x fint) {
 }
 
 // fint converts big.Int to uint64.
-func (x *sint) fint() fint {
-	return fint((*big.Int)(x).Uint64())
+func (z *sint) fint() fint {
+	return fint((*big.Int)(z).Uint64())
 }
 
 // inc calcualtes z = x + 1.
@@ -422,8 +419,8 @@ func (z *sint) quoRem(x, y *sint) *sint {
 	return (*sint)(r)
 }
 
-func (x *sint) isOdd() bool {
-	return (*big.Int)(x).Bit(0) != 0
+func (z *sint) isOdd() bool {
+	return (*big.Int)(z).Bit(0) != 0
 }
 
 // lsh (Shift Left) calculates x * 10^shift.

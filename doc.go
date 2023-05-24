@@ -8,18 +8,20 @@ which reduces heap allocations, lowers memory consumption, and improves performa
 
 # Features
 
-  - [Decimal] values are immutable, making them safe to use in multiple goroutines.
-  - Supports simple, straightforward string representation without scientific or
-    engineering notation.
-  - Uses half-even rounding for arithmetic operations, with the ability to panic
-    if significant digits are lost.
-  - Does not support special values such as NaN, Infinity, or signed zeros,
+  - Decimal values are immutable, making them safe to use in multiple goroutines.
+  - Methods are panic-free and pure, returning errors in cases such as uint64
+    overflow or division by zero.
+  - [Decimal.String] produces simple and straightforward representation without
+    scientific or engineering notation.
+  - Arithmetic operations use half-even rounding, also known as "banker's rounding".
+  - Special values such as NaN, Infinity, or signed zeros are not supported,
     ensuring that arithmetic operations always produce well-defined results.
 
 # Supported Ranges
 
 The range of a decimal value depends on its scale and the size of its coefficient.
-Since the coefficient is stored as an uint64, a [Decimal] can have a maximum of 19 digits.
+Since the coefficient is stored as an uint64, a [Decimal] can have a maximum of
+19 digits.
 Additionally, the range of the [Decimal] depends on its scale, which determines
 the number of decimal places.
 Here are some examples of ranges supported for frequently used scales:
@@ -45,7 +47,7 @@ and usually involve two steps:
  2. The operation is performed again using [big.Int] variables.
     The result is rounded to fit into 19 digits.
     If no significant digits are lost during rounding, the result is returned.
-    If significant digits are lost, a panic is raised.
+    If significant digits are lost, an error is returned.
 
 The purpose of the first step is to optimize the performance of arithmetic
 operations and reduce memory consumption.
@@ -56,10 +58,12 @@ completed during the first step.
 
 The following rules are used to determine the significance of digits:
 
-  - [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.FMA], [Decimal.Pow], [Decimal.Quo], [Decimal.QuoRem]:
+  - [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.FMA], [Decimal.Pow],
+    [Decimal.Quo], [Decimal.QuoRem]:
     All digits in the integer part are significant, while the digits in the
     fractional part are insignificant.
-  - [Decimal.AddExact], [Decimal.SubExact], [Decimal.MulExact], [Decimal.FMAExact], [Decimal.QuoExact]:
+  - [Decimal.AddExact], [Decimal.SubExact], [Decimal.MulExact], [Decimal.FMAExact],
+    [Decimal.PowExact], [Decimal.QuoExact]:
     All digits in the integer part are significant. The significance of digits
     in the fractional part is determined by the scale argument, which is typically
     equal to the scale of the currency.
@@ -80,25 +84,27 @@ several methods for explicit rounding:
 
 # Errors
 
-Arithmetic operations panic in the following cases:
+Arithmetic operations return errors in the following cases:
 
  1. Out-of-range scale.
     This error is expected to be very rare as the scale usually comes from
-    a global constant or an established standard, such as ISO 4217.
+    an established standard, such as ISO 4217.
     If this error occurs, it suggests a significant bug.
 
- 2. Coefficient overflow.
-    This error occurs when significant digits are lost during rounding to fit 19 digits.
-    This typically happens when dealing with large numbers or when you requested large number
-    of digits after the decimal point to be considered signigicant.
+ 2. Decimal overflow.
+    This error occurs when significant digits are lost during rounding to fit
+    19 digits.
+    This typically happens when dealing with large numbers or when you requested
+    large number of digits after the decimal point to be considered signigicant.
     Refer to the supported ranges section, if your application needs to handle
-    numbers that are close to the minimum or maximum values, this package may not be suitable.
+    numbers that are close to the minimum or maximum values, this package may
+    not be suitable.
     Consider using packages that store coefficients using [big.Int] type,
     such as [ShopSpring Decimal] or [CockroachDB Decimal].
 
  3. Division by zero.
-    This package follows the convention of the standard library and will panic
-    in case of division by zero.
+    Unlike the standard library, this package does not panic when dividing by zero.
+    Instead, it returns an error.
 
 [General Decimal Arithmetic]: https://speleotrove.com/decimal/daops.html
 [ShopSpring Decimal]: https://pkg.go.dev/github.com/shopspring/decimal

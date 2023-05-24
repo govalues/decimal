@@ -53,7 +53,7 @@ func TestFint_rshEven(t *testing.T) {
 	}
 }
 
-func TextFint_rshDown(t *testing.T) {
+func TestFint_rshDown(t *testing.T) {
 	cases := []struct {
 		coef  fint
 		shift int
@@ -82,7 +82,7 @@ func TextFint_rshDown(t *testing.T) {
 	}
 }
 
-func TextFint_rshUp(t *testing.T) {
+func TestFint_rshUp(t *testing.T) {
 	cases := []struct {
 		coef  fint
 		shift int

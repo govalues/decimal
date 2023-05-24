@@ -9,8 +9,8 @@ import (
 )
 
 func TestDecimal_ZeroValue(t *testing.T) {
+	want := MustNew(0, 0)
 	got := Decimal{}
-	want := New(0, 0)
 	if got != want {
 		t.Errorf("Decimal{} = %q, want %q", got, want)
 	}
@@ -18,16 +18,15 @@ func TestDecimal_ZeroValue(t *testing.T) {
 
 func TestDecimal_Sizeof(t *testing.T) {
 	decimal := Decimal{}
-	got := unsafe.Sizeof(decimal)
 	want := uintptr(16)
+	got := unsafe.Sizeof(decimal)
 	if got != want {
 		t.Errorf("unsafe.Sizeof(%q) = %v, want %v", decimal, got, want)
 	}
 }
 
 func TestNew(t *testing.T) {
-
-	t.Run("valid", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			coef  int64
 			scale int
@@ -56,14 +55,18 @@ func TestNew(t *testing.T) {
 		}
 		for _, tt := range tests {
 			want := MustParse(tt.want)
-			got := New(tt.coef, tt.scale)
+			got, err := New(tt.coef, tt.scale)
+			if err != nil {
+				t.Errorf("New(%v, %v) failed: %v", tt.coef, tt.scale, err)
+				continue
+			}
 			if got != want {
 				t.Errorf("New(%v, %v) = %q, want %q", tt.coef, tt.scale, got, want)
 			}
 		}
 	})
 
-	t.Run("panic", func(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
 			coef  int64
 			scale int
@@ -71,22 +74,17 @@ func TestNew(t *testing.T) {
 			"scale 1": {0, -1},
 			"scale 2": {0, MaxScale + 1},
 		}
-		for name, tt := range tests {
-			t.Run(name, func(t *testing.T) {
-				defer func() {
-					if r := recover(); r == nil {
-						t.Errorf("New(%v, %v) did not panic", tt.coef, tt.scale)
-					}
-				}()
-				New(tt.coef, tt.scale)
-			})
+		for _, tt := range tests {
+			_, err := New(tt.coef, tt.scale)
+			if err == nil {
+				t.Errorf("New(%v, %v) did not fail", tt.coef, tt.scale)
+			}
 		}
 	})
 }
 
 func TestParse(t *testing.T) {
-
-	t.Run("valid", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			decimal   string
 			wantNeg   bool
@@ -232,7 +230,7 @@ func TestParse(t *testing.T) {
 			t.Run(name, func(t *testing.T) {
 				_, err := ParseExact(tt.decimal, tt.scale)
 				if err == nil {
-					t.Errorf("ParseExact(%q, %v) did not return error", tt.decimal, tt.scale)
+					t.Errorf("ParseExact(%q, %v) did not fail", tt.decimal, tt.scale)
 					return
 				}
 			})
@@ -241,8 +239,7 @@ func TestParse(t *testing.T) {
 }
 
 func TestDecimal_String(t *testing.T) {
-
-	t.Run("valid", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			neg   bool
 			coef  fint
@@ -377,7 +374,6 @@ func TestDecimal_Int64(t *testing.T) {
 }
 
 func TestDecimal_Format(t *testing.T) {
-
 	tests := []struct {
 		decimal, format, want string
 	}{
@@ -471,6 +467,8 @@ func TestDecimal_Format(t *testing.T) {
 		{"1", "%.20f", "1.00000000000000000000"},
 		{"1.000000000000000000", "%.20f", "1.00000000000000000000"},
 		{"9999999999999999999", "%.1f", "9999999999999999999.0"},
+		{"9999999999999999999", "%.2f", "9999999999999999999.00"},
+		{"9999999999999999999", "%.3f", "9999999999999999999.000"},
 		// wrong verbs
 		{"12.34", "%b", "%!b(decimal.Decimal=12.34)"},
 		{"12.34", "%e", "%!e(decimal.Decimal=12.34)"},
@@ -479,6 +477,8 @@ func TestDecimal_Format(t *testing.T) {
 		{"12.34", "%G", "%!G(decimal.Decimal=12.34)"},
 		{"12.34", "%x", "%!x(decimal.Decimal=12.34)"},
 		{"12.34", "%X", "%!X(decimal.Decimal=12.34)"},
+		// errors
+		{"9999999999999999999", "%k", "%!k(PANIC=Format method: formatting percent: 9999999999999999999 * 100: the integer part of a decimal.Decimal can have at most 19 digits, but it has 21 digits: decimal overflow)"},
 	}
 	for _, tt := range tests {
 		d := MustParse(tt.decimal)
@@ -571,8 +571,7 @@ func TestDecimal_Prec(t *testing.T) {
 }
 
 func TestDecimal_Round(t *testing.T) {
-
-	t.Run("valid", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			decimal string
 			scale   int
@@ -648,7 +647,11 @@ func TestDecimal_Round(t *testing.T) {
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.decimal)
-			got := d.Round(tt.scale)
+			got, err := d.Round(tt.scale)
+			if err != nil {
+				t.Errorf("%q.Round(%v) failed: %v", d, tt.scale, err)
+				continue
+			}
 			want := MustParse(tt.want)
 			if got != want {
 				t.Errorf("%q.Round(%v) = %q, want %q", d, tt.scale, got, want)
@@ -656,7 +659,7 @@ func TestDecimal_Round(t *testing.T) {
 		}
 	})
 
-	t.Run("panic", func(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
 			decimal string
 			scale   int
@@ -670,22 +673,18 @@ func TestDecimal_Round(t *testing.T) {
 			"overflow 7":    {"1000000000000", 7},
 			"large scale 1": {"1", 20},
 		}
-		for name, tt := range tests {
+		for _, tt := range tests {
 			d := MustParse(tt.decimal)
-			t.Run(name, func(t *testing.T) {
-				defer func() {
-					if r := recover(); r == nil {
-						t.Errorf("%q.Round(%v) did not panic", tt.decimal, tt.scale)
-					}
-				}()
-				d.Round(tt.scale)
-			})
+			_, err := d.Round(tt.scale)
+			if err == nil {
+				t.Errorf("%q.Round(%v) did not fail", tt.decimal, tt.scale)
+			}
 		}
 	})
 }
 
 func TestDecimal_Quantize(t *testing.T) {
-	t.Run("valid", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			decimalD, decimalE, want string
 		}{
@@ -715,7 +714,11 @@ func TestDecimal_Quantize(t *testing.T) {
 			d := MustParse(tt.decimalD)
 			e := MustParse(tt.decimalE)
 			want := MustParse(tt.want)
-			got := d.Quantize(e)
+			got, err := d.Quantize(e)
+			if err != nil {
+				t.Errorf("%q.Quantize(%q) failed: %v", d, e, err)
+				continue
+			}
 			if got != want {
 				t.Errorf("%q.Quantize(%q) = %q, want %q", d, e, got, want)
 			}
@@ -724,8 +727,7 @@ func TestDecimal_Quantize(t *testing.T) {
 }
 
 func TestDecimal_Trunc(t *testing.T) {
-
-	t.Run("valid", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			decimal string
 			scale   int
@@ -801,15 +803,19 @@ func TestDecimal_Trunc(t *testing.T) {
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.decimal)
-			got := d.Trunc(tt.scale)
 			want := MustParse(tt.want)
+			got, err := d.Trunc(tt.scale)
+			if err != nil {
+				t.Errorf("%q.Trunc(%v) failed: %v", d, tt.scale, err)
+				continue
+			}
 			if got != want {
 				t.Errorf("%q.Trunc(%v) = %q, want %q", d, tt.scale, got, want)
 			}
 		}
 	})
 
-	t.Run("panic", func(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
 			decimal string
 			scale   int
@@ -823,23 +829,18 @@ func TestDecimal_Trunc(t *testing.T) {
 			"overflow 7": {"1000000000000", 7},
 			"scale 1":    {"1", 20},
 		}
-		for name, tt := range tests {
+		for _, tt := range tests {
 			d := MustParse(tt.decimal)
-			t.Run(name, func(t *testing.T) {
-				defer func() {
-					if r := recover(); r == nil {
-						t.Errorf("%q.Trunc(%v) did not panic", tt.decimal, tt.scale)
-					}
-				}()
-				d.Trunc(tt.scale)
-			})
+			_, err := d.Trunc(tt.scale)
+			if err == nil {
+				t.Errorf("%q.Trunc(%v) did not fail", tt.decimal, tt.scale)
+			}
 		}
 	})
 }
 
 func TestDecimal_Ceil(t *testing.T) {
-
-	t.Run("valid", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			decimal string
 			scale   int
@@ -926,15 +927,19 @@ func TestDecimal_Ceil(t *testing.T) {
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.decimal)
-			got := d.Ceil(tt.scale)
 			want := MustParse(tt.want)
+			got, err := d.Ceil(tt.scale)
+			if err != nil {
+				t.Errorf("%q.Ceil(%v) failed: %v", d, tt.scale, err)
+				continue
+			}
 			if got != want {
 				t.Errorf("%q.Ceil(%v) = %q, want %q", d, tt.scale, got, want)
 			}
 		}
 	})
 
-	t.Run("panic", func(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
 			decimal string
 			scale   int
@@ -948,23 +953,18 @@ func TestDecimal_Ceil(t *testing.T) {
 			"overflow 7":    {"1000000000000", 7},
 			"large scale 1": {"1", 20},
 		}
-		for name, tt := range tests {
+		for _, tt := range tests {
 			d := MustParse(tt.decimal)
-			t.Run(name, func(t *testing.T) {
-				defer func() {
-					if r := recover(); r == nil {
-						t.Errorf("%q.Ceil(%v) did not panic", tt.decimal, tt.scale)
-					}
-				}()
-				d.Ceil(tt.scale)
-			})
+			_, err := d.Ceil(tt.scale)
+			if err == nil {
+				t.Errorf("%q.Ceil(%v) did not fail", tt.decimal, tt.scale)
+			}
 		}
 	})
 }
 
 func TestDecimal_Floor(t *testing.T) {
-
-	t.Run("valid", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			decimal string
 			scale   int
@@ -1051,15 +1051,19 @@ func TestDecimal_Floor(t *testing.T) {
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.decimal)
-			got := d.Floor(tt.scale)
 			want := MustParse(tt.want)
+			got, err := d.Floor(tt.scale)
+			if err != nil {
+				t.Errorf("%q.Floor(%v) failed: %v", d, tt.scale, err)
+				continue
+			}
 			if got != want {
 				t.Errorf("%q.Floor(%v) = %q, want %q", d, tt.scale, got, want)
 			}
 		}
 	})
 
-	t.Run("panic", func(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
 			decimal string
 			scale   int
@@ -1073,22 +1077,18 @@ func TestDecimal_Floor(t *testing.T) {
 			"overflow 7":    {"1000000000000", 7},
 			"large scale 1": {"1", 20},
 		}
-		for name, tt := range tests {
+		for _, tt := range tests {
 			d := MustParse(tt.decimal)
-			t.Run(name, func(t *testing.T) {
-				defer func() {
-					if r := recover(); r == nil {
-						t.Errorf("%q.Floor(%v) did not panic", tt.decimal, tt.scale)
-					}
-				}()
-				d.Floor(tt.scale)
-			})
+			_, err := d.Floor(tt.scale)
+			if err == nil {
+				t.Errorf("%q.Floor(%v) did not fail", d, tt.scale)
+			}
 		}
 	})
 }
 
 func TestDecimal_MinScale(t *testing.T) {
-	t.Run("valid", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			decimal string
 			want    int
@@ -1137,7 +1137,11 @@ func TestDecimal_Reduce(t *testing.T) {
 	for _, tt := range tests {
 		d := MustParse(tt.decimal)
 		want := MustParse(tt.want)
-		got := d.Reduce()
+		got, err := d.Reduce()
+		if err != nil {
+			t.Errorf("%q.Reduce() failed: %v", d, err)
+			continue
+		}
 		if got != want {
 			t.Errorf("%q.Reduce() = %q, want %q", d, got, want)
 		}
@@ -1145,8 +1149,7 @@ func TestDecimal_Reduce(t *testing.T) {
 }
 
 func TestDecimal_Add(t *testing.T) {
-
-	t.Run("valid", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			decimalD, decimalE, want string
 		}{
@@ -1207,14 +1210,18 @@ func TestDecimal_Add(t *testing.T) {
 			d := MustParse(tt.decimalD)
 			e := MustParse(tt.decimalE)
 			want := MustParse(tt.want)
-			got := d.Add(e)
+			got, err := d.Add(e)
+			if err != nil {
+				t.Errorf("%q.Add(%q) failed: %v", d, e, err)
+				continue
+			}
 			if got != want {
 				t.Errorf("%q.Add(%q) = %q, want %q", d, e, got, want)
 			}
 		}
 	})
 
-	t.Run("panic", func(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
 			decimalD, decimalE string
 			scale              int
@@ -1226,24 +1233,19 @@ func TestDecimal_Add(t *testing.T) {
 			"scale 1":    {"0", "0", -1},
 			"scale 2":    {"0", "0", MaxScale + 1},
 		}
-		for name, tt := range tests {
+		for _, tt := range tests {
 			d := MustParse(tt.decimalD)
 			e := MustParse(tt.decimalE)
-			t.Run(name, func(t *testing.T) {
-				defer func() {
-					if r := recover(); r == nil {
-						t.Errorf("%q.AddExact(%q, %v) did not panic", d, e, tt.scale)
-					}
-				}()
-				d.AddExact(e, tt.scale)
-			})
+			_, err := d.AddExact(e, tt.scale)
+			if err == nil {
+				t.Errorf("%q.AddExact(%q, %v) did not fail", d, e, tt.scale)
+			}
 		}
 	})
 }
 
 func TestDecimal_Mul(t *testing.T) {
-
-	t.Run("valid", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			decimalD, decimalE, want string
 		}{
@@ -1276,14 +1278,18 @@ func TestDecimal_Mul(t *testing.T) {
 			d := MustParse(tt.decimalD)
 			e := MustParse(tt.decimalE)
 			want := MustParse(tt.want)
-			got := d.Mul(e)
+			got, err := d.Mul(e)
+			if err != nil {
+				t.Errorf("%q.Mul(%q) failed: %v", d, e, err)
+				continue
+			}
 			if got != want {
 				t.Errorf("%q.Mul(%q) = %q, want %q", d, e, got, want)
 			}
 		}
 	})
 
-	t.Run("panic", func(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
 			decimalD, decimalE string
 			scale              int
@@ -1294,24 +1300,19 @@ func TestDecimal_Mul(t *testing.T) {
 			"scale 1":    {"0", "0", -1},
 			"scale 2":    {"0", "0", MaxScale + 1},
 		}
-		for name, tt := range tests {
+		for _, tt := range tests {
 			d := MustParse(tt.decimalD)
 			e := MustParse(tt.decimalE)
-			t.Run(name, func(t *testing.T) {
-				defer func() {
-					if r := recover(); r == nil {
-						t.Errorf("%q.MulExact(%q, %v) did not panic", d, e, tt.scale)
-					}
-				}()
-				d.MulExact(e, tt.scale)
-			})
+			_, err := d.MulExact(e, tt.scale)
+			if err == nil {
+				t.Errorf("%q.MulExact(%q, %v) did not fail", d, e, tt.scale)
+			}
 		}
 	})
 }
 
 func TestDecimal_FMA(t *testing.T) {
-
-	t.Run("valid", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			decimalD, decimalE, decimalF, want string
 		}{
@@ -1416,14 +1417,18 @@ func TestDecimal_FMA(t *testing.T) {
 			e := MustParse(tt.decimalE)
 			f := MustParse(tt.decimalF)
 			want := MustParse(tt.want)
-			got := d.FMA(e, f)
+			got, err := d.FMA(e, f)
+			if err != nil {
+				t.Errorf("%q.FMA(%q, %q) failed: %v", d, e, f, err)
+				continue
+			}
 			if got != want {
 				t.Errorf("%q.FMA(%q, %q) = %q, want %q", d, e, f, got, want)
 			}
 		}
 	})
 
-	t.Run("panic", func(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
 			decimalD, decimalE, decimalF string
 			scale                        int
@@ -1437,25 +1442,20 @@ func TestDecimal_FMA(t *testing.T) {
 			"scale 1":    {"0", "0", "0", -1},
 			"scale 2":    {"0", "0", "0", MaxScale + 1},
 		}
-		for name, tt := range tests {
+		for _, tt := range tests {
 			d := MustParse(tt.decimalD)
 			e := MustParse(tt.decimalE)
 			f := MustParse(tt.decimalF)
-			t.Run(name, func(t *testing.T) {
-				defer func() {
-					if r := recover(); r == nil {
-						t.Errorf("%q.FMAExact(%q, %q, %v) did not panic", d, e, f, tt.scale)
-					}
-				}()
-				d.FMAExact(e, f, tt.scale)
-			})
+			_, err := d.FMAExact(e, f, tt.scale)
+			if err == nil {
+				t.Errorf("%q.FMAExact(%q, %q, %v) did not fail", d, e, f, tt.scale)
+			}
 		}
 	})
 }
 
 func TestDecimal_Pow(t *testing.T) {
-
-	t.Run("valid", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			decimal string
 			power   int
@@ -1467,6 +1467,12 @@ func TestDecimal_Pow(t *testing.T) {
 			{"0", 2, "0"},
 
 			// Ones
+			{"-1", -2, "1"},
+			{"-1", -1, "-1"},
+			{"-1", 0, "1"},
+			{"-1", 1, "-1"},
+			{"-1", 2, "1"},
+
 			{"1", -2, "1"},
 			{"1", -1, "1"},
 			{"1", 0, "1"},
@@ -1565,39 +1571,42 @@ func TestDecimal_Pow(t *testing.T) {
 			{"0.5", 9, "0.001953125"},
 
 			// Interest accrual
-			{"1.1", 60, "304.4816395414180996"},       // error in the last digit
-			{"1.01", 600, "391.5833969993197775"},     // error in the last two digits
-			{"1.001", 6000, "402.2211245663552073"},   // error in the last three digits
-			{"1.0001", 60000, "403.3077910727185768"}, // error in the last three digits
+			{"1.1", 60, "304.4816395414180996"},         // no error
+			{"1.01", 600, "391.5833969993197775"},       // should be 391.5833969993197743, error in the last two digits
+			{"1.001", 6000, "402.2211245663552073"},     // should be 402.2211245663552923, error in the last three digits
+			{"1.0001", 60000, "403.3077910727185768"},   // should be 403.3077910727185433, error in the last three digits
+			{"1.00001", 600000, "403.4166908911752717"}, // should be 403.4166908911542153, error in the last six digits
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.decimal)
-			got := d.Pow(tt.power)
 			want := MustParse(tt.want)
+			got, err := d.Pow(tt.power)
+			if err != nil {
+				t.Errorf("%q.Pow(%d) failed: %v", d, tt.power, err)
+				continue
+			}
 			if got != want {
 				t.Errorf("%q.Pow(%d) = %q, want %q", d, tt.power, got, want)
 			}
 		}
 	})
 
-	t.Run("panic", func(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
-			decimal string
-			power   int
+			decimal      string
+			power, scale int
 		}{
-			"overflow 1": {"2", 64},
-			"overflow 2": {"10", 19},
+			"overflow 1": {"2", 64, 0},
+			"overflow 2": {"10", 19, 0},
+			"scale 1":    {"1", 1, -1},
+			"scale 2":    {"1", 1, MaxScale + 1},
 		}
-		for name, tt := range tests {
+		for _, tt := range tests {
 			d := MustParse(tt.decimal)
-			t.Run(name, func(t *testing.T) {
-				defer func() {
-					if r := recover(); r == nil {
-						t.Errorf("%q.Power(%d) did not panic", d, tt.power)
-					}
-				}()
-				d.Pow(tt.power)
-			})
+			_, err := d.PowExact(tt.power, tt.scale)
+			if err == nil {
+				t.Errorf("%q.PowExact(%d, %d) did not fail", d, tt.power, tt.scale)
+			}
 		}
 	})
 }
@@ -1672,8 +1681,7 @@ func TestDecimal_Neg(t *testing.T) {
 }
 
 func TestDecimal_Quo(t *testing.T) {
-
-	t.Run("valid", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			decimalD, decimalE, want string
 		}{
@@ -1784,14 +1792,18 @@ func TestDecimal_Quo(t *testing.T) {
 			d := MustParse(tt.decimalD)
 			e := MustParse(tt.decimalE)
 			want := MustParse(tt.want)
-			got := d.Quo(e)
+			got, err := d.Quo(e)
+			if err != nil {
+				t.Errorf("%q.Quo(%q) failed: %v", d, e, err)
+				continue
+			}
 			if got != want {
 				t.Errorf("%q.Quo(%q) = %q, want %q", d, e, got, want)
 			}
 		}
 	})
 
-	t.Run("panic", func(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
 			decimalD, decimalE string
 			scale              int
@@ -1801,113 +1813,131 @@ func TestDecimal_Quo(t *testing.T) {
 			"scale 1":    {"2", "1", -1},
 			"scale 2":    {"2", "1", MaxScale + 1},
 		}
-		for name, tt := range tests {
+		for _, tt := range tests {
 			d := MustParse(tt.decimalD)
 			e := MustParse(tt.decimalE)
-			t.Run(name, func(t *testing.T) {
-				defer func() {
-					if r := recover(); r == nil {
-						t.Errorf("%q.QuoExact(%q, %v) did not panic", d, e, tt.scale)
-					}
-				}()
-				d.QuoExact(e, tt.scale)
-			})
+			_, err := d.QuoExact(e, tt.scale)
+			if err == nil {
+				t.Errorf("%q.QuoExact(%q, %v) did not fail", d, e, tt.scale)
+			}
 		}
 	})
 }
 
 func TestDecimal_QuoRem(t *testing.T) {
-	tests := []struct {
-		decimalD, decimalE, wantQuo, wantRem string
-	}{
-		// Zeros
-		{"0", "1.000", "0", "0.000"},
-		{"0.0", "1.000", "0", "0.000"},
-		{"0.00", "1.000", "0", "0.000"},
-		{"0.000", "1.000", "0", "0.000"},
-		{"0.0000", "1.000", "0", "0.0000"},
-		{"0.00000", "1.000", "0", "0.00000"},
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			decimalD, decimalE, wantQuo, wantRem string
+		}{
+			// Zeros
+			{"0", "1.000", "0", "0.000"},
+			{"0.0", "1.000", "0", "0.000"},
+			{"0.00", "1.000", "0", "0.000"},
+			{"0.000", "1.000", "0", "0.000"},
+			{"0.0000", "1.000", "0", "0.0000"},
+			{"0.00000", "1.000", "0", "0.00000"},
 
-		{"0.000", "1", "0", "0.000"},
-		{"0.000", "1.0", "0", "0.000"},
-		{"0.000", "1.00", "0", "0.000"},
-		{"0.000", "1.000", "0", "0.000"},
-		{"0.000", "1.0000", "0", "0.0000"},
-		{"0.000", "1.00000", "0", "0.00000"},
+			{"0.000", "1", "0", "0.000"},
+			{"0.000", "1.0", "0", "0.000"},
+			{"0.000", "1.00", "0", "0.000"},
+			{"0.000", "1.000", "0", "0.000"},
+			{"0.000", "1.0000", "0", "0.0000"},
+			{"0.000", "1.00000", "0", "0.00000"},
 
-		// Ones
-		{"1", "1.000", "1", "0.000"},
-		{"1.0", "1.000", "1", "0.000"},
-		{"1.00", "1.000", "1", "0.000"},
-		{"1.000", "1.000", "1", "0.000"},
-		{"1.0000", "1.000", "1", "0.0000"},
-		{"1.00000", "1.000", "1", "0.00000"},
+			// Ones
+			{"1", "1.000", "1", "0.000"},
+			{"1.0", "1.000", "1", "0.000"},
+			{"1.00", "1.000", "1", "0.000"},
+			{"1.000", "1.000", "1", "0.000"},
+			{"1.0000", "1.000", "1", "0.0000"},
+			{"1.00000", "1.000", "1", "0.00000"},
 
-		{"1.000", "1", "1", "0.000"},
-		{"1.000", "1.0", "1", "0.000"},
-		{"1.000", "1.00", "1", "0.000"},
-		{"1.000", "1.000", "1", "0.000"},
-		{"1.000", "1.0000", "1", "0.0000"},
-		{"1.000", "1.00000", "1", "0.00000"},
+			{"1.000", "1", "1", "0.000"},
+			{"1.000", "1.0", "1", "0.000"},
+			{"1.000", "1.00", "1", "0.000"},
+			{"1.000", "1.000", "1", "0.000"},
+			{"1.000", "1.0000", "1", "0.0000"},
+			{"1.000", "1.00000", "1", "0.00000"},
 
-		// Signs
-		{"2.4", "1", "2", "0.4"},
-		{"2.4", "-1", "-2", "0.4"},
-		{"-2.4", "1", "-2", "-0.4"},
-		{"-2.4", "-1", "2", "-0.4"},
+			// Signs
+			{"2.4", "1", "2", "0.4"},
+			{"2.4", "-1", "-2", "0.4"},
+			{"-2.4", "1", "-2", "-0.4"},
+			{"-2.4", "-1", "2", "-0.4"},
 
-		// Scales
-		{"2.40", "1", "2", "0.40"},
-		{"2.400", "1", "2", "0.400"},
-		{"2.4", "2", "1", "0.4"},
-		{"2.400", "2", "1", "0.400"},
+			// Scales
+			{"2.40", "1", "2", "0.40"},
+			{"2.400", "1", "2", "0.400"},
+			{"2.4", "2", "1", "0.4"},
+			{"2.400", "2", "1", "0.400"},
 
-		// 1 divided by digits
-		{"1", "1", "1", "0"},
-		{"1", "2", "0", "1"},
-		{"1", "3", "0", "1"},
-		{"1", "4", "0", "1"},
-		{"1", "5", "0", "1"},
-		{"1", "6", "0", "1"},
-		{"1", "7", "0", "1"},
-		{"1", "8", "0", "1"},
-		{"1", "9", "0", "1"},
+			// 1 divided by digits
+			{"1", "1", "1", "0"},
+			{"1", "2", "0", "1"},
+			{"1", "3", "0", "1"},
+			{"1", "4", "0", "1"},
+			{"1", "5", "0", "1"},
+			{"1", "6", "0", "1"},
+			{"1", "7", "0", "1"},
+			{"1", "8", "0", "1"},
+			{"1", "9", "0", "1"},
 
-		// 2 divided by digits
-		{"2", "1", "2", "0"},
-		{"2", "2", "1", "0"},
-		{"2", "3", "0", "2"},
-		{"2", "4", "0", "2"},
-		{"2", "5", "0", "2"},
-		{"2", "6", "0", "2"},
-		{"2", "7", "0", "2"},
-		{"2", "8", "0", "2"},
-		{"2", "9", "0", "2"},
+			// 2 divided by digits
+			{"2", "1", "2", "0"},
+			{"2", "2", "1", "0"},
+			{"2", "3", "0", "2"},
+			{"2", "4", "0", "2"},
+			{"2", "5", "0", "2"},
+			{"2", "6", "0", "2"},
+			{"2", "7", "0", "2"},
+			{"2", "8", "0", "2"},
+			{"2", "9", "0", "2"},
 
-		// Other tests
-		{"12345", "4.999", "2469", "2.469"},
-		{"12345", "4.99", "2473", "4.73"},
-		{"12345", "4.9", "2519", "1.9"},
-		{"12345", "5", "2469", "0"},
-		{"12345", "5.1", "2420", "3.0"},
-		{"12345", "5.01", "2464", "0.36"},
-		{"12345", "5.001", "2468", "2.532"},
+			// Other tests
+			{"12345", "4.999", "2469", "2.469"},
+			{"12345", "4.99", "2473", "4.73"},
+			{"12345", "4.9", "2519", "1.9"},
+			{"12345", "5", "2469", "0"},
+			{"12345", "5.1", "2420", "3.0"},
+			{"12345", "5.01", "2464", "0.36"},
+			{"12345", "5.001", "2468", "2.532"},
 
-		{"41", "21", "1", "20"},
-		{"4.2", "3.1000003", "1", "1.0999997"},
-		{"1.000000000000000000", "0.000000000000000003", "333333333333333333", "0.000000000000000001"},
-		{"1.000000000000000001", "0.000000000000000003", "333333333333333333", "0.000000000000000002"},
-	}
-	for _, tt := range tests {
-		d := MustParse(tt.decimalD)
-		e := MustParse(tt.decimalE)
-		wantQuo := MustParse(tt.wantQuo)
-		wantRem := MustParse(tt.wantRem)
-		gotQuo, gotRem := d.QuoRem(e)
-		if gotQuo != wantQuo || gotRem != wantRem {
-			t.Errorf("%q.QuoRem(%q) = (%q, %q), want (%q, %q)", d, e, gotQuo, gotRem, wantQuo, wantRem)
+			{"41", "21", "1", "20"},
+			{"4.2", "3.1000003", "1", "1.0999997"},
+			{"1.000000000000000000", "0.000000000000000003", "333333333333333333", "0.000000000000000001"},
+			{"1.000000000000000001", "0.000000000000000003", "333333333333333333", "0.000000000000000002"},
 		}
-	}
+		for _, tt := range tests {
+			d := MustParse(tt.decimalD)
+			e := MustParse(tt.decimalE)
+			wantQuo := MustParse(tt.wantQuo)
+			wantRem := MustParse(tt.wantRem)
+			gotQuo, gotRem, err := d.QuoRem(e)
+			if err != nil {
+				t.Errorf("%q.QuoRem(%q) failed: %v", d, e, err)
+				continue
+			}
+			if gotQuo != wantQuo || gotRem != wantRem {
+				t.Errorf("%q.QuoRem(%q) = (%q, %q), want (%q, %q)", d, e, gotQuo, gotRem, wantQuo, wantRem)
+			}
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		tests := map[string]struct {
+			decimalD, decimalE string
+		}{
+			"zero 1": {"1", "0"},
+		}
+		for _, tt := range tests {
+			d := MustParse(tt.decimalD)
+			e := MustParse(tt.decimalE)
+			_, _, err := d.QuoRem(e)
+			if err == nil {
+				t.Errorf("%q.QuoRem(%q) did not fail", d, e)
+			}
+		}
+	})
 }
 
 func TestDecimal_Cmp(t *testing.T) {
@@ -2063,43 +2093,40 @@ func TestDecimal_Min(t *testing.T) {
 * Fuzzing
 ******************************************************/
 
-var (
-	corpus = []struct {
-		neg   bool
-		scale int
-		coef  uint64
-	}{
-		{false, 0, 9999999999999999999},
-		{false, 1, 9999999999999999999},
-		{false, 0, 1000000000000000000},
-		{false, 19, 9999999999999999999},
-		{false, 0, 7},
-		{false, 0, 3},
-		{false, 0, 2},
-		{false, 0, 1},
-		{false, 18, 1000000000000000001},
-		{false, 19, 3},
-		{false, 19, 2},
-		{false, 19, 1},
-		{false, 0, 0},
-		{false, 19, 0},
-		{true, 0, 9999999999999999999},
-		{true, 1, 9999999999999999999},
-		{true, 0, 1000000000000000000},
-		{true, 19, 9999999999999999999},
-		{true, 0, 7},
-		{true, 0, 3},
-		{true, 0, 2},
-		{true, 0, 1},
-		{true, 18, 1000000000000000001},
-		{true, 19, 3},
-		{true, 19, 2},
-		{true, 19, 1},
-	}
-)
+var corpus = []struct {
+	neg   bool
+	scale int
+	coef  uint64
+}{
+	{false, 0, 9999999999999999999},
+	{false, 1, 9999999999999999999},
+	{false, 0, 1000000000000000000},
+	{false, 19, 9999999999999999999},
+	{false, 0, 7},
+	{false, 0, 3},
+	{false, 0, 2},
+	{false, 0, 1},
+	{false, 18, 1000000000000000001},
+	{false, 19, 3},
+	{false, 19, 2},
+	{false, 19, 1},
+	{false, 0, 0},
+	{false, 19, 0},
+	{true, 0, 9999999999999999999},
+	{true, 1, 9999999999999999999},
+	{true, 0, 1000000000000000000},
+	{true, 19, 9999999999999999999},
+	{true, 0, 7},
+	{true, 0, 3},
+	{true, 0, 2},
+	{true, 0, 1},
+	{true, 18, 1000000000000000001},
+	{true, 19, 3},
+	{true, 19, 2},
+	{true, 19, 1},
+}
 
 func FuzzParse(f *testing.F) {
-
 	for _, c := range corpus {
 		d, err := newDecimal(c.neg, fint(c.coef), c.scale)
 		if err != nil {
@@ -2122,7 +2149,6 @@ func FuzzParse(f *testing.F) {
 }
 
 func FuzzDecimal_String_ParseVsString(f *testing.F) {
-
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -2151,7 +2177,6 @@ func FuzzDecimal_String_ParseVsString(f *testing.F) {
 }
 
 func FuzzDecimal_Mul_FastVsSlow(f *testing.F) {
-
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -2179,17 +2204,17 @@ func FuzzDecimal_Mul_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			f, err := tryFastMul(d, e, scale)
+			f, err := mulFast(d, e, scale)
 			if err != nil {
-				if errors.Is(err, errCoefficientOverflow) {
-					t.Skip() // Coefficient overflow is an expected error in fast multiplication
+				if errors.Is(err, errDecimalOverflow) {
+					t.Skip() // Decimal overflow is an expected error in fast multiplication
 				} else {
 					t.Errorf("mulFast(%q, %q, %v) failed: %v", d, e, scale, err)
 				}
 				return
 			}
 
-			s, err := trySlowMul(d, e, scale)
+			s, err := mulSlow(d, e, scale)
 			if err != nil {
 				t.Errorf("mulSlow(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
@@ -2207,7 +2232,6 @@ func FuzzDecimal_Mul_FastVsSlow(f *testing.F) {
 }
 
 func FuzzDecimal_FMA_FastVsSlow(f *testing.F) {
-
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for _, g := range corpus {
@@ -2243,17 +2267,17 @@ func FuzzDecimal_FMA_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			f, err := tryFastFMA(d, e, g, scale)
+			f, err := fmaFast(d, e, g, scale)
 			if err != nil {
-				if errors.Is(err, errCoefficientOverflow) {
-					t.Skip() // Coefficient overflow is an expected error in fast fused multiplication-addition
+				if errors.Is(err, errDecimalOverflow) {
+					t.Skip() // Decimal overflow is an expected error in fast fused multiplication-addition
 				} else {
 					t.Errorf("fmaFast(%q, %q, %q, %v) failed: %v", d, e, g, scale, err)
 				}
 				return
 			}
 
-			s, err := trySlowFMA(d, e, g, scale)
+			s, err := fmaSlow(d, e, g, scale)
 			if err != nil {
 				t.Errorf("fmaSlow(%q, %q, %q, %v) failed: %v", d, e, g, scale, err)
 				return
@@ -2271,7 +2295,6 @@ func FuzzDecimal_FMA_FastVsSlow(f *testing.F) {
 }
 
 func FuzzDecimal_Add_FastVsSlow(f *testing.F) {
-
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -2299,17 +2322,17 @@ func FuzzDecimal_Add_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			f, err := tryFastAdd(d, e, scale)
+			f, err := addFast(d, e, scale)
 			if err != nil {
-				if errors.Is(err, errCoefficientOverflow) {
-					t.Skip() // Coefficient overflow is an expected error in fast addition
+				if errors.Is(err, errDecimalOverflow) {
+					t.Skip() // Decimal overflow is an expected error in fast addition
 				} else {
 					t.Errorf("addFast(%q, %q, %v) failed: %v", d, e, scale, err)
 				}
 				return
 			}
 
-			s, err := trySlowAdd(d, e, scale)
+			s, err := addSlow(d, e, scale)
 			if err != nil {
 				t.Errorf("addSlow(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
@@ -2327,7 +2350,6 @@ func FuzzDecimal_Add_FastVsSlow(f *testing.F) {
 }
 
 func FuzzDecimal_Quo_FastVsSlow(f *testing.F) {
-
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -2359,11 +2381,11 @@ func FuzzDecimal_Quo_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			f, err := tryFastQuo(d, e, scale)
+			f, err := quoFast(d, e, scale)
 			if err != nil {
 				switch {
-				case errors.Is(err, errCoefficientOverflow):
-					t.Skip() // Coefficient overflow is an expected error in fast division
+				case errors.Is(err, errDecimalOverflow):
+					t.Skip() // Decimal overflow is an expected error in fast division
 				case errors.Is(err, errScaleRange):
 					t.Skip() // Scale out of range is an expected error in fast division
 				case errors.Is(err, errInexactDivision):
@@ -2374,7 +2396,7 @@ func FuzzDecimal_Quo_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			s, err := trySlowQuo(d, e, scale)
+			s, err := quoSlow(d, e, scale)
 			if err != nil {
 				t.Errorf("quoSlow(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
@@ -2392,7 +2414,6 @@ func FuzzDecimal_Quo_FastVsSlow(f *testing.F) {
 }
 
 func FuzzDecimal_Cmp_FastVsSlow(f *testing.F) {
-
 	for _, d := range corpus {
 		for _, e := range corpus {
 			f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef)
@@ -2413,17 +2434,17 @@ func FuzzDecimal_Cmp_FastVsSlow(f *testing.F) {
 				return
 			}
 
-			f, err := tryFastCmp(d, e)
+			f, err := cmpFast(d, e)
 			if err != nil {
-				if errors.Is(err, errCoefficientOverflow) {
-					t.Skip() // Coefficient overflow is an expected error in fast comparison
+				if errors.Is(err, errDecimalOverflow) {
+					t.Skip() // Decimal overflow is an expected error in fast comparison
 				} else {
 					t.Errorf("cmpFast(%q, %q) failed: %v", d, e, err)
 				}
 				return
 			}
 
-			s := slowCmp(d, e)
+			s := cmpSlow(d, e)
 			if s != f {
 				t.Errorf("cmpSlow(%q, %q) = %v, whereas cmpFast(%q, %q) = %v", d, e, s, d, e, f)
 			}

@@ -2,47 +2,93 @@ package decimal_test
 
 import (
 	"fmt"
-	"github.com/govalues/decimal"
 	"strings"
+
+	"github.com/govalues/decimal"
 )
 
 func evaluate(input string) (decimal.Decimal, error) {
+	tokens, err := parseTokens(input)
+	if err != nil {
+		return decimal.Decimal{}, fmt.Errorf("parsing tokens: %w", err)
+	}
+
+	stack, err := processTokens(tokens)
+	if err != nil {
+		return decimal.Decimal{}, fmt.Errorf("processing tokens: %w", err)
+	}
+
+	if len(stack) != 1 {
+		return decimal.Decimal{}, fmt.Errorf("post-processed stack contains %v, expected exactly one item", stack)
+	}
+
+	return stack[0], nil
+}
+
+func parseTokens(input string) ([]string, error) {
 	tokens := strings.Fields(input)
+	if len(tokens) == 0 {
+		return nil, fmt.Errorf("no tokens")
+	}
+	return tokens, nil
+}
+
+func processTokens(tokens []string) ([]decimal.Decimal, error) {
 	stack := make([]decimal.Decimal, 0, len(tokens))
+	var err error
+
 	for i := len(tokens) - 1; i >= 0; i-- {
 		token := tokens[i]
 		switch token {
-		default:
-			d, err := decimal.Parse(token)
-			if err != nil {
-				return decimal.Decimal{}, fmt.Errorf("invalid decimal: %s", token)
-			}
-			stack = append(stack, d)
 		case "+", "-", "*", "/":
-			if len(stack) < 2 {
-				return decimal.Decimal{}, fmt.Errorf("invalid input")
-			}
-			d := stack[len(stack)-1]
-			e := stack[len(stack)-2]
-			stack = stack[:len(stack)-2]
-			var f decimal.Decimal
-			switch token {
-			case "+":
-				f = d.Add(e)
-			case "-":
-				f = d.Sub(e)
-			case "*":
-				f = d.Mul(e)
-			case "/":
-				f = d.Quo(e)
-			}
-			stack = append(stack, f)
+			stack, err = processOperator(stack, token)
+		default:
+			stack, err = processOperand(stack, token)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("processing token %q: %w", token, err)
 		}
 	}
-	if len(stack) != 1 {
-		return decimal.Decimal{}, fmt.Errorf("invalid input")
+
+	return stack, nil
+}
+
+func processOperator(stack []decimal.Decimal, token string) ([]decimal.Decimal, error) {
+	if len(stack) < 2 {
+		return nil, fmt.Errorf("not enough operands")
 	}
-	return stack[0], nil
+
+	right := stack[len(stack)-2]
+	left := stack[len(stack)-1]
+	stack = stack[:len(stack)-2]
+
+	var result decimal.Decimal
+	var err error
+
+	switch token {
+	case "+":
+		result, err = left.Add(right)
+	case "-":
+		result, err = left.Sub(right)
+	case "*":
+		result, err = left.Mul(right)
+	case "/":
+		result, err = left.Quo(right)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("evaluating \"%s %s %s\": %w", left, token, right, err)
+	}
+
+	return append(stack, result), nil
+}
+
+func processOperand(stack []decimal.Decimal, token string) ([]decimal.Decimal, error) {
+	d, err := decimal.Parse(token)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(stack, d), nil
 }
 
 // This example implements a simple calculator that evaluates mathematical
@@ -59,28 +105,65 @@ func Example_polishNotation() {
 	// 46.0
 }
 
+func calculate(terms int) (decimal.Decimal, error) {
+	pi := decimal.MustNew(0, 0)
+	multiplier := decimal.MustNew(4, 0)
+	denominator := decimal.MustNew(1, 0)
+	sign := decimal.MustNew(1, 0)
+	increment := decimal.MustNew(2, 0)
+
+	for i := 0; i < terms; i++ {
+		term, err := multiplier.Quo(denominator)
+		if err != nil {
+			return decimal.Decimal{}, err
+		}
+
+		signedTerm, err := term.Mul(sign)
+		if err != nil {
+			return decimal.Decimal{}, err
+		}
+
+		pi, err = pi.Add(signedTerm)
+		if err != nil {
+			return decimal.Decimal{}, err
+		}
+
+		denominator, err = denominator.Add(increment)
+		if err != nil {
+			return decimal.Decimal{}, err
+		}
+
+		sign = sign.Neg()
+	}
+
+	return pi, nil
+}
+
 // This example calculates an approximate value of pi using the Leibniz formula for pi.
 // The Leibniz formula is an infinite series that converges to pi/4, and is
 // given by the equation: 1 - 1/3 + 1/5 - 1/7 + 1/9 - 1/11 + ... = pi/4.
 // This example computes the series up to the 5000th term using decimal arithmetic
 // and returns the approximate value of pi.
 func Example_leibnizPi() {
-	pi := decimal.New(0, 0)
-	dividend := decimal.New(4, 0)
-	divisor := decimal.New(1, 0)
-	sign := decimal.New(1, 0)
-	step := decimal.New(2, 0)
-	for i := 0; i < 5000; i++ {
-		pi = pi.Add(dividend.Quo(divisor).Mul(sign))
-		divisor = divisor.Add(step)
-		sign = sign.Neg()
+	pi, err := calculate(5000)
+	if err != nil {
+		panic(err)
 	}
 	fmt.Println(pi)
 	// Output: 3.141392653591793247
 }
 
+func ExampleMustNew() {
+	d := decimal.MustNew(-1230, 3)
+	fmt.Println(d)
+	// Output: -1.230
+}
+
 func ExampleNew() {
-	d := decimal.New(-1230, 3)
+	d, err := decimal.New(-1230, 3)
+	if err != nil {
+		panic(err)
+	}
 	fmt.Println(d)
 	// Output: -1.230
 }
@@ -242,14 +325,14 @@ func ExampleDecimal_Mul() {
 	d := decimal.MustParse("5.7")
 	e := decimal.MustParse("3")
 	fmt.Println(d.Mul(e))
-	// Output: 17.1
+	// Output: 17.1 <nil>
 }
 
 func ExampleDecimal_MulExact() {
 	d := decimal.MustParse("5.7")
 	e := decimal.MustParse("3")
 	fmt.Println(d.MulExact(e, 2))
-	// Output: 17.10
+	// Output: 17.10 <nil>
 }
 
 func ExampleDecimal_FMA() {
@@ -257,7 +340,7 @@ func ExampleDecimal_FMA() {
 	e := decimal.MustParse("3")
 	f := decimal.MustParse("4")
 	fmt.Println(d.FMA(e, f))
-	// Output: 10
+	// Output: 10 <nil>
 }
 
 func ExampleDecimal_FMAExact() {
@@ -265,7 +348,7 @@ func ExampleDecimal_FMAExact() {
 	e := decimal.MustParse("3")
 	f := decimal.MustParse("4")
 	fmt.Println(d.FMAExact(e, f, 2))
-	// Output: 10.00
+	// Output: 10.00 <nil>
 }
 
 func ExampleDecimal_Pow() {
@@ -278,62 +361,62 @@ func ExampleDecimal_Pow() {
 	fmt.Println(d.Pow(2))
 	fmt.Println(d.Pow(3))
 	// Output:
-	// 0.125
-	// 0.25
-	// 0.5
-	// 1
-	// 2
-	// 4
-	// 8
+	// 0.125 <nil>
+	// 0.25 <nil>
+	// 0.5 <nil>
+	// 1 <nil>
+	// 2 <nil>
+	// 4 <nil>
+	// 8 <nil>
 }
 
 func ExampleDecimal_Add() {
 	d := decimal.MustParse("15.6")
 	e := decimal.MustParse("8")
 	fmt.Println(d.Add(e))
-	// Output: 23.6
+	// Output: 23.6 <nil>
 }
 
 func ExampleDecimal_AddExact() {
 	d := decimal.MustParse("15.6")
 	e := decimal.MustParse("8")
 	fmt.Println(d.AddExact(e, 2))
-	// Output: 23.60
+	// Output: 23.60 <nil>
 }
 
 func ExampleDecimal_Sub() {
 	d := decimal.MustParse("15.6")
 	e := decimal.MustParse("8")
 	fmt.Println(d.Sub(e))
-	// Output: 7.6
+	// Output: 7.6 <nil>
 }
 
 func ExampleDecimal_SubExact() {
 	d := decimal.MustParse("15.6")
 	e := decimal.MustParse("8")
 	fmt.Println(d.SubExact(e, 2))
-	// Output: 7.60
+	// Output: 7.60 <nil>
 }
 
 func ExampleDecimal_Quo() {
 	d := decimal.MustParse("-15.67")
 	e := decimal.MustParse("2")
 	fmt.Println(d.Quo(e))
-	// Output: -7.835
+	// Output: -7.835 <nil>
 }
 
 func ExampleDecimal_QuoExact() {
 	d := decimal.MustParse("-15.67")
 	e := decimal.MustParse("2")
 	fmt.Println(d.QuoExact(e, 6))
-	// Output: -7.835000
+	// Output: -7.835000 <nil>
 }
 
 func ExampleDecimal_QuoRem() {
 	d := decimal.MustParse("-15.67")
 	e := decimal.MustParse("2")
 	fmt.Println(d.QuoRem(e))
-	// Output: -7 -1.67
+	// Output: -7 -1.67 <nil>
 }
 
 func ExampleDecimal_Cmp() {
@@ -384,13 +467,13 @@ func ExampleDecimal_Round() {
 	fmt.Println(d.Round(1))
 	fmt.Println(d.Round(0))
 	// Output:
-	// 15.679000
-	// 15.67900
-	// 15.6790
-	// 15.679
-	// 15.68
-	// 15.7
-	// 16
+	// 15.679000 <nil>
+	// 15.67900 <nil>
+	// 15.6790 <nil>
+	// 15.679 <nil>
+	// 15.68 <nil>
+	// 15.7 <nil>
+	// 16 <nil>
 }
 
 func ExampleDecimal_Quantize() {
@@ -402,9 +485,9 @@ func ExampleDecimal_Quantize() {
 	fmt.Println(d.Quantize(y))
 	fmt.Println(d.Quantize(z))
 	// Output:
-	// 15.68
-	// 15.7
-	// 16
+	// 15.68 <nil>
+	// 15.7 <nil>
+	// 16 <nil>
 }
 
 func ExampleDecimal_Trunc() {
@@ -417,13 +500,13 @@ func ExampleDecimal_Trunc() {
 	fmt.Println(d.Trunc(1))
 	fmt.Println(d.Trunc(0))
 	// Output:
-	// 15.679000
-	// 15.67900
-	// 15.6790
-	// 15.679
-	// 15.67
-	// 15.6
-	// 15
+	// 15.679000 <nil>
+	// 15.67900 <nil>
+	// 15.6790 <nil>
+	// 15.679 <nil>
+	// 15.67 <nil>
+	// 15.6 <nil>
+	// 15 <nil>
 }
 
 func ExampleDecimal_Ceil() {
@@ -436,13 +519,13 @@ func ExampleDecimal_Ceil() {
 	fmt.Println(d.Ceil(1))
 	fmt.Println(d.Ceil(0))
 	// Output:
-	// 15.679000
-	// 15.67900
-	// 15.6790
-	// 15.679
-	// 15.68
-	// 15.7
-	// 16
+	// 15.679000 <nil>
+	// 15.67900 <nil>
+	// 15.6790 <nil>
+	// 15.679 <nil>
+	// 15.68 <nil>
+	// 15.7 <nil>
+	// 16 <nil>
 }
 
 func ExampleDecimal_Floor() {
@@ -455,13 +538,13 @@ func ExampleDecimal_Floor() {
 	fmt.Println(d.Floor(1))
 	fmt.Println(d.Floor(0))
 	// Output:
-	// 15.679000
-	// 15.67900
-	// 15.6790
-	// 15.679
-	// 15.67
-	// 15.6
-	// 15
+	// 15.679000 <nil>
+	// 15.67900 <nil>
+	// 15.6790 <nil>
+	// 15.679 <nil>
+	// 15.67 <nil>
+	// 15.6 <nil>
+	// 15 <nil>
 }
 
 func ExampleDecimal_Scale() {
@@ -490,8 +573,8 @@ func ExampleDecimal_Reduce() {
 	fmt.Println(d.Reduce())
 	fmt.Println(e.Reduce())
 	// Output:
-	// 23
-	// -15.67
+	// 23 <nil>
+	// -15.67 <nil>
 }
 
 func ExampleDecimal_Abs() {
