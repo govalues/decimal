@@ -96,13 +96,13 @@ func processOperand(stack []decimal.Decimal, token string) ([]decimal.Decimal, e
 // The calculator can handle basic arithmetic operations such as addition,
 // subtraction, multiplication, and division.
 func Example_polishNotation() {
-	d, err := evaluate("* 10 + 1.2 3.4")
+	d, err := evaluate("* 10 + 1.23 4.56")
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(d)
 	// Output:
-	// 46.0
+	// 57.90
 }
 
 func calculate(terms int) (decimal.Decimal, error) {
@@ -154,18 +154,39 @@ func Example_leibnizPi() {
 }
 
 func ExampleMustNew() {
-	d := decimal.MustNew(-1230, 3)
-	fmt.Println(d)
-	// Output: -1.230
+	fmt.Println(decimal.MustNew(-123, 3))
+	fmt.Println(decimal.MustNew(-123, 2))
+	fmt.Println(decimal.MustNew(-123, 1))
+	fmt.Println(decimal.MustNew(-123, 0))
+	fmt.Println(decimal.MustNew(-123, -1))
+	fmt.Println(decimal.MustNew(-123, -2))
+	fmt.Println(decimal.MustNew(-123, -3))
+	// Output:
+	// -0.123
+	// -1.23
+	// -12.3
+	// -123
+	// -1230
+	// -12300
+	// -123000
 }
 
 func ExampleNew() {
-	d, err := decimal.New(-1230, 3)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(d)
-	// Output: -1.230
+	fmt.Println(decimal.New(-123, 3))
+	fmt.Println(decimal.New(-123, 2))
+	fmt.Println(decimal.New(-123, 1))
+	fmt.Println(decimal.New(-123, 0))
+	fmt.Println(decimal.New(-123, -1))
+	fmt.Println(decimal.New(-123, -2))
+	fmt.Println(decimal.New(-123, -3))
+	// Output:
+	// -0.123 <nil>
+	// -1.23 <nil>
+	// -12.3 <nil>
+	// -123 <nil>
+	// -1230 <nil>
+	// -12300 <nil>
+	// -123000 <nil>
 }
 
 func ExampleDecimal_Zero() {
@@ -208,27 +229,29 @@ func ExampleDecimal_ULP() {
 }
 
 func ExampleParse() {
-	d, err := decimal.Parse("-1.230")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(d)
-	// Output: -1.230
+	fmt.Println(decimal.Parse("-1.23"))
+	// Output: -1.23 <nil>
 }
 
 func ExampleParseExact() {
-	d, err := decimal.ParseExact("-1.2", 5)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(d)
-	// Output: -1.20000
+	fmt.Println(decimal.ParseExact("-1.23", 0))
+	fmt.Println(decimal.ParseExact("-1.23", 1))
+	fmt.Println(decimal.ParseExact("-1.23", 2))
+	fmt.Println(decimal.ParseExact("-1.23", 3))
+	fmt.Println(decimal.ParseExact("-1.23", 4))
+	fmt.Println(decimal.ParseExact("-1.23", 5))
+	// Output:
+	// -1.23 <nil>
+	// -1.23 <nil>
+	// -1.23 <nil>
+	// -1.230 <nil>
+	// -1.2300 <nil>
+	// -1.23000 <nil>
 }
 
 func ExampleMustParse() {
-	d := decimal.MustParse("-1.230")
-	fmt.Println(d)
-	// Output: -1.230
+	fmt.Println(decimal.MustParse("-1.23"))
+	// Output: -1.23
 }
 
 func ExampleDecimal_String() {
@@ -370,6 +393,23 @@ func ExampleDecimal_Pow() {
 	// 8 <nil>
 }
 
+func ExampleDecimal_PowExact() {
+	d := decimal.MustParse("2")
+	fmt.Println(d.PowExact(3, 5))
+	fmt.Println(d.PowExact(3, 4))
+	fmt.Println(d.PowExact(3, 3))
+	fmt.Println(d.PowExact(3, 2))
+	fmt.Println(d.PowExact(3, 1))
+	fmt.Println(d.PowExact(3, 0))
+	// Output:
+	// 8.00000 <nil>
+	// 8.0000 <nil>
+	// 8.000 <nil>
+	// 8.00 <nil>
+	// 8.0 <nil>
+	// 8 <nil>
+}
+
 func ExampleDecimal_Add() {
 	d := decimal.MustParse("15.6")
 	e := decimal.MustParse("8")
@@ -457,17 +497,15 @@ func ExampleDecimal_Min() {
 	// Output: -15.67
 }
 
-func ExampleDecimal_Round() {
+func ExampleDecimal_Rescale() {
 	d := decimal.MustParse("15.679")
-	fmt.Println(d.Round(6))
-	fmt.Println(d.Round(5))
-	fmt.Println(d.Round(4))
-	fmt.Println(d.Round(3))
-	fmt.Println(d.Round(2))
-	fmt.Println(d.Round(1))
-	fmt.Println(d.Round(0))
+	fmt.Println(d.Rescale(5))
+	fmt.Println(d.Rescale(4))
+	fmt.Println(d.Rescale(3))
+	fmt.Println(d.Rescale(2))
+	fmt.Println(d.Rescale(1))
+	fmt.Println(d.Rescale(0))
 	// Output:
-	// 15.679000 <nil>
 	// 15.67900 <nil>
 	// 15.6790 <nil>
 	// 15.679 <nil>
@@ -477,7 +515,7 @@ func ExampleDecimal_Round() {
 }
 
 func ExampleDecimal_Quantize() {
-	d := decimal.MustParse("15.679")
+	d := decimal.MustParse("15.6789")
 	x := decimal.MustParse("0.01")
 	y := decimal.MustParse("0.1")
 	z := decimal.MustParse("1")
@@ -490,9 +528,42 @@ func ExampleDecimal_Quantize() {
 	// 16 <nil>
 }
 
+func ExampleDecimal_Pad() {
+	d := decimal.MustParse("15.67")
+	fmt.Println(d.Pad(5))
+	fmt.Println(d.Pad(4))
+	fmt.Println(d.Pad(3))
+	fmt.Println(d.Pad(2))
+	fmt.Println(d.Pad(1))
+	fmt.Println(d.Pad(0))
+	// Output:
+	// 15.67000 <nil>
+	// 15.6700 <nil>
+	// 15.670 <nil>
+	// 15.67 <nil>
+	// 15.67 <nil>
+	// 15.67 <nil>
+}
+
+func ExampleDecimal_Round() {
+	d := decimal.MustParse("15.6789")
+	fmt.Println(d.Round(5))
+	fmt.Println(d.Round(4))
+	fmt.Println(d.Round(3))
+	fmt.Println(d.Round(2))
+	fmt.Println(d.Round(1))
+	fmt.Println(d.Round(0))
+	// Output:
+	// 15.6789
+	// 15.6789
+	// 15.679
+	// 15.68
+	// 15.7
+	// 16
+}
+
 func ExampleDecimal_Trunc() {
-	d := decimal.MustParse("15.679")
-	fmt.Println(d.Trunc(6))
+	d := decimal.MustParse("15.6789")
 	fmt.Println(d.Trunc(5))
 	fmt.Println(d.Trunc(4))
 	fmt.Println(d.Trunc(3))
@@ -500,37 +571,35 @@ func ExampleDecimal_Trunc() {
 	fmt.Println(d.Trunc(1))
 	fmt.Println(d.Trunc(0))
 	// Output:
-	// 15.679000 <nil>
-	// 15.67900 <nil>
-	// 15.6790 <nil>
-	// 15.679 <nil>
-	// 15.67 <nil>
-	// 15.6 <nil>
-	// 15 <nil>
+	// 15.6789
+	// 15.6789
+	// 15.678
+	// 15.67
+	// 15.6
+	// 15
 }
 
 func ExampleDecimal_Ceil() {
-	d := decimal.MustParse("15.679")
-	fmt.Println(d.Ceil(6))
+	d := decimal.MustParse("15.6789")
 	fmt.Println(d.Ceil(5))
 	fmt.Println(d.Ceil(4))
 	fmt.Println(d.Ceil(3))
 	fmt.Println(d.Ceil(2))
 	fmt.Println(d.Ceil(1))
 	fmt.Println(d.Ceil(0))
+	fmt.Println(d.Ceil(-1))
 	// Output:
-	// 15.679000 <nil>
-	// 15.67900 <nil>
-	// 15.6790 <nil>
-	// 15.679 <nil>
-	// 15.68 <nil>
-	// 15.7 <nil>
-	// 16 <nil>
+	// 15.6789
+	// 15.6789
+	// 15.679
+	// 15.68
+	// 15.7
+	// 16
+	// 16
 }
 
 func ExampleDecimal_Floor() {
-	d := decimal.MustParse("15.679")
-	fmt.Println(d.Floor(6))
+	d := decimal.MustParse("15.6789")
 	fmt.Println(d.Floor(5))
 	fmt.Println(d.Floor(4))
 	fmt.Println(d.Floor(3))
@@ -538,13 +607,12 @@ func ExampleDecimal_Floor() {
 	fmt.Println(d.Floor(1))
 	fmt.Println(d.Floor(0))
 	// Output:
-	// 15.679000 <nil>
-	// 15.67900 <nil>
-	// 15.6790 <nil>
-	// 15.679 <nil>
-	// 15.67 <nil>
-	// 15.6 <nil>
-	// 15 <nil>
+	// 15.6789
+	// 15.6789
+	// 15.678
+	// 15.67
+	// 15.6
+	// 15
 }
 
 func ExampleDecimal_Scale() {
@@ -567,14 +635,21 @@ func ExampleDecimal_MinScale() {
 	// 2
 }
 
-func ExampleDecimal_Reduce() {
-	d := decimal.MustParse("23.0000")
-	e := decimal.MustParse("-15.6700")
-	fmt.Println(d.Reduce())
-	fmt.Println(e.Reduce())
+func ExampleDecimal_Trim() {
+	d := decimal.MustParse("23.4000")
+	fmt.Println(d.Trim(5))
+	fmt.Println(d.Trim(4))
+	fmt.Println(d.Trim(3))
+	fmt.Println(d.Trim(2))
+	fmt.Println(d.Trim(1))
+	fmt.Println(d.Trim(0))
 	// Output:
-	// 23 <nil>
-	// -15.67 <nil>
+	// 23.4000
+	// 23.4000
+	// 23.400
+	// 23.40
+	// 23.4
+	// 23.4
 }
 
 func ExampleDecimal_Abs() {

@@ -19,7 +19,7 @@ which reduces heap allocations, lowers memory consumption, and improves performa
 
 # Supported Ranges
 
-The range of a decimal value depends on its scale and the size of its coefficient.
+The range of a decimal value depends on the size of its coefficient.
 Since the coefficient is stored as an uint64, a [Decimal] can have a maximum of
 19 digits.
 Additionally, the range of the [Decimal] depends on its scale, which determines
@@ -80,7 +80,7 @@ several methods for explicit rounding:
   - [Decimal.Ceil]: rounds towards positive infinity.
   - [Decimal.Floor]: rounds towards negative infinity.
   - [Decimal.Trunc]: rounds towards zero.
-  - [Decimal.Round], [Decimal.Quantize]: use half-to-even rounding.
+  - [Decimal.Round], [Decimal.Quantize], [Decimal.Rescale]: use half-to-even rounding.
 
 # Errors
 

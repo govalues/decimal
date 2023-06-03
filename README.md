@@ -43,10 +43,10 @@ difference, _ := d.Sub(e)
 product, _ := d.Mul(e)
 quotient, _ := d.Quo(e)
 power, _ := d.Pow(5)
-ceil, _ := d.Ceil(0)
-floor, _ := d.Floor(0)
-trunc, _ := d.Trunc(0)
-round, _ := d.Round(0)
+ceil := d.Ceil(0)
+floor := d.Floor(0)
+trunc := d.Trunc(0)
+round := d.Round(0)
 ```
 
 For more details on these and other methods, see the package documentation
