@@ -26,10 +26,10 @@ import "github.com/govalues/decimal"
 ## Using Decimal
 
 To create a new decimal value, you can use one of the provided constructors,
-such as `New`, `Parse` or `MustParse`.
+such as `New`, `MustNew`, `Parse` or `MustParse`.
 
 ```go
-d := decimal.New(12345, 2) // d = 123.45
+d := decimal.MustNew(12345, 2) // d = 123.45
 e := decimal.MustParse("123.45")
 ```
 
@@ -38,11 +38,11 @@ addition, subtraction, multiplication, division, and exponentiation, as well
 as rounding operations such as ceiling, floor, truncation, and rounding.
 
 ```go
-sum := d.Add(e)
-difference := d.Sub(e)
-product := d.Mul(e)
-quotient := d.Quo(e)
-power := d.Pow(5)
+sum, _ := d.Add(e)
+difference, _ := d.Sub(e)
+product, _ := d.Mul(e)
+quotient, _ := d.Quo(e)
+power, _ := d.Pow(5)
 ceil := d.Ceil(0)
 floor := d.Floor(0)
 trunc := d.Trunc(0)

@@ -1,41 +1,38 @@
 package decimal
 
 import (
-	"fmt"
 	"math/big"
 )
 
 // fint (Fast Integer) is a wrapper around uint64.
 type fint uint64
 
-const (
-	maxFint = fint(9_999_999_999_999_999_999)
-)
+// maxFint is a maximum value of fint.
+const maxFint = fint(9_999_999_999_999_999_999)
 
-var (
-	pow10 = [...]fint{
-		1,                    // 10^0
-		10,                   // 10^1
-		100,                  // 10^2
-		1000,                 // 10^3
-		10000,                // 10^4
-		100000,               // 10^5
-		1000000,              // 10^6
-		10000000,             // 10^7
-		100000000,            // 10^8
-		1000000000,           // 10^9
-		10000000000,          // 10^10
-		100000000000,         // 10^11
-		1000000000000,        // 10^12
-		10000000000000,       // 10^13
-		100000000000000,      // 10^14
-		1000000000000000,     // 10^15
-		10000000000000000,    // 10^16
-		100000000000000000,   // 10^17
-		1000000000000000000,  // 10^18
-		10000000000000000000, // 10^19
-	}
-)
+// pow10 is a cache of powers of 10.
+var pow10 = [...]fint{
+	1,                          // 10^0
+	10,                         // 10^1
+	100,                        // 10^2
+	1_000,                      // 10^3
+	10_000,                     // 10^4
+	100_000,                    // 10^5
+	1_000_000,                  // 10^6
+	10_000_000,                 // 10^7
+	100_000_000,                // 10^8
+	1_000_000_000,              // 10^9
+	10_000_000_000,             // 10^10
+	100_000_000_000,            // 10^11
+	1_000_000_000_000,          // 10^12
+	10_000_000_000_000,         // 10^13
+	100_000_000_000_000,        // 10^14
+	1_000_000_000_000_000,      // 10^15
+	10_000_000_000_000_000,     // 10^16
+	100_000_000_000_000_000,    // 10^17
+	1_000_000_000_000_000_000,  // 10^18
+	10_000_000_000_000_000_000, // 10^19
+}
 
 // add calculates x + y and checks overflow.
 func (x fint) add(y fint) (fint, bool) {
@@ -61,7 +58,7 @@ func (x fint) mul(y fint) (fint, bool) {
 	return z, true
 }
 
-// quo calculates x / y and checks if it is an exact division.
+// quo calculates x / y and checks overflow or inexact division.
 func (x fint) quo(y fint) (fint, bool) {
 	if y == 0 {
 		return 0, false
@@ -77,16 +74,15 @@ func (x fint) quo(y fint) (fint, bool) {
 func (x fint) dist(y fint) fint {
 	if x > y {
 		return x - y
-	} else {
-		return y - x
 	}
+	return y - x
 }
 
-// lsh (Shift Left) calculates x * 10^shift and checks overflow.
+// lsh (Left Shift) calculates x * 10^shift and checks overflow.
 func (x fint) lsh(shift int) (fint, bool) {
 	// Special cases
 	switch {
-	case shift == 0:
+	case shift <= 0:
 		return x, true
 	case shift == 1 && x < maxFint/10: // to speed up common case
 		return x * 10, true
@@ -115,14 +111,18 @@ func (x fint) isOdd() bool {
 	return x&1 != 0
 }
 
-// rshEven (Shift Right) calculates x / 10^shift and rounds result using "half to even" rule.
-func (x fint) rshEven(shift int) (fint, bool) {
+// rshHalfEven (Right Shift) calculates x / 10^shift and rounds result using "half to even" rule.
+func (x fint) rshHalfEven(shift int) fint {
+	// Special cases
 	switch {
-	case shift == 0:
-		return x, true
+	case x == 0:
+		return 0
+	case shift <= 0:
+		return x
 	case shift >= len(pow10):
-		return 0, false
+		return 0
 	}
+	// General case
 	y := pow10[shift]
 	z := x / y
 	r := x - z*y                        // r = x % y
@@ -130,39 +130,48 @@ func (x fint) rshEven(shift int) (fint, bool) {
 	if y < r || (y == r && z.isOdd()) { // half-to-even
 		z++
 	}
-	return z, true
+	return z
 }
 
-// rshUp (Shift Right) calculates x / 10^shift and rounds result away from 0.
-func (x fint) rshUp(shift int) (fint, bool) {
+// rshUp (Right Shift) calculates x / 10^shift and rounds result away from 0.
+func (x fint) rshUp(shift int) fint {
+	// Special cases
 	switch {
-	case shift == 0:
-		return x, true
+	case x == 0:
+		return 0
+	case shift <= 0:
+		return x
 	case shift >= len(pow10):
-		return 0, false
+		return 1
 	}
+	// General case
 	y := pow10[shift]
 	z := x / y
 	r := x - z*y // r = x % y
 	if r > 0 {
 		z++
 	}
-	return z, true
+	return z
 }
 
-// rshDown (Shift Right) calculates x / 10^shift and rounds result towards 0.
-func (x fint) rshDown(shift int) (fint, bool) {
+// rshDown (Right Shift) calculates x / 10^shift and rounds result towards 0.
+func (x fint) rshDown(shift int) fint {
+	// Special cases
 	switch {
-	case shift == 0:
-		return x, true
+	case x == 0:
+		return 0
+	case shift <= 0:
+		return x
 	case shift >= len(pow10):
-		return 0, false
+		return 0
 	}
+	// General case
 	y := pow10[shift]
-	return x / y, true
+	return x / y
 }
 
 // prec returns length of x in decimal digits.
+// prec assumes that 0 has zero digits.
 func (x fint) prec() int {
 	left, right := 0, len(pow10)
 	for left < right {
@@ -192,9 +201,14 @@ func (x fint) tzeros() int {
 }
 
 // hasPrec returns true if x has given number of digits or more.
+// hasPrec assumes that 0 has zero digits.
+// x.hasPrec() is significantly faster than (x.prec() >= prec).
 func (x fint) hasPrec(prec int) bool {
-	if prec < 1 {
+	switch {
+	case prec < 1:
 		return true
+	case prec > len(pow10):
+		return false
 	}
 	return x >= pow10[prec-1]
 }
@@ -202,165 +216,97 @@ func (x fint) hasPrec(prec int) bool {
 // sint (Slow Integer) is a wrapper around big.Int.
 type sint big.Int
 
-var (
-	sintOne   = newSint(1)
-	sintPow10 = [...]*sint{
-		mustParseSint("1"),                                                                                                     // 10^0
-		mustParseSint("10"),                                                                                                    // 10^1
-		mustParseSint("100"),                                                                                                   // 10^2
-		mustParseSint("1000"),                                                                                                  // 10^3
-		mustParseSint("10000"),                                                                                                 // 10^4
-		mustParseSint("100000"),                                                                                                // 10^5
-		mustParseSint("1000000"),                                                                                               // 10^6
-		mustParseSint("10000000"),                                                                                              // 10^7
-		mustParseSint("100000000"),                                                                                             // 10^8
-		mustParseSint("1000000000"),                                                                                            // 10^9
-		mustParseSint("10000000000"),                                                                                           // 10^10
-		mustParseSint("100000000000"),                                                                                          // 10^11
-		mustParseSint("1000000000000"),                                                                                         // 10^12
-		mustParseSint("10000000000000"),                                                                                        // 10^13
-		mustParseSint("100000000000000"),                                                                                       // 10^14
-		mustParseSint("1000000000000000"),                                                                                      // 10^15
-		mustParseSint("10000000000000000"),                                                                                     // 10^16
-		mustParseSint("100000000000000000"),                                                                                    // 10^17
-		mustParseSint("1000000000000000000"),                                                                                   // 10^18
-		mustParseSint("10000000000000000000"),                                                                                  // 10^19
-		mustParseSint("100000000000000000000"),                                                                                 // 10^20
-		mustParseSint("1000000000000000000000"),                                                                                // 10^21
-		mustParseSint("10000000000000000000000"),                                                                               // 10^22
-		mustParseSint("100000000000000000000000"),                                                                              // 10^23
-		mustParseSint("1000000000000000000000000"),                                                                             // 10^24
-		mustParseSint("10000000000000000000000000"),                                                                            // 10^25
-		mustParseSint("100000000000000000000000000"),                                                                           // 10^26
-		mustParseSint("1000000000000000000000000000"),                                                                          // 10^27
-		mustParseSint("10000000000000000000000000000"),                                                                         // 10^28
-		mustParseSint("100000000000000000000000000000"),                                                                        // 10^29
-		mustParseSint("1000000000000000000000000000000"),                                                                       // 10^30
-		mustParseSint("10000000000000000000000000000000"),                                                                      // 10^31
-		mustParseSint("100000000000000000000000000000000"),                                                                     // 10^32
-		mustParseSint("1000000000000000000000000000000000"),                                                                    // 10^33
-		mustParseSint("10000000000000000000000000000000000"),                                                                   // 10^34
-		mustParseSint("100000000000000000000000000000000000"),                                                                  // 10^35
-		mustParseSint("1000000000000000000000000000000000000"),                                                                 // 10^36
-		mustParseSint("10000000000000000000000000000000000000"),                                                                // 10^37
-		mustParseSint("100000000000000000000000000000000000000"),                                                               // 10^38
-		mustParseSint("1000000000000000000000000000000000000000"),                                                              // 10^39
-		mustParseSint("10000000000000000000000000000000000000000"),                                                             // 10^40
-		mustParseSint("100000000000000000000000000000000000000000"),                                                            // 10^41
-		mustParseSint("1000000000000000000000000000000000000000000"),                                                           // 10^42
-		mustParseSint("10000000000000000000000000000000000000000000"),                                                          // 10^43
-		mustParseSint("100000000000000000000000000000000000000000000"),                                                         // 10^44
-		mustParseSint("1000000000000000000000000000000000000000000000"),                                                        // 10^45
-		mustParseSint("10000000000000000000000000000000000000000000000"),                                                       // 10^46
-		mustParseSint("100000000000000000000000000000000000000000000000"),                                                      // 10^47
-		mustParseSint("1000000000000000000000000000000000000000000000000"),                                                     // 10^48
-		mustParseSint("10000000000000000000000000000000000000000000000000"),                                                    // 10^49
-		mustParseSint("100000000000000000000000000000000000000000000000000"),                                                   // 10^50
-		mustParseSint("1000000000000000000000000000000000000000000000000000"),                                                  // 10^51
-		mustParseSint("10000000000000000000000000000000000000000000000000000"),                                                 // 10^52
-		mustParseSint("100000000000000000000000000000000000000000000000000000"),                                                // 10^53
-		mustParseSint("1000000000000000000000000000000000000000000000000000000"),                                               // 10^54
-		mustParseSint("10000000000000000000000000000000000000000000000000000000"),                                              // 10^55
-		mustParseSint("100000000000000000000000000000000000000000000000000000000"),                                             // 10^56
-		mustParseSint("1000000000000000000000000000000000000000000000000000000000"),                                            // 10^57
-		mustParseSint("10000000000000000000000000000000000000000000000000000000000"),                                           // 10^58
-		mustParseSint("100000000000000000000000000000000000000000000000000000000000"),                                          // 10^59
-		mustParseSint("1000000000000000000000000000000000000000000000000000000000000"),                                         // 10^60
-		mustParseSint("10000000000000000000000000000000000000000000000000000000000000"),                                        // 10^61
-		mustParseSint("100000000000000000000000000000000000000000000000000000000000000"),                                       // 10^62
-		mustParseSint("1000000000000000000000000000000000000000000000000000000000000000"),                                      // 10^63
-		mustParseSint("10000000000000000000000000000000000000000000000000000000000000000"),                                     // 10^64
-		mustParseSint("100000000000000000000000000000000000000000000000000000000000000000"),                                    // 10^65
-		mustParseSint("1000000000000000000000000000000000000000000000000000000000000000000"),                                   // 10^66
-		mustParseSint("10000000000000000000000000000000000000000000000000000000000000000000"),                                  // 10^67
-		mustParseSint("100000000000000000000000000000000000000000000000000000000000000000000"),                                 // 10^68
-		mustParseSint("1000000000000000000000000000000000000000000000000000000000000000000000"),                                // 10^69
-		mustParseSint("10000000000000000000000000000000000000000000000000000000000000000000000"),                               // 10^70
-		mustParseSint("100000000000000000000000000000000000000000000000000000000000000000000000"),                              // 10^71
-		mustParseSint("1000000000000000000000000000000000000000000000000000000000000000000000000"),                             // 10^72
-		mustParseSint("10000000000000000000000000000000000000000000000000000000000000000000000000"),                            // 10^73
-		mustParseSint("100000000000000000000000000000000000000000000000000000000000000000000000000"),                           // 10^74
-		mustParseSint("1000000000000000000000000000000000000000000000000000000000000000000000000000"),                          // 10^75
-		mustParseSint("10000000000000000000000000000000000000000000000000000000000000000000000000000"),                         // 10^76
-		mustParseSint("100000000000000000000000000000000000000000000000000000000000000000000000000000"),                        // 10^77
-		mustParseSint("1000000000000000000000000000000000000000000000000000000000000000000000000000000"),                       // 10^78
-		mustParseSint("10000000000000000000000000000000000000000000000000000000000000000000000000000000"),                      // 10^79
-		mustParseSint("100000000000000000000000000000000000000000000000000000000000000000000000000000000"),                     // 10^80
-		mustParseSint("1000000000000000000000000000000000000000000000000000000000000000000000000000000000"),                    // 10^81
-		mustParseSint("10000000000000000000000000000000000000000000000000000000000000000000000000000000000"),                   // 10^82
-		mustParseSint("100000000000000000000000000000000000000000000000000000000000000000000000000000000000"),                  // 10^83
-		mustParseSint("1000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),                 // 10^84
-		mustParseSint("10000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),                // 10^85
-		mustParseSint("100000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),               // 10^86
-		mustParseSint("1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),              // 10^87
-		mustParseSint("10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),             // 10^88
-		mustParseSint("100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),            // 10^89
-		mustParseSint("1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),           // 10^90
-		mustParseSint("10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),          // 10^91
-		mustParseSint("100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),         // 10^92
-		mustParseSint("1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),        // 10^93
-		mustParseSint("10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),       // 10^94
-		mustParseSint("100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),      // 10^95
-		mustParseSint("1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),     // 10^96
-		mustParseSint("10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),    // 10^97
-		mustParseSint("100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),   // 10^98
-		mustParseSint("1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),  // 10^99
-		mustParseSint("10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"), // 10^100
-	}
-)
+// spow10 is a cache of powers of 10.
+var spow10 = [...]*sint{
+	newSintFromPow10(0),
+	newSintFromPow10(1),
+	newSintFromPow10(2),
+	newSintFromPow10(3),
+	newSintFromPow10(4),
+	newSintFromPow10(5),
+	newSintFromPow10(6),
+	newSintFromPow10(7),
+	newSintFromPow10(8),
+	newSintFromPow10(9),
+	newSintFromPow10(10),
+	newSintFromPow10(11),
+	newSintFromPow10(12),
+	newSintFromPow10(13),
+	newSintFromPow10(14),
+	newSintFromPow10(15),
+	newSintFromPow10(16),
+	newSintFromPow10(17),
+	newSintFromPow10(18),
+	newSintFromPow10(19),
+	newSintFromPow10(20),
+	newSintFromPow10(21),
+	newSintFromPow10(22),
+	newSintFromPow10(23),
+	newSintFromPow10(24),
+	newSintFromPow10(25),
+	newSintFromPow10(26),
+	newSintFromPow10(27),
+	newSintFromPow10(28),
+	newSintFromPow10(29),
+	newSintFromPow10(30),
+	newSintFromPow10(31),
+	newSintFromPow10(32),
+	newSintFromPow10(33),
+	newSintFromPow10(34),
+	newSintFromPow10(35),
+	newSintFromPow10(36),
+	newSintFromPow10(37),
+	newSintFromPow10(38),
+	newSintFromPow10(39),
+	newSintFromPow10(40),
+	newSintFromPow10(41),
+	newSintFromPow10(42),
+	newSintFromPow10(43),
+	newSintFromPow10(44),
+	newSintFromPow10(45),
+	newSintFromPow10(46),
+	newSintFromPow10(47),
+	newSintFromPow10(48),
+	newSintFromPow10(49),
+	newSintFromPow10(50),
+	newSintFromPow10(51),
+	newSintFromPow10(52),
+	newSintFromPow10(53),
+	newSintFromPow10(54),
+	newSintFromPow10(55),
+	newSintFromPow10(56),
+	newSintFromPow10(57),
+	newSintFromPow10(58),
+	newSintFromPow10(59),
+	newSintFromPow10(60),
+	newSintFromPow10(61),
+	newSintFromPow10(62),
+	newSintFromPow10(63),
+	newSintFromPow10(64),
+}
 
-// newSint converts uint to big.Int.
-func newSint(i uint) *sint {
-	z := new(big.Int).SetUint64(uint64(i))
+// newSintFromFint converts fint to *sint.
+func newSintFromFint(x fint) *sint {
+	z := new(big.Int).SetUint64(uint64(x))
 	return (*sint)(z)
 }
 
-// mustParseSint converts string to big.Int.
-func mustParseSint(str string) *sint {
-	z, ok := new(big.Int).SetString(str, 10)
-	if !ok {
-		panic(fmt.Sprintf("mustParseSint(%q) failed: parsing error", str)) // unexpected by design
-	}
-	if z.Sign() < 0 {
-		panic(fmt.Sprintf("mustParseSint(%q) failed: negative number", str)) // unexpected by design
-	}
+// newSintFromPow10 returns 10^exp as *sint.
+func newSintFromPow10(exp int) *sint {
+	z := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(exp)), nil)
 	return (*sint)(z)
 }
 
-func (x *sint) sign() int {
-	return (*big.Int)(x).Sign()
+func (z *sint) sign() int {
+	return (*big.Int)(z).Sign()
 }
 
-func (x *sint) cmp(y *sint) int {
-	return (*big.Int)(x).Cmp((*big.Int)(y))
+func (z *sint) cmp(x *sint) int {
+	return (*big.Int)(z).Cmp((*big.Int)(x))
 }
 
-// prec returns length of sint in decimal digits.
-func (x *sint) prec() int {
-	if x.sign() < 0 {
-		panic(fmt.Sprintf("%v.prec() failed: negative number", x)) // unexpected by design
-	}
-	if max := sintPow10[len(sintPow10)-1]; x.cmp(max) > 0 {
-		panic(fmt.Sprintf("%v.prec() failed: number overflow", x)) // unexpected by design
-	}
-	left, right := 0, len(sintPow10)
-	for left < right {
-		mid := (left + right) / 2
-		if x.cmp(sintPow10[mid]) < 0 {
-			right = mid
-		} else {
-			left = mid + 1
-		}
-	}
-	return left
-}
-
-// hasPrec returns true if x has given number of digits or more.
-func (x *sint) hasPrec(prec int) bool {
-	if prec < 1 {
-		return true
-	}
-	return x.cmp(sintPow10[prec-1]) >= 0
+func (z *sint) string() string {
+	return (*big.Int)(z).String()
 }
 
 func (z *sint) setSint(x *sint) {
@@ -371,19 +317,22 @@ func (z *sint) setFint(x fint) {
 	(*big.Int)(z).SetUint64(uint64(x))
 }
 
-// fint converts big.Int to uint64.
-func (x *sint) fint() fint {
-	return fint((*big.Int)(x).Uint64())
-}
-
-// inc calcualtes z = x + 1.
-func (z *sint) inc(x *sint) {
-	(*big.Int)(z).Add((*big.Int)(x), (*big.Int)(sintOne))
+// fint converts *sint to fint.
+// If z cannot be represented as fint, the result is undefined.
+func (z *sint) fint() fint {
+	i := (*big.Int)(z).Uint64()
+	return fint(i)
 }
 
 // add calculates z = x + y.
 func (z *sint) add(x, y *sint) {
 	(*big.Int)(z).Add((*big.Int)(x), (*big.Int)(y))
+}
+
+// inc calcualtes z = x + 1.
+func (z *sint) inc(x *sint) {
+	y := spow10[0]
+	z.add(x, y)
 }
 
 // sub calculates z = x - y.
@@ -422,29 +371,46 @@ func (z *sint) quoRem(x, y *sint) *sint {
 	return (*sint)(r)
 }
 
-func (x *sint) isOdd() bool {
-	return (*big.Int)(x).Bit(0) != 0
+func (z *sint) isOdd() bool {
+	return (*big.Int)(z).Bit(0) != 0
 }
 
-// lsh (Shift Left) calculates x * 10^shift.
+// lsh (Left Shift) calculates x * 10^shift.
 func (z *sint) lsh(x *sint, shift int) {
-	y := sintPow10[shift]
+	var y *sint
+	if shift < len(spow10) {
+		y = spow10[shift]
+	} else {
+		y = newSintFromPow10(shift)
+	}
 	z.mul(x, y)
 }
 
-// fsa (Fused Shift and Addition) calculates x * 10^shift + y
+// fsa (Fused Shift and Addition) calculates x * 10^shift + y.
 func (z *sint) fsa(shift int, y byte) {
 	z.lsh(z, shift)
-	z.add(z, newSint(uint(y)))
+	z.add(z, newSintFromFint(fint(y)))
 }
 
-// rshEven (Shift Right) calculates x / 10^shift and rounds result using "half to even" rule.
-func (z *sint) rshEven(x *sint, shift int) {
-	if shift == 0 {
+// rshHalfEven (Right Shift) calculates x / 10^shift and
+// rounds result using "half to even" rule.
+func (z *sint) rshHalfEven(x *sint, shift int) {
+	// Special cases
+	switch {
+	case x.sign() == 0:
+		z.setFint(0)
+		return
+	case shift <= 0:
 		z.setSint(x)
 		return
 	}
-	y := sintPow10[shift]
+	// General case
+	var y *sint
+	if shift < len(spow10) {
+		y = spow10[shift]
+	} else {
+		y = newSintFromPow10(shift)
+	}
 	r := z.quoRem(x, y)
 	r.dbl(r) // r = r * 2
 	switch y.cmp(r) {
@@ -456,4 +422,46 @@ func (z *sint) rshEven(x *sint, shift int) {
 			z.inc(z) // z = z + 1
 		}
 	}
+}
+
+// prec returns length of *sint in decimal digits.
+// It considers 0 to have zero digits.
+// If *sint is negative, the result is unpredictable.
+//
+// z.prec() provides a more efficient approach than len(z.string())
+// when dealing with decimals having less than len(spow10) digits.
+func (z *sint) prec() int {
+	// Special case
+	if z.cmp(spow10[len(spow10)-1]) > 0 {
+		return len(z.string())
+	}
+	// General case
+	left, right := 0, len(spow10)
+	for left < right {
+		mid := (left + right) / 2
+		if z.cmp(spow10[mid]) < 0 {
+			right = mid
+		} else {
+			left = mid + 1
+		}
+	}
+	return left
+}
+
+// hasPrec checks if *sint has a given number of digits or more.
+// It considers 0 to have zero digits.
+// If *sint is negative, the result is unpredictable.
+//
+// z.hasPrec() provides a more efficient approach than (z.prec() >= prec)
+// when dealing with decimals having less than len(spow10) digits.
+func (z *sint) hasPrec(prec int) bool {
+	// Special cases
+	switch {
+	case prec < 1:
+		return true
+	case prec > len(spow10):
+		return len(z.string()) >= prec
+	}
+	// General case
+	return z.cmp(spow10[prec-1]) >= 0
 }

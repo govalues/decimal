@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.0] - 2023-06-03
+
+### Changed
+
+- All methods now return errors, instead of panicking.
+- Improved test coverage.
+
 ## [0.0.13] - 2023-04-22
 
 ### Fixed
