@@ -1,11 +1,20 @@
 # Changelog
 
+## [0.1.1] - 2023-06-10
+
+### Changed
+
+- New method returns error if scale is out of range.
+
 ## [0.1.0] - 2023-06-03
 
 ### Changed
 
 - All methods now return errors, instead of panicking.
-- Improved test coverage.
+- Implemented Decimal.Pad method.
+- Implemented Decimal.PowExact method.
+- Renamed Decimal.Round to Decimal.Rescale.
+- Renamed Decimal.Reduce to Decimal.Trim.
 
 ## [0.0.13] - 2023-04-22
 
@@ -83,7 +92,7 @@
 
 ### Fixed
 
-- Fixed index out of range in decimal.Parse.
+- Fixed index out of range in Parse.
 - Rounding error in Decimal.Quo.
 
 ## [0.0.3] - 2023-03-18
@@ -91,13 +100,13 @@
 ### Changed
 
 - Removed errors from public API.
-- Renamed Fma to FMA.
+- Renamed Decimal.Fma to Decimal.FMA.
 
 ## [0.0.2] - 2023-03-13
 
 ### Added
 
-- Implemented fused multiply-addition for Decimal.
+- Implemented Decimal.Fma.
 
 ## [0.0.1] - 2023-02-28
 

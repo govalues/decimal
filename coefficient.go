@@ -82,6 +82,8 @@ func (x fint) dist(y fint) fint {
 func (x fint) lsh(shift int) (fint, bool) {
 	// Special cases
 	switch {
+	case x == 0:
+		return 0, true
 	case shift <= 0:
 		return x, true
 	case shift == 1 && x < maxFint/10: // to speed up common case

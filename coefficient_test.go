@@ -543,9 +543,9 @@ func TestSint_rshHalfEven(t *testing.T) {
 		{"18446744073709551615", 21, "0"},
 	}
 	for _, tt := range cases {
-		want := mustParseSint(tt.want)
 		got := mustParseSint(tt.z)
 		got.rshHalfEven(got, tt.shift)
+		want := mustParseSint(tt.want)
 		if got.cmp(want) != 0 {
 			t.Errorf("%v.rshHalfEven(%v) = %v, want %v", tt.z, tt.shift, got, want)
 		}
@@ -564,9 +564,9 @@ func TestSint_lsh(t *testing.T) {
 		{"1", 100, "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
 	}
 	for _, tt := range cases {
-		want := mustParseSint(tt.want)
 		got := mustParseSint(tt.z)
 		got.lsh(got, tt.shift)
+		want := mustParseSint(tt.want)
 		if got.cmp(want) != 0 {
 			t.Errorf("%v.lsh(%v) = %v, want %v", tt.z, tt.shift, got, want)
 		}
