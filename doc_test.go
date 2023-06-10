@@ -158,17 +158,11 @@ func ExampleMustNew() {
 	fmt.Println(decimal.MustNew(-123, 2))
 	fmt.Println(decimal.MustNew(-123, 1))
 	fmt.Println(decimal.MustNew(-123, 0))
-	fmt.Println(decimal.MustNew(-123, -1))
-	fmt.Println(decimal.MustNew(-123, -2))
-	fmt.Println(decimal.MustNew(-123, -3))
 	// Output:
 	// -0.123
 	// -1.23
 	// -12.3
 	// -123
-	// -1230
-	// -12300
-	// -123000
 }
 
 func ExampleNew() {
@@ -176,17 +170,11 @@ func ExampleNew() {
 	fmt.Println(decimal.New(-123, 2))
 	fmt.Println(decimal.New(-123, 1))
 	fmt.Println(decimal.New(-123, 0))
-	fmt.Println(decimal.New(-123, -1))
-	fmt.Println(decimal.New(-123, -2))
-	fmt.Println(decimal.New(-123, -3))
 	// Output:
 	// -0.123 <nil>
 	// -1.23 <nil>
 	// -12.3 <nil>
 	// -123 <nil>
-	// -1230 <nil>
-	// -12300 <nil>
-	// -123000 <nil>
 }
 
 func ExampleDecimal_Zero() {

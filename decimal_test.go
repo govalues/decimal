@@ -9,19 +9,19 @@ import (
 )
 
 func TestDecimal_ZeroValue(t *testing.T) {
-	want := MustNew(0, 0)
 	got := Decimal{}
+	want := MustNew(0, 0)
 	if got != want {
 		t.Errorf("Decimal{} = %q, want %q", got, want)
 	}
 }
 
 func TestDecimal_Sizeof(t *testing.T) {
-	decimal := Decimal{}
+	d := Decimal{}
+	got := unsafe.Sizeof(d)
 	want := uintptr(16)
-	got := unsafe.Sizeof(decimal)
 	if got != want {
-		t.Errorf("unsafe.Sizeof(%q) = %v, want %v", decimal, got, want)
+		t.Errorf("unsafe.Sizeof(%q) = %v, want %v", d, got, want)
 	}
 }
 
@@ -36,42 +36,27 @@ func TestNew(t *testing.T) {
 			{math.MinInt64, 1, "-922337203685477580.8"},
 			{math.MinInt64, 2, "-92233720368547758.08"},
 			{math.MinInt64, 19, "-0.9223372036854775808"},
-			{math.MinInt64, 20, "-0.0922337203685477581"},
-			{math.MinInt64, 21, "-0.0092233720368547758"},
-			{math.MinInt64, 37, "-0.0000000000000000009"},
-			{math.MinInt64, 38, "-0.0000000000000000001"},
-			{math.MinInt64, 39, "0.0000000000000000000"},
-			{0, -1, "0"},
 			{0, 0, "0"},
 			{0, 1, "0.0"},
 			{0, 2, "0.00"},
 			{0, 3, "0.000"},
 			{0, 19, "0.0000000000000000000"},
-			{0, 20, "0.0000000000000000000"},
-			{1, -2, "100"},
-			{1, -1, "10"},
 			{1, 0, "1"},
 			{1, 1, "0.1"},
 			{1, 2, "0.01"},
 			{1, 19, "0.0000000000000000001"},
-			{1, 20, "0.0000000000000000000"},
 			{math.MaxInt64, 0, "9223372036854775807"},
 			{math.MaxInt64, 1, "922337203685477580.7"},
 			{math.MaxInt64, 2, "92233720368547758.07"},
 			{math.MaxInt64, 19, "0.9223372036854775807"},
-			{math.MaxInt64, 20, "0.0922337203685477581"},
-			{math.MaxInt64, 21, "0.0092233720368547758"},
-			{math.MaxInt64, 37, "0.0000000000000000009"},
-			{math.MaxInt64, 38, "0.0000000000000000001"},
-			{math.MaxInt64, 39, "0.0000000000000000000"},
 		}
 		for _, tt := range tests {
-			want := MustParse(tt.want)
 			got, err := New(tt.coef, tt.scale)
 			if err != nil {
 				t.Errorf("New(%v, %v) failed: %v", tt.coef, tt.scale, err)
 				continue
 			}
+			want := MustParse(tt.want)
 			if got != want {
 				t.Errorf("New(%v, %v) = %q, want %q", tt.coef, tt.scale, got, want)
 			}
@@ -85,6 +70,13 @@ func TestNew(t *testing.T) {
 		}{
 			"overflow 1": {math.MinInt64, -1},
 			"overflow 2": {math.MaxInt64, -1},
+			"scale 3":    {0, -1},
+			"scale 4":    {1, -2},
+			"scale 5":    {1, -1},
+			"scale 6":    {math.MinInt64, 20},
+			"scale 7":    {math.MinInt64, 39},
+			"scale 8":    {math.MaxInt64, 20},
+			"scale 9":    {math.MaxInt64, 39},
 		}
 		for _, tt := range tests {
 			_, err := New(tt.coef, tt.scale)
@@ -235,10 +227,8 @@ func TestParse(t *testing.T) {
 			"overflow 5":       {"123456789012345678901234567890123456789", 0},
 			"overflow 6":       {"0.123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789", 0},
 			"overflow 7":       {"0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", 0},
-			"scale 1":          {"0", -1},
-			"scale 2":          {"0", MaxScale + 1},
-			"scale 3":          {"10", MaxScale},
-			"scale 4":          {"100", MaxScale - 1},
+			"scale 1":          {"10", MaxScale},
+			"scale 2":          {"100", MaxScale - 1},
 		}
 		for name, tt := range tests {
 			t.Run(name, func(t *testing.T) {
@@ -299,7 +289,7 @@ func TestDecimal_String(t *testing.T) {
 
 func TestDecimal_Float64(t *testing.T) {
 	tests := []struct {
-		decimal   string
+		d         string
 		wantFloat float64
 		wantOk    bool
 	}{
@@ -316,7 +306,7 @@ func TestDecimal_Float64(t *testing.T) {
 		{"-0.0000000000000000001", -0.0000000000000000001, true},
 	}
 	for _, tt := range tests {
-		d := MustParse(tt.decimal)
+		d := MustParse(tt.d)
 		gotFloat, gotOk := d.Float64()
 		if gotFloat != tt.wantFloat || gotOk != tt.wantOk {
 			t.Errorf("%q.Float64() = [%v %v], want [%v %v]", d, gotFloat, gotOk, tt.wantFloat, tt.wantOk)
@@ -326,7 +316,7 @@ func TestDecimal_Float64(t *testing.T) {
 
 func TestDecimal_Int64(t *testing.T) {
 	tests := []struct {
-		decimal           string
+		d                 string
 		wantInt, wantFrac int64
 		wantOk            bool
 	}{
@@ -376,7 +366,7 @@ func TestDecimal_Int64(t *testing.T) {
 		{"-0.9999999999999999999", 0, 0, false},
 	}
 	for _, tt := range tests {
-		d := MustParse(tt.decimal)
+		d := MustParse(tt.d)
 		gotInt, gotFrac, gotOk := d.Int64()
 		if gotInt != tt.wantInt || gotFrac != tt.wantFrac || gotOk != tt.wantOk {
 			t.Errorf("%q.Int64 = [%v %v %v], want [%v %v %v]", d, gotInt, gotFrac, gotOk, tt.wantInt, tt.wantFrac, tt.wantOk)
@@ -502,8 +492,8 @@ func TestDecimal_Format(t *testing.T) {
 
 func TestDecimal_Prec(t *testing.T) {
 	tests := []struct {
-		decimal string
-		want    int
+		d    string
+		want int
 	}{
 		{"0000", 0},
 		{"000", 0},
@@ -573,10 +563,10 @@ func TestDecimal_Prec(t *testing.T) {
 		{"1000000000000000000", 19},
 	}
 	for _, tt := range tests {
-		d := MustParse(tt.decimal)
+		d := MustParse(tt.d)
 		got := d.Prec()
 		if got != tt.want {
-			t.Errorf("%q.Prec() = %v, want %v", tt.decimal, got, tt.want)
+			t.Errorf("%q.Prec() = %v, want %v", tt.d, got, tt.want)
 		}
 	}
 }
@@ -584,9 +574,9 @@ func TestDecimal_Prec(t *testing.T) {
 func TestDecimal_Rescale(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
-			decimal string
-			scale   int
-			want    string
+			d     string
+			scale int
+			want  string
 		}{
 			// Zeroes
 			{"0", 0, "0"},
@@ -657,7 +647,7 @@ func TestDecimal_Rescale(t *testing.T) {
 			{"-1.8", 0, "-2"},
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimal)
+			d := MustParse(tt.d)
 			got, err := d.Rescale(tt.scale)
 			if err != nil {
 				t.Errorf("%q.Rescale(%v) failed: %v", d, tt.scale, err)
@@ -672,8 +662,8 @@ func TestDecimal_Rescale(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
-			decimal string
-			scale   int
+			d     string
+			scale int
 		}{
 			"overflow 1":    {"1000000000000000000", 1},
 			"overflow 2":    {"100000000000000000", 2},
@@ -685,10 +675,10 @@ func TestDecimal_Rescale(t *testing.T) {
 			"large scale 1": {"1", 20},
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimal)
+			d := MustParse(tt.d)
 			_, err := d.Rescale(tt.scale)
 			if err == nil {
-				t.Errorf("%q.Rescale(%v) did not fail", tt.decimal, tt.scale)
+				t.Errorf("%q.Rescale(%v) did not fail", tt.d, tt.scale)
 			}
 		}
 	})
@@ -697,7 +687,7 @@ func TestDecimal_Rescale(t *testing.T) {
 func TestDecimal_Quantize(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
-			decimalD, decimalE, want string
+			d, e, want string
 		}{
 			{"0", "0", "0"},
 			{"0", "0.0", "0.0"},
@@ -722,14 +712,14 @@ func TestDecimal_Quantize(t *testing.T) {
 			{"9.9999", "1.00", "10.00"},
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimalD)
-			e := MustParse(tt.decimalE)
-			want := MustParse(tt.want)
+			d := MustParse(tt.d)
+			e := MustParse(tt.e)
 			got, err := d.Quantize(e)
 			if err != nil {
 				t.Errorf("%q.Quantize(%q) failed: %v", d, e, err)
 				continue
 			}
+			want := MustParse(tt.want)
 			if got != want {
 				t.Errorf("%q.Quantize(%q) = %q, want %q", d, e, got, want)
 			}
@@ -740,9 +730,9 @@ func TestDecimal_Quantize(t *testing.T) {
 func TestDecimal_Pad(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
-			decimal string
-			scale   int
-			want    string
+			d     string
+			scale int
+			want  string
 		}{
 			// Zeroes
 			{"0", 0, "0"},
@@ -770,7 +760,7 @@ func TestDecimal_Pad(t *testing.T) {
 			{"0.009", 2, "0.009"},
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimal)
+			d := MustParse(tt.d)
 			got, err := d.Pad(tt.scale)
 			if err != nil {
 				t.Errorf("%q.Pad(%v) failed: %v", d, tt.scale, err)
@@ -785,8 +775,8 @@ func TestDecimal_Pad(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
-			decimal string
-			scale   int
+			d     string
+			scale int
 		}{
 			"overflow 1":    {"1000000000000000000", 1},
 			"overflow 2":    {"100000000000000000", 2},
@@ -798,10 +788,10 @@ func TestDecimal_Pad(t *testing.T) {
 			"large scale 1": {"1", 20},
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimal)
+			d := MustParse(tt.d)
 			_, err := d.Pad(tt.scale)
 			if err == nil {
-				t.Errorf("%q.Pad(%v) did not fail", tt.decimal, tt.scale)
+				t.Errorf("%q.Pad(%v) did not fail", tt.d, tt.scale)
 			}
 		}
 	})
@@ -809,9 +799,9 @@ func TestDecimal_Pad(t *testing.T) {
 
 func TestDecimal_Round(t *testing.T) {
 	tests := []struct {
-		decimal string
-		scale   int
-		want    string
+		d     string
+		scale int
+		want  string
 	}{
 		// Zeroes
 		{"0", -1, "0"},
@@ -884,7 +874,7 @@ func TestDecimal_Round(t *testing.T) {
 		{"-1.8", 0, "-2"},
 	}
 	for _, tt := range tests {
-		d := MustParse(tt.decimal)
+		d := MustParse(tt.d)
 		got := d.Round(tt.scale)
 		want := MustParse(tt.want)
 		if got != want {
@@ -895,9 +885,9 @@ func TestDecimal_Round(t *testing.T) {
 
 func TestDecimal_Trunc(t *testing.T) {
 	tests := []struct {
-		decimal string
-		scale   int
-		want    string
+		d     string
+		scale int
+		want  string
 	}{
 		// Zeroes
 		{"0", -1, "0"},
@@ -969,9 +959,9 @@ func TestDecimal_Trunc(t *testing.T) {
 		{"-1.8", 0, "-1"},
 	}
 	for _, tt := range tests {
-		d := MustParse(tt.decimal)
-		want := MustParse(tt.want)
+		d := MustParse(tt.d)
 		got := d.Trunc(tt.scale)
+		want := MustParse(tt.want)
 		if got != want {
 			t.Errorf("%q.Trunc(%v) = %q, want %q", d, tt.scale, got, want)
 		}
@@ -980,9 +970,9 @@ func TestDecimal_Trunc(t *testing.T) {
 
 func TestDecimal_Ceil(t *testing.T) {
 	tests := []struct {
-		decimal string
-		scale   int
-		want    string
+		d     string
+		scale int
+		want  string
 	}{
 		// Zeroes
 		{"0", -1, "0"},
@@ -1065,9 +1055,9 @@ func TestDecimal_Ceil(t *testing.T) {
 		{"-1.8", 0, "-1"},
 	}
 	for _, tt := range tests {
-		d := MustParse(tt.decimal)
-		want := MustParse(tt.want)
+		d := MustParse(tt.d)
 		got := d.Ceil(tt.scale)
+		want := MustParse(tt.want)
 		if got != want {
 			t.Errorf("%q.Ceil(%v) = %q, want %q", d, tt.scale, got, want)
 		}
@@ -1076,9 +1066,9 @@ func TestDecimal_Ceil(t *testing.T) {
 
 func TestDecimal_Floor(t *testing.T) {
 	tests := []struct {
-		decimal string
-		scale   int
-		want    string
+		d     string
+		scale int
+		want  string
 	}{
 		// Zeroes
 		{"0", -1, "0"},
@@ -1161,9 +1151,9 @@ func TestDecimal_Floor(t *testing.T) {
 		{"-1.8", 0, "-2"},
 	}
 	for _, tt := range tests {
-		d := MustParse(tt.decimal)
-		want := MustParse(tt.want)
+		d := MustParse(tt.d)
 		got := d.Floor(tt.scale)
+		want := MustParse(tt.want)
 		if got != want {
 			t.Errorf("%q.Floor(%v) = %q, want %q", d, tt.scale, got, want)
 		}
@@ -1207,9 +1197,9 @@ func TestDecimal_MinScale(t *testing.T) {
 
 func TestDecimal_Trim(t *testing.T) {
 	tests := []struct {
-		decimal string
-		scale   int
-		want    string
+		d     string
+		scale int
+		want  string
 	}{
 		{"0.000000", 0, "0"},
 		{"0.000000", 2, "0.00"},
@@ -1224,9 +1214,9 @@ func TestDecimal_Trim(t *testing.T) {
 		{"-0.0000010", 0, "-0.000001"},
 	}
 	for _, tt := range tests {
-		d := MustParse(tt.decimal)
-		want := MustParse(tt.want)
+		d := MustParse(tt.d)
 		got := d.Trim(tt.scale)
+		want := MustParse(tt.want)
 		if got != want {
 			t.Errorf("%q.Trim(%v) = %q, want %q", d, tt.scale, got, want)
 		}
@@ -1294,12 +1284,12 @@ func TestDecimal_Add(t *testing.T) {
 		for _, tt := range tests {
 			d := MustParse(tt.d)
 			e := MustParse(tt.e)
-			want := MustParse(tt.want)
 			got, err := d.Add(e)
 			if err != nil {
 				t.Errorf("%q.Add(%q) failed: %v", d, e, err)
 				continue
 			}
+			want := MustParse(tt.want)
 			if got != want {
 				t.Errorf("%q.Add(%q) = %q, want %q", d, e, got, want)
 			}
@@ -1308,19 +1298,18 @@ func TestDecimal_Add(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
-			decimalD, decimalE string
-			scale              int
+			d, e  string
+			scale int
 		}{
 			"overflow 1": {"9999999999999999999", "1", 0},
 			"overflow 2": {"9999999999999999999", "0.6", 0},
 			"overflow 3": {"-9999999999999999999", "-1", 0},
 			"overflow 4": {"-9999999999999999999", "-0.6", 0},
-			"scale 1":    {"0", "0", -1},
-			"scale 2":    {"0", "0", MaxScale + 1},
+			"scale 1":    {"1", "1", MaxScale},
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimalD)
-			e := MustParse(tt.decimalE)
+			d := MustParse(tt.d)
+			e := MustParse(tt.e)
 			_, err := d.AddExact(e, tt.scale)
 			if err == nil {
 				t.Errorf("%q.AddExact(%q, %v) did not fail", d, e, tt.scale)
@@ -1332,7 +1321,7 @@ func TestDecimal_Add(t *testing.T) {
 func TestDecimal_Mul(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
-			decimalD, decimalE, want string
+			d, e, want string
 		}{
 			{"2", "2", "4"},
 			{"2", "3", "6"},
@@ -1360,14 +1349,14 @@ func TestDecimal_Mul(t *testing.T) {
 			{"6963.788300835654596", "0.001436", "10.00000000000000000"},
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimalD)
-			e := MustParse(tt.decimalE)
-			want := MustParse(tt.want)
+			d := MustParse(tt.d)
+			e := MustParse(tt.e)
 			got, err := d.Mul(e)
 			if err != nil {
 				t.Errorf("%q.Mul(%q) failed: %v", d, e, err)
 				continue
 			}
+			want := MustParse(tt.want)
 			if got != want {
 				t.Errorf("%q.Mul(%q) = %q, want %q", d, e, got, want)
 			}
@@ -1376,18 +1365,17 @@ func TestDecimal_Mul(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
-			decimalD, decimalE string
-			scale              int
+			d, e  string
+			scale int
 		}{
 			"overflow 1": {"10000000000", "1000000000", 0},
 			"overflow 2": {"1000000000000000000", "10", 0},
 			"overflow 3": {"4999999999999999995", "-2.000000000000000002", 0},
-			"scale 1":    {"0", "0", -1},
-			"scale 2":    {"0", "0", MaxScale + 1},
+			"scale 1":    {"1", "1", MaxScale},
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimalD)
-			e := MustParse(tt.decimalE)
+			d := MustParse(tt.d)
+			e := MustParse(tt.e)
 			_, err := d.MulExact(e, tt.scale)
 			if err == nil {
 				t.Errorf("%q.MulExact(%q, %v) did not fail", d, e, tt.scale)
@@ -1399,7 +1387,7 @@ func TestDecimal_Mul(t *testing.T) {
 func TestDecimal_FMA(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
-			decimalD, decimalE, decimalF, want string
+			d, e, f, want string
 		}{
 			// Sign
 			{"2", "3", "4", "10"},
@@ -1498,15 +1486,15 @@ func TestDecimal_FMA(t *testing.T) {
 		}
 
 		for _, tt := range tests {
-			d := MustParse(tt.decimalD)
-			e := MustParse(tt.decimalE)
-			f := MustParse(tt.decimalF)
-			want := MustParse(tt.want)
+			d := MustParse(tt.d)
+			e := MustParse(tt.e)
+			f := MustParse(tt.f)
 			got, err := d.FMA(e, f)
 			if err != nil {
 				t.Errorf("%q.FMA(%q, %q) failed: %v", d, e, f, err)
 				continue
 			}
+			want := MustParse(tt.want)
 			if got != want {
 				t.Errorf("%q.FMA(%q, %q) = %q, want %q", d, e, f, got, want)
 			}
@@ -1515,8 +1503,8 @@ func TestDecimal_FMA(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
-			decimalD, decimalE, decimalF string
-			scale                        int
+			d, e, f string
+			scale   int
 		}{
 			"overflow 1": {"1", "9999999999999999999", "1", 0},
 			"overflow 2": {"1", "9999999999999999999", "0.6", 0},
@@ -1524,13 +1512,12 @@ func TestDecimal_FMA(t *testing.T) {
 			"overflow 4": {"1", "-9999999999999999999", "-0.6", 0},
 			"overflow 5": {"10000000000", "1000000000", "0", 0},
 			"overflow 6": {"1000000000000000000", "10", "0", 0},
-			"scale 1":    {"0", "0", "0", -1},
-			"scale 2":    {"0", "0", "0", MaxScale + 1},
+			"scale 1":    {"1", "1", "1", MaxScale + 1},
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimalD)
-			e := MustParse(tt.decimalE)
-			f := MustParse(tt.decimalF)
+			d := MustParse(tt.d)
+			e := MustParse(tt.e)
+			f := MustParse(tt.f)
 			_, err := d.FMAExact(e, f, tt.scale)
 			if err == nil {
 				t.Errorf("%q.FMAExact(%q, %q, %v) did not fail", d, e, f, tt.scale)
@@ -1664,12 +1651,12 @@ func TestDecimal_Pow(t *testing.T) {
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.decimal)
-			want := MustParse(tt.want)
 			got, err := d.Pow(tt.power)
 			if err != nil {
 				t.Errorf("%q.Pow(%d) failed: %v", d, tt.power, err)
 				continue
 			}
+			want := MustParse(tt.want)
 			if got != want {
 				t.Errorf("%q.Pow(%d) = %q, want %q", d, tt.power, got, want)
 			}
@@ -1683,8 +1670,7 @@ func TestDecimal_Pow(t *testing.T) {
 		}{
 			"overflow 1": {"2", 64, 0},
 			"overflow 2": {"10", 19, 0},
-			"scale 1":    {"1", 1, -1},
-			"scale 2":    {"1", 1, MaxScale + 1},
+			"scale 1":    {"1", 1, MaxScale},
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.decimal)
@@ -1710,8 +1696,8 @@ func TestDecimal_Abs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		d := MustParse(tt.d)
-		want := MustParse(tt.want)
 		got := d.Abs()
+		want := MustParse(tt.want)
 		if got != want {
 			t.Errorf("%q.Abs() = %q, want %q", d, got, want)
 		}
@@ -1720,7 +1706,7 @@ func TestDecimal_Abs(t *testing.T) {
 
 func TestDecimal_CopySign(t *testing.T) {
 	tests := []struct {
-		decimalD, decimalE, want string
+		d, e, want string
 	}{
 		{"10", "1", "10"},
 		{"10", "0", "10"},
@@ -1733,10 +1719,10 @@ func TestDecimal_CopySign(t *testing.T) {
 		{"-10", "-1", "-10"},
 	}
 	for _, tt := range tests {
-		d := MustParse(tt.decimalD)
-		e := MustParse(tt.decimalE)
-		want := MustParse(tt.want)
+		d := MustParse(tt.d)
+		e := MustParse(tt.e)
 		got := d.CopySign(e)
+		want := MustParse(tt.want)
 		if got != want {
 			t.Errorf("%q.CopySign(%q) = %q, want %q", d, e, got, want)
 		}
@@ -1757,8 +1743,8 @@ func TestDecimal_Neg(t *testing.T) {
 	}
 	for _, tt := range tests {
 		d := MustParse(tt.decimal)
-		want := MustParse(tt.want)
 		got := d.Neg()
+		want := MustParse(tt.want)
 		if got != want {
 			t.Errorf("%q.Neg() = %q, want %q", d, got, want)
 		}
@@ -1768,7 +1754,7 @@ func TestDecimal_Neg(t *testing.T) {
 func TestDecimal_Quo(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
-			decimalD, decimalE, want string
+			d, e, want string
 		}{
 			// Zeros
 			{"0", "1.000", "0"},
@@ -1874,14 +1860,14 @@ func TestDecimal_Quo(t *testing.T) {
 			{"9999999999999999999", "5000000000000000000", "2"},
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimalD)
-			e := MustParse(tt.decimalE)
-			want := MustParse(tt.want)
+			d := MustParse(tt.d)
+			e := MustParse(tt.e)
 			got, err := d.Quo(e)
 			if err != nil {
 				t.Errorf("%q.Quo(%q) failed: %v", d, e, err)
 				continue
 			}
+			want := MustParse(tt.want)
 			if got != want {
 				t.Errorf("%q.Quo(%q) = %q, want %q", d, e, got, want)
 			}
@@ -1890,17 +1876,16 @@ func TestDecimal_Quo(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
-			decimalD, decimalE string
-			scale              int
+			d, e  string
+			scale int
 		}{
 			"zero 1":     {"1", "0", 0},
 			"overflow 1": {"9999999999999999999", "0.001", 0},
-			"scale 1":    {"2", "1", -1},
-			"scale 2":    {"2", "1", MaxScale + 1},
+			"scale 1":    {"1", "1", MaxScale},
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimalD)
-			e := MustParse(tt.decimalE)
+			d := MustParse(tt.d)
+			e := MustParse(tt.e)
 			_, err := d.QuoExact(e, tt.scale)
 			if err == nil {
 				t.Errorf("%q.QuoExact(%q, %v) did not fail", d, e, tt.scale)
@@ -1912,7 +1897,7 @@ func TestDecimal_Quo(t *testing.T) {
 func TestDecimal_QuoRem(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
-			decimalD, decimalE, wantQuo, wantRem string
+			d, e, wantQuo, wantRem string
 		}{
 			// Zeros
 			{"0", "1.000", "0", "0.000"},
@@ -1993,15 +1978,15 @@ func TestDecimal_QuoRem(t *testing.T) {
 			{"1.000000000000000001", "0.000000000000000003", "333333333333333333", "0.000000000000000002"},
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimalD)
-			e := MustParse(tt.decimalE)
-			wantQuo := MustParse(tt.wantQuo)
-			wantRem := MustParse(tt.wantRem)
+			d := MustParse(tt.d)
+			e := MustParse(tt.e)
 			gotQuo, gotRem, err := d.QuoRem(e)
 			if err != nil {
 				t.Errorf("%q.QuoRem(%q) failed: %v", d, e, err)
 				continue
 			}
+			wantQuo := MustParse(tt.wantQuo)
+			wantRem := MustParse(tt.wantRem)
 			if gotQuo != wantQuo || gotRem != wantRem {
 				t.Errorf("%q.QuoRem(%q) = (%q, %q), want (%q, %q)", d, e, gotQuo, gotRem, wantQuo, wantRem)
 			}
@@ -2010,13 +1995,13 @@ func TestDecimal_QuoRem(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
-			decimalD, decimalE string
+			d, e string
 		}{
 			"zero 1": {"1", "0"},
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimalD)
-			e := MustParse(tt.decimalE)
+			d := MustParse(tt.d)
+			e := MustParse(tt.e)
 			_, _, err := d.QuoRem(e)
 			if err == nil {
 				t.Errorf("%q.QuoRem(%q) did not fail", d, e)
@@ -2027,8 +2012,8 @@ func TestDecimal_QuoRem(t *testing.T) {
 
 func TestDecimal_Cmp(t *testing.T) {
 	tests := []struct {
-		decimalD, decimalE string
-		want               int
+		d, e string
+		want int
 	}{
 		{"-2", "-2", 0},
 		{"-2", "-1", -1},
@@ -2067,8 +2052,8 @@ func TestDecimal_Cmp(t *testing.T) {
 		{"0.9999999999999999999", "9999999999999999999", -1},
 	}
 	for _, tt := range tests {
-		d := MustParse(tt.decimalD)
-		e := MustParse(tt.decimalE)
+		d := MustParse(tt.d)
+		e := MustParse(tt.e)
 		got := d.Cmp(e)
 		if got != tt.want {
 			t.Errorf("%q.Cmp(%q) = %v, want %v", d, e, got, tt.want)
@@ -2078,7 +2063,7 @@ func TestDecimal_Cmp(t *testing.T) {
 
 func TestDecimal_Max(t *testing.T) {
 	tests := []struct {
-		decimalD, decimalE, want string
+		d, e, want string
 	}{
 		{"-2", "-2", "-2"},
 		{"-2", "-1", "-1"},
@@ -2115,10 +2100,10 @@ func TestDecimal_Max(t *testing.T) {
 		{"-1.2300", "-1.23", "-1.23"},
 	}
 	for _, tt := range tests {
-		d := MustParse(tt.decimalD)
-		e := MustParse(tt.decimalE)
-		want := MustParse(tt.want)
+		d := MustParse(tt.d)
+		e := MustParse(tt.e)
 		got := d.Max(e)
+		want := MustParse(tt.want)
 		if got != want {
 			t.Errorf("%q.Max(%q) = %q, want %q", d, e, got, want)
 		}
@@ -2127,7 +2112,7 @@ func TestDecimal_Max(t *testing.T) {
 
 func TestDecimal_Min(t *testing.T) {
 	tests := []struct {
-		decimalD, decimalE, want string
+		d, e, want string
 	}{
 		{"-2", "-2", "-2"},
 		{"-2", "-1", "-2"},
@@ -2164,10 +2149,10 @@ func TestDecimal_Min(t *testing.T) {
 		{"-1.2300", "-1.23", "-1.2300"},
 	}
 	for _, tt := range tests {
-		d := MustParse(tt.decimalD)
-		e := MustParse(tt.decimalE)
-		want := MustParse(tt.want)
+		d := MustParse(tt.d)
+		e := MustParse(tt.e)
 		got := d.Min(e)
+		want := MustParse(tt.want)
 		if got != want {
 			t.Errorf("%q.Min(%q) = %q, want %q", d, e, got, want)
 		}
@@ -2222,7 +2207,6 @@ func FuzzParse(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, num string) {
-			t.Logf("decimal.Parse(%q)", num)
 			d, err := Parse(num)
 			if err != nil {
 				t.Skip()
@@ -2276,13 +2260,11 @@ func FuzzDecimal_Mul_FintVsSint(f *testing.F) {
 				t.Skip()
 				return
 			}
-
 			d, err := newDecimalSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
 			}
-
 			e, err := newDecimalSafe(eneg, fint(ecoef), escale)
 			if err != nil {
 				t.Skip()
@@ -2309,7 +2291,7 @@ func FuzzDecimal_Mul_FintVsSint(f *testing.F) {
 				return
 			}
 
-			if s.Cmp(f) != 0 {
+			if s.CmpTotal(f) != 0 {
 				t.Errorf("mulSint(%q, %q, %v) = %q, whereas mulFint(%q, %q, %v) = %q", d, e, scale, s, d, e, scale, f)
 			}
 		},
@@ -2333,19 +2315,16 @@ func FuzzDecimal_FMA_FintVsSint(f *testing.F) {
 				t.Skip()
 				return
 			}
-
 			d, err := newDecimalSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
 			}
-
 			e, err := newDecimalSafe(eneg, fint(ecoef), escale)
 			if err != nil {
 				t.Skip()
 				return
 			}
-
 			g, err := newDecimalSafe(gneg, fint(gcoef), gscale)
 			if err != nil {
 				t.Skip()
@@ -2372,7 +2351,7 @@ func FuzzDecimal_FMA_FintVsSint(f *testing.F) {
 				return
 			}
 
-			if s.Cmp(f) != 0 {
+			if s.CmpTotal(f) != 0 {
 				t.Errorf("fmaSint(%q, %q, %q, %v) = %q, whereas fmaFint(%q, %q, %q, %v) = %q", d, e, g, scale, s, d, e, g, scale, f)
 			}
 		},
@@ -2394,13 +2373,11 @@ func FuzzDecimal_Add_FintVsSint(f *testing.F) {
 				t.Skip()
 				return
 			}
-
 			d, err := newDecimalSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
 			}
-
 			e, err := newDecimalSafe(eneg, fint(ecoef), escale)
 			if err != nil {
 				t.Skip()
@@ -2427,7 +2404,7 @@ func FuzzDecimal_Add_FintVsSint(f *testing.F) {
 				return
 			}
 
-			if s.Cmp(f) != 0 {
+			if s.CmpTotal(f) != 0 {
 				t.Errorf("addSint(%q, %q, %v) = %q, whereas addFint(%q, %q, %v) = %q", d, e, scale, s, d, e, scale, f)
 			}
 		},
@@ -2453,13 +2430,11 @@ func FuzzDecimal_Quo_FintVsSint(f *testing.F) {
 				t.Skip()
 				return
 			}
-
 			d, err := newDecimalSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
 			}
-
 			e, err := newDecimalSafe(eneg, fint(ecoef), escale)
 			if err != nil {
 				t.Skip()
@@ -2551,7 +2526,7 @@ func FuzzDecimal_New_FintVsSint(f *testing.F) {
 				t.Errorf("newDecimalFromSint(%v, %v, %v, 0) failed: %v", neg, coef, scale, serr)
 				return
 			}
-			if f.Cmp(s) != 0 {
+			if f.CmpTotal(s) != 0 {
 				t.Errorf("newDecimalFromFint(%v, %v, %v, 0) = %q, whereas newDecimalFromSint(%v, %v, %v, 0) = %q", neg, coef, scale, f, neg, coef, scale, s)
 			}
 		},

@@ -86,12 +86,7 @@ several methods for explicit rounding:
 
 Arithmetic operations return errors in the following cases:
 
- 1. Out-of-range scale.
-    This error is expected to be very rare as the scale usually comes from
-    an established standard, such as ISO 4217.
-    If this error occurs, it suggests a significant bug.
-
- 2. Decimal overflow.
+ 1. Decimal overflow.
     This error occurs when significant digits are lost during rounding to fit
     19 digits.
     This typically happens when dealing with large numbers or when you requested
@@ -102,7 +97,7 @@ Arithmetic operations return errors in the following cases:
     Consider using packages that store coefficients using [big.Int] type,
     such as [ShopSpring Decimal] or [CockroachDB Decimal].
 
- 3. Division by zero.
+ 2. Division by zero.
     Unlike the standard library, this package does not panic when dividing by zero.
     Instead, it returns an error.
 
