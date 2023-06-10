@@ -227,8 +227,9 @@ func TestParse(t *testing.T) {
 			"overflow 5":       {"123456789012345678901234567890123456789", 0},
 			"overflow 6":       {"0.123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789", 0},
 			"overflow 7":       {"0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", 0},
-			"scale 1":          {"10", MaxScale},
-			"scale 2":          {"100", MaxScale - 1},
+			"scale 1":          {"0", MaxScale + 1},
+			"scale 2":          {"10", MaxScale},
+			"scale 3":          {"100", MaxScale - 1},
 		}
 		for name, tt := range tests {
 			t.Run(name, func(t *testing.T) {
@@ -778,14 +779,14 @@ func TestDecimal_Pad(t *testing.T) {
 			d     string
 			scale int
 		}{
-			"overflow 1":    {"1000000000000000000", 1},
-			"overflow 2":    {"100000000000000000", 2},
-			"overflow 3":    {"10000000000000000", 3},
-			"overflow 4":    {"1000000000000000", 4},
-			"overflow 5":    {"100000000000000", 5},
-			"overflow 6":    {"10000000000000", 6},
-			"overflow 7":    {"1000000000000", 7},
-			"large scale 1": {"1", 20},
+			"overflow 1": {"1000000000000000000", 1},
+			"overflow 2": {"100000000000000000", 2},
+			"overflow 3": {"10000000000000000", 3},
+			"overflow 4": {"1000000000000000", 4},
+			"overflow 5": {"100000000000000", 5},
+			"overflow 6": {"10000000000000", 6},
+			"overflow 7": {"1000000000000", 7},
+			"scale 1":    {"0", 20},
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.d)
@@ -1306,6 +1307,7 @@ func TestDecimal_Add(t *testing.T) {
 			"overflow 3": {"-9999999999999999999", "-1", 0},
 			"overflow 4": {"-9999999999999999999", "-0.6", 0},
 			"scale 1":    {"1", "1", MaxScale},
+			"scale 2":    {"0", "0", MaxScale + 1},
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.d)
@@ -1372,6 +1374,7 @@ func TestDecimal_Mul(t *testing.T) {
 			"overflow 2": {"1000000000000000000", "10", 0},
 			"overflow 3": {"4999999999999999995", "-2.000000000000000002", 0},
 			"scale 1":    {"1", "1", MaxScale},
+			"scale 2":    {"0", "0", MaxScale + 1},
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.d)
@@ -1512,7 +1515,8 @@ func TestDecimal_FMA(t *testing.T) {
 			"overflow 4": {"1", "-9999999999999999999", "-0.6", 0},
 			"overflow 5": {"10000000000", "1000000000", "0", 0},
 			"overflow 6": {"1000000000000000000", "10", "0", 0},
-			"scale 1":    {"1", "1", "1", MaxScale + 1},
+			"scale 1":    {"1", "1", "1", MaxScale},
+			"scale 2":    {"0", "0", "0", MaxScale + 1},
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.d)
@@ -1882,6 +1886,7 @@ func TestDecimal_Quo(t *testing.T) {
 			"zero 1":     {"1", "0", 0},
 			"overflow 1": {"9999999999999999999", "0.001", 0},
 			"scale 1":    {"1", "1", MaxScale},
+			"scale 2":    {"0", "1", MaxScale + 1},
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.d)

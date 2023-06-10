@@ -206,10 +206,11 @@ func ParseExact(dec string, scale int) (Decimal, error) {
 	if len(dec) > 100 {
 		return Decimal{}, fmt.Errorf("parsing decimal: %w", errInvalidDecimal)
 	}
+	if scale > MaxScale {
+		return Decimal{}, fmt.Errorf("parsing decimal: %w", errScaleRange)
+	}
 	if scale < 0 {
 		scale = 0
-	} else if scale > MaxScale {
-		scale = MaxScale
 	}
 	d, err := parseFint(dec, scale)
 	if err != nil {
@@ -731,7 +732,7 @@ func (d Decimal) Round(scale int) Decimal {
 // ([MaxPrec] - scale) digits.
 func (d Decimal) Pad(scale int) (Decimal, error) {
 	if scale > MaxScale {
-		scale = MaxScale
+		return Decimal{}, errScaleRange
 	}
 	if scale <= d.Scale() {
 		return d, nil
@@ -918,10 +919,11 @@ func (d Decimal) Mul(e Decimal) (Decimal, error) {
 // This method is useful for financial calculations where the scale should be
 // equal to or greater than the currency's scale.
 func (d Decimal) MulExact(e Decimal, scale int) (Decimal, error) {
+	if scale > MaxScale {
+		return Decimal{}, fmt.Errorf("%v * %v: %w", d, e, errScaleRange)
+	}
 	if scale < 0 {
 		scale = 0
-	} else if scale > MaxScale {
-		scale = MaxScale
 	}
 	f, err := d.mulFint(e, scale)
 	if err != nil {
@@ -1027,10 +1029,11 @@ func (d Decimal) Add(e Decimal) (Decimal, error) {
 // This method is useful for financial calculations where the scale should be
 // equal to or greater than the currency's scale.
 func (d Decimal) AddExact(e Decimal, scale int) (Decimal, error) {
+	if scale > MaxScale {
+		return Decimal{}, fmt.Errorf("%v + %v: %w", d, e, errScaleRange)
+	}
 	if scale < 0 {
 		scale = 0
-	} else if scale > MaxScale {
-		scale = MaxScale
 	}
 	f, err := d.addFint(e, scale)
 	if err != nil {
@@ -1156,10 +1159,11 @@ func (d Decimal) FMA(e, f Decimal) (Decimal, error) {
 // This method is useful for financial calculations where the scale should be
 // equal to or greater than the currency's scale.
 func (d Decimal) FMAExact(e, f Decimal, scale int) (Decimal, error) {
+	if scale > MaxScale {
+		return Decimal{}, fmt.Errorf("%v * %v + %v: %w", d, e, f, errScaleRange)
+	}
 	if scale < 0 {
 		scale = 0
-	} else if scale > MaxScale {
-		scale = MaxScale
 	}
 	g, err := d.fmaFint(e, f, scale)
 	if err != nil {
@@ -1271,10 +1275,11 @@ func (d Decimal) Quo(e Decimal) (Decimal, error) {
 // This method is useful for financial calculations where the scale should be
 // equal to or greater than the currency's scale.
 func (d Decimal) QuoExact(e Decimal, scale int) (Decimal, error) {
+	if scale > MaxScale {
+		return Decimal{}, fmt.Errorf("%v / %v: %w", d, e, errScaleRange)
+	}
 	if scale < 0 {
 		scale = 0
-	} else if scale > MaxScale {
-		scale = MaxScale
 	}
 
 	// Special case: zero divisor
