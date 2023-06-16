@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2] - 2023-06-17
+
+### Changed
+
+- Rescale, ParseExact, MulExact, AddExact, FMAExact, and QuoExact methods
+  return error if scale is out of range.
+
 ## [0.1.1] - 2023-06-10
 
 ### Changed

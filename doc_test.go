@@ -575,14 +575,12 @@ func ExampleDecimal_Ceil() {
 	fmt.Println(d.Ceil(2))
 	fmt.Println(d.Ceil(1))
 	fmt.Println(d.Ceil(0))
-	fmt.Println(d.Ceil(-1))
 	// Output:
 	// 15.6789
 	// 15.6789
 	// 15.679
 	// 15.68
 	// 15.7
-	// 16
 	// 16
 }
 
