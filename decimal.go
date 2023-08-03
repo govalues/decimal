@@ -446,35 +446,28 @@ func (d Decimal) Int64(scale int) (i, f int64, ok bool) {
 	}
 	x := d.coef
 	y := pow10[d.Scale()]
+	if scale < d.Scale() {
+		x = x.rshHalfEven(d.Scale() - scale)
+		y = pow10[scale]
+	}
 	p := x / y
 	q := x - p*y
-	switch {
-	case scale < d.Scale():
-		q = q.rshHalfEven(d.Scale() - scale)
-	case scale > d.Scale():
+	if scale > d.Scale() {
 		q, ok = q.lsh(scale - d.Scale())
 		if !ok {
 			return 0, 0, false
 		}
 	}
 	if d.IsNeg() {
-		switch {
-		case p > -math.MinInt64:
+		if p > -math.MinInt64 || q > -math.MinInt64 {
 			return 0, 0, false
-		case q > -math.MinInt64:
-			return 0, 0, false
-		default:
-			return -int64(p), -int64(q), true
 		}
+		return -int64(p), -int64(q), true
 	} else {
-		switch {
-		case p > math.MaxInt64:
+		if p > math.MaxInt64 || q > math.MaxInt64 {
 			return 0, 0, false
-		case q > math.MaxInt64:
-			return 0, 0, false
-		default:
-			return int64(p), int64(q), true
 		}
+		return int64(p), int64(q), true
 	}
 }
 
