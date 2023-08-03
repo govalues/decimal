@@ -436,15 +436,27 @@ func (d Decimal) Float64() (f float64, ok bool) {
 
 // Int64 returns a pair of int64 values representing the integer part i and the
 // fractional part f of the decimal.
-// The relationship can be expressed as d = i + f / 10^scale, where the scale
-// can be obtained using the [Decimal.Scale] method.
+// The relationship between the decimal and the returned values can be expressed
+// as d = i + f / 10^scale.
 // If the result cannot be accurately represented as a pair of int64 values,
 // the method returns false.
-func (d Decimal) Int64() (i, f int64, ok bool) {
+func (d Decimal) Int64(scale int) (i, f int64, ok bool) {
+	if scale < 0 {
+		return 0, 0, false
+	}
 	x := d.coef
 	y := pow10[d.Scale()]
 	p := x / y
-	q := x % y
+	q := x - p*y
+	switch {
+	case scale < d.Scale():
+		q = q.rshHalfEven(d.Scale() - scale)
+	case scale > d.Scale():
+		q, ok = q.lsh(scale - d.Scale())
+		if !ok {
+			return 0, 0, false
+		}
+	}
 	if d.IsNeg() {
 		switch {
 		case p > -math.MinInt64:
