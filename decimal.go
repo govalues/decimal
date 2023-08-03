@@ -71,10 +71,11 @@ func newDecimalSafe(neg bool, coef fint, scale int) (Decimal, error) {
 }
 
 // newDecimalFromFloat converts fint to decimal.
-// This method does not use overflowMethod to return descriptive errors,
+// This method does not use overflowError to return descriptive errors,
 // as it must be as fast as possible.
 func newDecimalFromFint(neg bool, coef fint, scale, minScale int) (Decimal, error) {
 	var ok bool
+	// Normaliztion
 	switch {
 	case scale < minScale:
 		coef, ok = coef.lsh(minScale - scale)
@@ -89,7 +90,7 @@ func newDecimalFromFint(neg bool, coef fint, scale, minScale int) (Decimal, erro
 	return newDecimalSafe(neg, coef, scale)
 }
 
-func overflowMessage(gotPrec, gotScale, wantScale int) error {
+func overflowError(gotPrec, gotScale, wantScale int) error {
 	maxDigits := MaxPrec - wantScale
 	gotDigits := gotPrec - gotScale
 	switch wantScale {
@@ -103,12 +104,14 @@ func overflowMessage(gotPrec, gotScale, wantScale int) error {
 }
 
 // newDecimalFromSint converts *sint to decimal.
-// This method uses overflowMethod to return descriptive errors.
+// This method uses overflowError to return descriptive errors.
 func newDecimalFromSint(neg bool, coef *sint, scale, minScale int) (Decimal, error) {
+	// Check for overflow
 	prec := coef.prec()
 	if prec-scale > MaxPrec-minScale {
-		return Decimal{}, overflowMessage(prec, scale, minScale)
+		return Decimal{}, overflowError(prec, scale, minScale)
 	}
+	// Normaliztion
 	switch {
 	case scale < minScale:
 		coef.lsh(coef, minScale-scale)
@@ -736,7 +739,7 @@ func (d Decimal) Pad(scale int) (Decimal, error) {
 	coef := d.coef
 	coef, ok := coef.lsh(scale - d.Scale())
 	if !ok {
-		return Decimal{}, fmt.Errorf("zero-padding %v with %v digits: %w", d, scale-d.Scale(), overflowMessage(d.Prec(), d.Scale(), scale))
+		return Decimal{}, fmt.Errorf("zero-padding %v with %v digits: %w", d, scale-d.Scale(), overflowError(d.Prec(), d.Scale(), scale))
 	}
 	return newDecimalSafe(d.IsNeg(), coef, scale)
 }
