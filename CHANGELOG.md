@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.3] - 2023-08-03
+
+### Changed
+
+- Implemented 'scale' argument for Decimal.Int64 method.
+
 ## [0.1.2] - 2023-06-17
 
 ### Changed

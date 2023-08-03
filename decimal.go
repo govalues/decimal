@@ -463,12 +463,11 @@ func (d Decimal) Int64(scale int) (i, f int64, ok bool) {
 			return 0, 0, false
 		}
 		return -int64(p), -int64(q), true
-	} else {
-		if p > math.MaxInt64 || q > math.MaxInt64 {
-			return 0, 0, false
-		}
-		return int64(p), int64(q), true
 	}
+	if p > math.MaxInt64 || q > math.MaxInt64 {
+		return 0, 0, false
+	}
+	return int64(p), int64(q), true
 }
 
 // UnmarshalText implements the [encoding.TextUnmarshaler] interface.
