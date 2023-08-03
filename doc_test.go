@@ -262,15 +262,15 @@ func ExampleDecimal_Float64() {
 }
 
 func ExampleDecimal_Int64() {
-	d := decimal.MustParse("123.4")
-	e := decimal.MustParse("123.45")
+	d := decimal.MustParse("123.456")
+	e := decimal.MustParse("123.456")
 	f := decimal.MustParse("123.456")
-	fmt.Println(d.Int64())
-	fmt.Println(e.Int64())
-	fmt.Println(f.Int64())
+	fmt.Println(d.Int64(1))
+	fmt.Println(e.Int64(2))
+	fmt.Println(f.Int64(3))
 	// Output:
-	// 123 4 true
-	// 123 45 true
+	// 123 5 true
+	// 123 46 true
 	// 123 456 true
 }
 

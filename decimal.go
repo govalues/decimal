@@ -71,10 +71,11 @@ func newDecimalSafe(neg bool, coef fint, scale int) (Decimal, error) {
 }
 
 // newDecimalFromFloat converts fint to decimal.
-// This method does not use overflowMethod to return descriptive errors,
+// This method does not use overflowError to return descriptive errors,
 // as it must be as fast as possible.
 func newDecimalFromFint(neg bool, coef fint, scale, minScale int) (Decimal, error) {
 	var ok bool
+	// Normaliztion
 	switch {
 	case scale < minScale:
 		coef, ok = coef.lsh(minScale - scale)
@@ -89,7 +90,7 @@ func newDecimalFromFint(neg bool, coef fint, scale, minScale int) (Decimal, erro
 	return newDecimalSafe(neg, coef, scale)
 }
 
-func overflowMessage(gotPrec, gotScale, wantScale int) error {
+func overflowError(gotPrec, gotScale, wantScale int) error {
 	maxDigits := MaxPrec - wantScale
 	gotDigits := gotPrec - gotScale
 	switch wantScale {
@@ -103,12 +104,14 @@ func overflowMessage(gotPrec, gotScale, wantScale int) error {
 }
 
 // newDecimalFromSint converts *sint to decimal.
-// This method uses overflowMethod to return descriptive errors.
+// This method uses overflowError to return descriptive errors.
 func newDecimalFromSint(neg bool, coef *sint, scale, minScale int) (Decimal, error) {
+	// Check for overflow
 	prec := coef.prec()
 	if prec-scale > MaxPrec-minScale {
-		return Decimal{}, overflowMessage(prec, scale, minScale)
+		return Decimal{}, overflowError(prec, scale, minScale)
 	}
+	// Normaliztion
 	switch {
 	case scale < minScale:
 		coef.lsh(coef, minScale-scale)
@@ -433,34 +436,38 @@ func (d Decimal) Float64() (f float64, ok bool) {
 
 // Int64 returns a pair of int64 values representing the integer part i and the
 // fractional part f of the decimal.
-// The relationship can be expressed as d = i + f / 10^scale, where the scale
-// can be obtained using the [Decimal.Scale] method.
+// The relationship between the decimal and the returned values can be expressed
+// as d = i + f / 10^scale.
 // If the result cannot be accurately represented as a pair of int64 values,
 // the method returns false.
-func (d Decimal) Int64() (i, f int64, ok bool) {
+func (d Decimal) Int64(scale int) (i, f int64, ok bool) {
+	if scale < 0 {
+		return 0, 0, false
+	}
 	x := d.coef
 	y := pow10[d.Scale()]
+	if scale < d.Scale() {
+		x = x.rshHalfEven(d.Scale() - scale)
+		y = pow10[scale]
+	}
 	p := x / y
-	q := x % y
-	if d.IsNeg() {
-		switch {
-		case p > -math.MinInt64:
+	q := x - p*y
+	if scale > d.Scale() {
+		q, ok = q.lsh(scale - d.Scale())
+		if !ok {
 			return 0, 0, false
-		case q > -math.MinInt64:
-			return 0, 0, false
-		default:
-			return -int64(p), -int64(q), true
-		}
-	} else {
-		switch {
-		case p > math.MaxInt64:
-			return 0, 0, false
-		case q > math.MaxInt64:
-			return 0, 0, false
-		default:
-			return int64(p), int64(q), true
 		}
 	}
+	if d.IsNeg() {
+		if p > -math.MinInt64 || q > -math.MinInt64 {
+			return 0, 0, false
+		}
+		return -int64(p), -int64(q), true
+	}
+	if p > math.MaxInt64 || q > math.MaxInt64 {
+		return 0, 0, false
+	}
+	return int64(p), int64(q), true
 }
 
 // UnmarshalText implements the [encoding.TextUnmarshaler] interface.
@@ -736,7 +743,7 @@ func (d Decimal) Pad(scale int) (Decimal, error) {
 	coef := d.coef
 	coef, ok := coef.lsh(scale - d.Scale())
 	if !ok {
-		return Decimal{}, fmt.Errorf("zero-padding %v with %v digits: %w", d, scale-d.Scale(), overflowMessage(d.Prec(), d.Scale(), scale))
+		return Decimal{}, fmt.Errorf("zero-padding %v with %v digits: %w", d, scale-d.Scale(), overflowError(d.Prec(), d.Scale(), scale))
 	}
 	return newDecimalSafe(d.IsNeg(), coef, scale)
 }
