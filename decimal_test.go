@@ -87,6 +87,65 @@ func TestNew(t *testing.T) {
 	})
 }
 
+func TestNewFromInt64(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			base, frac int64
+			scale      int
+			d          string
+		}{
+			{0, 0, 0, "0"},
+			{0, 0, 1, "0.0"},
+			{0, 0, 2, "0.00"},
+			{0, 0, 19, "0.0000000000000000000"},
+
+			{-1, -1, 1, "-1.1"},
+			{-1, -1, 2, "-1.01"},
+			{-1, -1, 3, "-1.001"},
+			{-1, -1, 18, "-1.000000000000000001"},
+
+			{1, 1, 1, "1.1"},
+			{1, 1, 2, "1.01"},
+			{1, 1, 3, "1.001"},
+			{1, 1, 18, "1.000000000000000001"},
+			{100000000000000000, 100000000000000000, 18, "100000000000000000.1"},
+		}
+		for _, tt := range tests {
+			got, err := NewFromInt64(tt.base, tt.frac, tt.scale)
+			if err != nil {
+				t.Errorf("NewFromInt64(%v, %v, %v) failed: %v", tt.base, tt.frac, tt.scale, err)
+				continue
+			}
+			want := MustParse(tt.d)
+			if got != want {
+				t.Errorf("NewFromInt64(%v, %v, %v) = %q, want %q", tt.base, tt.frac, tt.scale, got, want)
+			}
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		tests := map[string]struct {
+			base, frac int64
+			scale      int
+		}{
+			"different signs 1": {-1, 1, 0},
+			"fraction range 1":  {1, 1, 0},
+			"scale range 1":     {1, 1, -1},
+			"scale range 2":     {1, 0, 20},
+			"overflow 1":        {1, 1, 19},
+			"overflow 2":        {999999999999999999, 1, 2},
+		}
+		for name, tt := range tests {
+			t.Run(name, func(t *testing.T) {
+				_, err := NewFromInt64(tt.base, tt.frac, tt.scale)
+				if err == nil {
+					t.Errorf("NewFromInt64(%v, %v, %v) did not fail", tt.base, tt.frac, tt.scale)
+				}
+			})
+		}
+	})
+}
+
 func TestParse(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
@@ -317,10 +376,10 @@ func TestDecimal_Float64(t *testing.T) {
 
 func TestDecimal_Int64(t *testing.T) {
 	tests := []struct {
-		d                 string
-		scale             int
-		wantInt, wantFrac int64
-		wantOk            bool
+		d                  string
+		scale              int
+		wantBase, wantFrac int64
+		wantOk             bool
 	}{
 		// Zeroes
 		{"0", 0, 0, 0, true},
@@ -382,27 +441,30 @@ func TestDecimal_Int64(t *testing.T) {
 		// Edge cases
 		{"9223372036854775807", 0, 9223372036854775807, 0, true},
 		{"-9223372036854775808", 0, -9223372036854775808, 0, true},
-		{"9223372036854775808", 0, 0, 0, false},
-		{"-9223372036854775809", 0, 0, 0, false},
 		{"922337203685477580.8", 1, 922337203685477580, 8, true},
 		{"-922337203685477580.9", 1, -922337203685477580, -9, true},
 		{"9.223372036854775808", 18, 9, 223372036854775808, true},
 		{"-9.223372036854775809", 18, -9, -223372036854775809, true},
-		{"0.9223372036854775808", 19, 0, 0, false},
-		{"-0.9223372036854775809", 19, 0, 0, false},
 		{"0.9223372036854775807", 19, 0, 9223372036854775807, true},
 		{"-0.9223372036854775808", 19, 0, -9223372036854775808, true},
+
+		// Failures
+		{"9223372036854775808", 0, 0, 0, false},
+		{"-9223372036854775809", 0, 0, 0, false},
+		{"0.9223372036854775808", 19, 0, 0, false},
+		{"-0.9223372036854775809", 19, 0, 0, false},
 		{"9999999999999999999", 0, 0, 0, false},
 		{"-9999999999999999999", 0, 0, 0, false},
 		{"0.9999999999999999999", 19, 0, 0, false},
 		{"-0.9999999999999999999", 19, 0, 0, false},
+		{"0.1", -1, 0, 0, false},
 		{"0.1", 20, 0, 0, false},
 	}
 	for _, tt := range tests {
 		d := MustParse(tt.d)
-		gotInt, gotFrac, gotOk := d.Int64(tt.scale)
-		if gotInt != tt.wantInt || gotFrac != tt.wantFrac || gotOk != tt.wantOk {
-			t.Errorf("%q.Int64(%v) = [%v %v %v], want [%v %v %v]", d, tt.scale, gotInt, gotFrac, gotOk, tt.wantInt, tt.wantFrac, tt.wantOk)
+		gotBase, gotFrac, gotOk := d.Int64(tt.scale)
+		if gotBase != tt.wantBase || gotFrac != tt.wantFrac || gotOk != tt.wantOk {
+			t.Errorf("%q.Int64(%v) = [%v %v %v], want [%v %v %v]", d, tt.scale, gotBase, gotFrac, gotOk, tt.wantBase, tt.wantFrac, tt.wantOk)
 		}
 	}
 }
@@ -2254,7 +2316,7 @@ func FuzzParse(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_String_ParseVsString(f *testing.F) {
+func FuzzDecimal_String_StringVsParse(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -2274,8 +2336,44 @@ func FuzzDecimal_String_ParseVsString(f *testing.F) {
 				return
 			}
 
-			if got != want {
+			if got.CmpTotal(want) != 0 {
 				t.Errorf("Parse(%q) = %v, want %v", str, got, want)
+				return
+			}
+		},
+	)
+}
+
+func FuzzDecimal_Int64_Int64VsNew(f *testing.F) {
+	for _, d := range corpus {
+		for s := 0; s <= MaxScale; s++ {
+			f.Add(d.neg, d.scale, d.coef, s)
+		}
+	}
+
+	f.Fuzz(
+		func(t *testing.T, dneg bool, dscale int, dcoef uint64, scale int) {
+			want, err := newDecimalSafe(dneg, fint(dcoef), dscale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			base, frac, ok := want.Int64(scale)
+			if !ok {
+				t.Skip()
+				return
+			}
+
+			got, err := NewFromInt64(base, frac, scale)
+			if err != nil {
+				t.Errorf("NewFromInt64(%v, %v, %v) failed: %v", base, frac, scale, err)
+				return
+			}
+
+			want = want.Round(scale)
+			if got.Cmp(want) != 0 {
+				t.Errorf("NewFromInt64(%v, %v, %v) = %v, want %v", base, frac, scale, got, want)
 				return
 			}
 		},
