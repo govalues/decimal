@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.4] - 2023-08-04
+
+### Changed
+
+- Implemented NewFromInt64 method.
+
 ## [0.1.3] - 2023-08-03
 
 ### Changed

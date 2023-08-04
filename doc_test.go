@@ -177,6 +177,18 @@ func ExampleNew() {
 	// -123 <nil>
 }
 
+func ExampleNewFromInt64() {
+	fmt.Println(decimal.NewFromInt64(-1, -23, 2))
+	fmt.Println(decimal.NewFromInt64(-1, -23, 3))
+	fmt.Println(decimal.NewFromInt64(-1, -23, 4))
+	fmt.Println(decimal.NewFromInt64(-1, -23, 5))
+	// Output:
+	// -1.23 <nil>
+	// -1.023 <nil>
+	// -1.0023 <nil>
+	// -1.00023 <nil>
+}
+
 func ExampleDecimal_Zero() {
 	d := decimal.MustParse("-1.23")
 	e := decimal.MustParse("0.4")

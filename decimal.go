@@ -131,7 +131,7 @@ func newDecimalFromSint(neg bool, coef *sint, scale, minScale int) (Decimal, err
 	return newDecimalSafe(neg, coef.fint(), scale)
 }
 
-// New returns a (possibly rounded) decimal equal to coef / 10^scale.
+// New returns a decimal equal to coef / 10^scale.
 //
 // New returns an error if scale is negative or more than [MaxScale].
 func New(coef int64, scale int) (Decimal, error) {
@@ -151,6 +151,39 @@ func MustNew(coef int64, scale int) Decimal {
 		panic(fmt.Sprintf("New(%v, %v) failed: %v", coef, scale, err))
 	}
 	return d
+}
+
+// NewFromInt64 returns a decimal equal to base + frac / 10^scale.
+// See also method [Decimal.Int64].
+//
+// NewFromInt64 returns an error:
+//   - if base and frac have different signs.
+//   - if scale is negative or more than [MaxScale].
+//   - if frac / 10^scale is not within the range (-1, 1).
+//   - if the integer part of the result has more than ([MaxPrec] - scale) digits.
+func NewFromInt64(base, frac int64, scale int) (Decimal, error) {
+	if base > 0 && frac < 0 || base < 0 && frac > 0 {
+		return Decimal{}, fmt.Errorf("inconsistent signs")
+	}
+	// Integer
+	b, err := New(base, 0)
+	if err != nil {
+		return Decimal{}, fmt.Errorf("converting integers: %w", err)
+	}
+	// Fraction
+	f, err := New(frac, scale)
+	if err != nil {
+		return Decimal{}, fmt.Errorf("converting integers: %w", err)
+	}
+	if !f.WithinOne() {
+		return Decimal{}, fmt.Errorf("inconsistent fraction")
+	}
+	// Decimal
+	d, err := b.AddExact(f, f.MinScale())
+	if err != nil {
+		return Decimal{}, fmt.Errorf("converting integers: %w", err)
+	}
+	return d, nil
 }
 
 // Zero returns a decimal with a value of 0, having the same scale as decimal d.
@@ -434,14 +467,15 @@ func (d Decimal) Float64() (f float64, ok bool) {
 	return z, true
 }
 
-// Int64 returns a pair of int64 values representing the integer part i and the
+// Int64 returns a pair of int64 values representing the integer part b and the
 // fractional part f of the decimal.
 // The relationship between the decimal and the returned values can be expressed
-// as d = i + f / 10^scale.
+// as d = b + f / 10^scale.
 // If the result cannot be accurately represented as a pair of int64 values,
 // the method returns false.
-func (d Decimal) Int64(scale int) (i, f int64, ok bool) {
-	if scale < 0 {
+// See also method [NewFromInt64].
+func (d Decimal) Int64(scale int) (b, f int64, ok bool) {
+	if scale < 0 || scale > MaxScale {
 		return 0, 0, false
 	}
 	x := d.coef
