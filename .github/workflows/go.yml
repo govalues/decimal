@@ -69,7 +69,7 @@ jobs:
       run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Mul_FintVsSint$ github.com/govalues/decimal
 
     - name: Run fuzzing for fused multiply-addidtion
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_FMA_FintVsSint$ github.com/govalues/decimal
+      run: go test -fuzztime 40s -fuzz ^FuzzDecimal_FMA_FintVsSint$ github.com/govalues/decimal
 
     - name: Run fuzzing for division
       run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Quo_FintVsSint$ github.com/govalues/decimal
