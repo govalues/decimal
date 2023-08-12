@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 )
 
 // Decimal type represents a finite floating-point decimal number.
@@ -75,7 +76,7 @@ func newDecimalSafe(neg bool, coef fint, scale int) (Decimal, error) {
 // as it must be as fast as possible.
 func newDecimalFromFint(neg bool, coef fint, scale, minScale int) (Decimal, error) {
 	var ok bool
-	// Normaliztion
+	// Normalization
 	switch {
 	case scale < minScale:
 		coef, ok = coef.lsh(minScale - scale)
@@ -111,7 +112,7 @@ func newDecimalFromSint(neg bool, coef *sint, scale, minScale int) (Decimal, err
 	if prec-scale > MaxPrec-minScale {
 		return Decimal{}, overflowError(prec, scale, minScale)
 	}
-	// Normaliztion
+	// Normalization
 	switch {
 	case scale < minScale:
 		coef.lsh(coef, minScale-scale)
@@ -153,20 +154,22 @@ func MustNew(coef int64, scale int) Decimal {
 	return d
 }
 
-// NewFromInt64 returns a decimal equal to base + frac / 10^scale.
+// NewFromFloat64 converts a pair of int64 to a (possibly rounded) decimal.
+// The relationship between the values and the returned decimal can be expressed
+// as d = whole + frac / 10^scale.
 // See also method [Decimal.Int64].
 //
 // NewFromInt64 returns an error:
-//   - if base and frac have different signs.
+//   - if whole and frac have different signs.
 //   - if scale is negative or more than [MaxScale].
 //   - if frac / 10^scale is not within the range (-1, 1).
 //   - if the integer part of the result has more than ([MaxPrec] - scale) digits.
-func NewFromInt64(base, frac int64, scale int) (Decimal, error) {
-	if base > 0 && frac < 0 || base < 0 && frac > 0 {
+func NewFromInt64(whole, frac int64, scale int) (Decimal, error) {
+	if whole > 0 && frac < 0 || whole < 0 && frac > 0 {
 		return Decimal{}, fmt.Errorf("inconsistent signs")
 	}
 	// Integer
-	b, err := New(base, 0)
+	w, err := New(whole, 0)
 	if err != nil {
 		return Decimal{}, fmt.Errorf("converting integers: %w", err)
 	}
@@ -179,9 +182,25 @@ func NewFromInt64(base, frac int64, scale int) (Decimal, error) {
 		return Decimal{}, fmt.Errorf("inconsistent fraction")
 	}
 	// Decimal
-	d, err := b.AddExact(f, f.MinScale())
+	d, err := w.Add(f)
 	if err != nil {
 		return Decimal{}, fmt.Errorf("converting integers: %w", err)
+	}
+	return d, nil
+}
+
+// NewFromFloat64 converts a float to a (possibly rounded) decimal.
+//
+// NewFromFloat64 returns an error:
+//   - if the integer part of the result has more than [MaxPrec] digits.
+//   - if the float is a special value (NaN or Inf).
+func NewFromFloat64(f float64) (Decimal, error) {
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return Decimal{}, fmt.Errorf("special values")
+	}
+	d, err := Parse(strconv.FormatFloat(f, 'f', -1, 64))
+	if err != nil {
+		return Decimal{}, fmt.Errorf("converting float: %w", err)
 	}
 	return d, nil
 }
@@ -215,11 +234,11 @@ func (d Decimal) ULP() Decimal {
 //
 // The formal EBNF grammar for the supported format is as follows:
 //
-//		sign           ::= '+' | '-'
-//		digits         ::= { '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' }
-//		significand    ::= digits '.' digits | '.' digits | digits '.' | digits
-//	    exponent       ::= ('e' | 'E') [sign] digits
-//		numeric-string ::= [sign] significand [exponent]
+//	sign           ::= '+' | '-'
+//	digits         ::= { '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' }
+//	significand    ::= digits '.' digits | '.' digits | digits '.' | digits
+//	exponent       ::= ('e' | 'E') [sign] digits
+//	numeric-string ::= [sign] significand [exponent]
 //
 // Parse removes leading zeros from the integer part of the input string,
 // but tries to maintain trailing zeros in the fractional part to preserve scale.
@@ -227,10 +246,10 @@ func (d Decimal) ULP() Decimal {
 // Parse returns an error:
 //   - if the integer part of the result has more than [MaxPrec] digits.
 //   - if the string does not represent a valid decimal number.
-//   - if the string is longer than 100 bytes.
-//   - if the exponent is less than -100 or greater than 100.
-func Parse(dec string) (Decimal, error) {
-	return ParseExact(dec, 0)
+//   - if the string is longer than 330 bytes.
+//   - if the exponent is less than -330 or greater than 330.
+func Parse(s string) (Decimal, error) {
+	return ParseExact(s, 0)
 }
 
 // ParseExact is similar to [Parse], but it allows you to specify how many digits
@@ -238,16 +257,16 @@ func Parse(dec string) (Decimal, error) {
 // If any of the significant digits are lost during rounding, the method will return an error.
 // This method is useful for parsing monetary amounts, where the scale should be
 // equal to or greater than the currency's scale.
-func ParseExact(dec string, scale int) (Decimal, error) {
-	if len(dec) > 100 {
+func ParseExact(s string, scale int) (Decimal, error) {
+	if len(s) > 330 {
 		return Decimal{}, fmt.Errorf("parsing decimal: %w", errInvalidDecimal)
 	}
 	if scale < 0 || scale > MaxScale {
 		return Decimal{}, fmt.Errorf("parsing decimal: %w", errScaleRange)
 	}
-	d, err := parseFint(dec, scale)
+	d, err := parseFint(s, scale)
 	if err != nil {
-		d, err = parseSint(dec, scale)
+		d, err = parseSint(s, scale)
 		if err != nil {
 			return Decimal{}, fmt.Errorf("parsing decimal: %w", err)
 		}
@@ -256,27 +275,27 @@ func ParseExact(dec string, scale int) (Decimal, error) {
 }
 
 // parseFint does not support exponential notation to make it as fast as possible.
-func parseFint(dec string, minScale int) (Decimal, error) {
+func parseFint(s string, minScale int) (Decimal, error) {
 	pos := 0
-	width := len(dec)
+	width := len(s)
 
 	// Sign
 	var neg bool
 	switch {
 	case pos == width:
 		// skip
-	case dec[pos] == '-':
+	case s[pos] == '-':
 		neg = true
 		pos++
-	case dec[pos] == '+':
+	case s[pos] == '+':
 		pos++
 	}
 
 	// Integer
 	coef := fint(0)
 	hascoef, ok := false, false
-	for pos < width && dec[pos] >= '0' && dec[pos] <= '9' {
-		coef, ok = coef.fsa(1, dec[pos]-'0')
+	for pos < width && s[pos] >= '0' && s[pos] <= '9' {
+		coef, ok = coef.fsa(1, s[pos]-'0')
 		if !ok {
 			return Decimal{}, errDecimalOverflow
 		}
@@ -286,10 +305,10 @@ func parseFint(dec string, minScale int) (Decimal, error) {
 
 	// Fraction
 	scale := 0
-	if pos < width && dec[pos] == '.' {
+	if pos < width && s[pos] == '.' {
 		pos++
-		for pos < width && dec[pos] >= '0' && dec[pos] <= '9' {
-			coef, ok = coef.fsa(1, dec[pos]-'0')
+		for pos < width && s[pos] >= '0' && s[pos] <= '9' {
+			coef, ok = coef.fsa(1, s[pos]-'0')
 			if !ok {
 				return Decimal{}, errDecimalOverflow
 			}
@@ -300,7 +319,7 @@ func parseFint(dec string, minScale int) (Decimal, error) {
 	}
 
 	if pos != width {
-		return Decimal{}, fmt.Errorf("invalid character %q: %w", dec[pos], errInvalidDecimal)
+		return Decimal{}, fmt.Errorf("invalid character %q: %w", s[pos], errInvalidDecimal)
 	}
 	if !hascoef {
 		return Decimal{}, fmt.Errorf("no coefficient: %w", errInvalidDecimal)
@@ -309,37 +328,37 @@ func parseFint(dec string, minScale int) (Decimal, error) {
 }
 
 // parseSint supports exponential notation.
-func parseSint(dec string, minScale int) (Decimal, error) {
+func parseSint(s string, minScale int) (Decimal, error) {
 	pos := 0
-	width := len(dec)
+	width := len(s)
 
 	// Sign
 	var neg bool
 	switch {
 	case pos == width:
 		// skip
-	case dec[pos] == '-':
+	case s[pos] == '-':
 		neg = true
 		pos++
-	case dec[pos] == '+':
+	case s[pos] == '+':
 		pos++
 	}
 
 	// Integer
 	coef := new(sint)
 	hascoef := false
-	for pos < width && dec[pos] >= '0' && dec[pos] <= '9' {
-		coef.fsa(1, dec[pos]-'0')
+	for pos < width && s[pos] >= '0' && s[pos] <= '9' {
+		coef.fsa(1, s[pos]-'0')
 		hascoef = true
 		pos++
 	}
 
 	// Fraction
 	scale := 0
-	if pos < width && dec[pos] == '.' {
+	if pos < width && s[pos] == '.' {
 		pos++
-		for pos < width && dec[pos] >= '0' && dec[pos] <= '9' {
-			coef.fsa(1, dec[pos]-'0')
+		for pos < width && s[pos] >= '0' && s[pos] <= '9' {
+			coef.fsa(1, s[pos]-'0')
 			hascoef = true
 			scale++
 			pos++
@@ -349,23 +368,23 @@ func parseSint(dec string, minScale int) (Decimal, error) {
 	// Exponential part
 	exp := 0
 	eneg, hasexp, hasesym := false, false, false
-	if pos < width && (dec[pos] == 'e' || dec[pos] == 'E') {
+	if pos < width && (s[pos] == 'e' || s[pos] == 'E') {
 		hasesym = true
 		pos++
 		// Sign
 		switch {
 		case pos == width:
 			// skip
-		case dec[pos] == '-':
+		case s[pos] == '-':
 			eneg = true
 			pos++
-		case dec[pos] == '+':
+		case s[pos] == '+':
 			pos++
 		}
 		// Integer
-		for pos < width && dec[pos] >= '0' && dec[pos] <= '9' {
-			exp = exp*10 + int(dec[pos]-'0')
-			if exp > 100 {
+		for pos < width && s[pos] >= '0' && s[pos] <= '9' {
+			exp = exp*10 + int(s[pos]-'0')
+			if exp > 330 {
 				return Decimal{}, errExponentRange
 			}
 			hasexp = true
@@ -374,7 +393,7 @@ func parseSint(dec string, minScale int) (Decimal, error) {
 	}
 
 	if pos != width {
-		return Decimal{}, fmt.Errorf("invalid character %q: %w", dec[pos], errInvalidDecimal)
+		return Decimal{}, fmt.Errorf("invalid character %q: %w", s[pos], errInvalidDecimal)
 	}
 	if !hascoef {
 		return Decimal{}, fmt.Errorf("no coefficient: %w", errInvalidDecimal)
@@ -455,26 +474,21 @@ func (d Decimal) String() string {
 // This conversion may lose data, as float64 has a limited precision
 // compared to the decimal type.
 func (d Decimal) Float64() (f float64, ok bool) {
-	x := float64(d.Coef())
-	y := float64(pow10[d.Scale()])
-	z := x / y
-	if math.IsInf(z, 0) {
+	f, err := strconv.ParseFloat(d.String(), 64)
+	if err != nil {
 		return 0, false
 	}
-	if d.IsNeg() {
-		z = -z
-	}
-	return z, true
+	return f, true
 }
 
-// Int64 returns a pair of int64 values representing the integer part b and the
+// Int64 returns a pair of int64 values representing the integer part w and the
 // fractional part f of the decimal.
 // The relationship between the decimal and the returned values can be expressed
-// as d = b + f / 10^scale.
+// as d = w + f / 10^scale.
 // If the result cannot be accurately represented as a pair of int64 values,
 // the method returns false.
 // See also method [NewFromInt64].
-func (d Decimal) Int64(scale int) (b, f int64, ok bool) {
+func (d Decimal) Int64(scale int) (w, f int64, ok bool) {
 	if scale < 0 || scale > MaxScale {
 		return 0, 0, false
 	}

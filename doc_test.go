@@ -189,6 +189,18 @@ func ExampleNewFromInt64() {
 	// -1.00023 <nil>
 }
 
+func ExampleNewFromFloat64() {
+	fmt.Println(decimal.NewFromFloat64(-1.23))
+	fmt.Println(decimal.NewFromFloat64(-1.023))
+	fmt.Println(decimal.NewFromFloat64(-1.0023))
+	fmt.Println(decimal.NewFromFloat64(-1.00023))
+	// Output:
+	// -1.23 <nil>
+	// -1.023 <nil>
+	// -1.0023 <nil>
+	// -1.00023 <nil>
+}
+
 func ExampleDecimal_Zero() {
 	d := decimal.MustParse("-1.23")
 	e := decimal.MustParse("0.4")
@@ -274,16 +286,20 @@ func ExampleDecimal_Float64() {
 }
 
 func ExampleDecimal_Int64() {
-	d := decimal.MustParse("123.456")
-	e := decimal.MustParse("123.456")
-	f := decimal.MustParse("123.456")
+	d := decimal.MustParse("123.567")
+	fmt.Println(d.Int64(5))
+	fmt.Println(d.Int64(4))
+	fmt.Println(d.Int64(3))
+	fmt.Println(d.Int64(2))
 	fmt.Println(d.Int64(1))
-	fmt.Println(e.Int64(2))
-	fmt.Println(f.Int64(3))
+	fmt.Println(d.Int64(0))
 	// Output:
-	// 123 5 true
-	// 123 46 true
-	// 123 456 true
+	// 123 56700 true
+	// 123 5670 true
+	// 123 567 true
+	// 123 57 true
+	// 123 6 true
+	// 124 0 true
 }
 
 func ExampleDecimal_UnmarshalText() {
