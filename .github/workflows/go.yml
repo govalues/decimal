@@ -8,7 +8,7 @@ jobs:
   test:
     strategy:
       matrix:
-        go-version: [1.19.x, 1.20.x]
+        go-version: [oldstable, stable]
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -23,7 +23,7 @@ jobs:
 
     - name: Verify code formatting
       run: gofmt -s -w . && git diff --exit-code
-      
+
     - name: Verify dependency consistency
       run: go mod tidy && git diff --exit-code
 
@@ -32,10 +32,48 @@ jobs:
 
     - name: Verify potential issues
       uses: golangci/golangci-lint-action@v3
-      
+
     - name: Run tests with coverage
       run: go test -race -shuffle=on -coverprofile="coverage.txt" -covermode=atomic ./...
 
     - name: Upload test coverage
       if: matrix.os == 'ubuntu-latest'
       uses: codecov/codecov-action@v3
+
+  fuzz:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: stable 
+
+    - name: Check out code
+      uses: actions/checkout@v3
+
+    - name: Run fuzzing for string conversion
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_String_StringVsParse$ github.com/govalues/decimal
+
+    - name: Run fuzzing for float64 conversion
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Float64_Float64VsNew$ github.com/govalues/decimal
+
+    - name: Run fuzzing for int64 conversion
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Int64_Int64VsNew$ github.com/govalues/decimal
+
+    - name: Run fuzzing for addition
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Add_FintVsSint$ github.com/govalues/decimal
+
+    - name: Run fuzzing for multiplication
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Mul_FintVsSint$ github.com/govalues/decimal
+
+    - name: Run fuzzing for fused multiply-addidtion
+      run: go test -fuzztime 40s -fuzz ^FuzzDecimal_FMA_FintVsSint$ github.com/govalues/decimal
+
+    - name: Run fuzzing for division
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Quo_FintVsSint$ github.com/govalues/decimal
+
+    - name: Run fuzzing for comparison
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Cmp_FintVsSint$ github.com/govalues/decimal
+ 

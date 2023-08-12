@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.5] - 2023-08-12
+
+### Added
+
+- Implemented NewFromFloat64 method.
+- Added fuzzing job to continuous integration.
+
+### Changed
+
+- NewFromInt64 can round to nearest if coefficient is too large.
+
 ## [0.1.4] - 2023-08-04
 
 ### Changed
@@ -10,7 +21,7 @@
 
 ### Changed
 
-- Implemented 'scale' argument for Decimal.Int64 method.
+- Implemented scale argument for Decimal.Int64 method.
 
 ## [0.1.2] - 2023-06-17
 
