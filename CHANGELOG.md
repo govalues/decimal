@@ -5,6 +5,7 @@
 ### Added
 
 - Implemented NewFromFloat64 method.
+- Added fuzzing job to continuous integration.
 
 ### Changed
 
