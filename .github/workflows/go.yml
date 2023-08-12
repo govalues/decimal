@@ -54,26 +54,26 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Run fuzzing for string conversion
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_String_StringVsParse $ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_String_StringVsParse$ github.com/govalues/decimal
 
     - name: Run fuzzing for float64 conversion
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Float64_Float64VsNew $ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Float64_Float64VsNew$ github.com/govalues/decimal
 
     - name: Run fuzzing for int64 conversion
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Int64_Int64VsNew $ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Int64_Int64VsNew$ github.com/govalues/decimal
 
     - name: Run fuzzing for addition
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Add_FintVsSint $ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Add_FintVsSint$ github.com/govalues/decimal
 
     - name: Run fuzzing for multiplication
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Mul_FintVsSint $ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Mul_FintVsSint$ github.com/govalues/decimal
 
     - name: Run fuzzing for fused multiply-addidtion
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_FMA_FintVsSint $ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_FMA_FintVsSint$ github.com/govalues/decimal
 
     - name: Run fuzzing for division
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Quo_FintVsSint $ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Quo_FintVsSint$ github.com/govalues/decimal
 
     - name: Run fuzzing for comparison
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Cmp_FintVsSint $ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Cmp_FintVsSint$ github.com/govalues/decimal
  
