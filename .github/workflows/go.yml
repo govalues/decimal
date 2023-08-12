@@ -53,9 +53,6 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v3
 
-    - name: Run fuzzing for constructors
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_New_FintVsSint$ github.com/govalues/decimal
-
     - name: Run fuzzing for string conversion
       run: go test -fuzztime 20s -fuzz ^FuzzDecimal_String_StringVsParse $ github.com/govalues/decimal
 
