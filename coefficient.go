@@ -35,20 +35,20 @@ var pow10 = [...]fint{
 }
 
 // add calculates x + y and checks overflow.
-func (x fint) add(y fint) (fint, bool) {
+func (x fint) add(y fint) (z fint, ok bool) {
 	if maxFint-x < y {
 		return 0, false
 	}
-	z := x + y
+	z = x + y
 	return z, true
 }
 
 // mul calculates x * y and checks overflow.
-func (x fint) mul(y fint) (fint, bool) {
+func (x fint) mul(y fint) (z fint, ok bool) {
 	if x == 0 || y == 0 {
 		return 0, true
 	}
-	z := x * y
+	z = x * y
 	if z/y != x {
 		return 0, false
 	}
@@ -59,11 +59,11 @@ func (x fint) mul(y fint) (fint, bool) {
 }
 
 // quo calculates x / y and checks overflow or inexact division.
-func (x fint) quo(y fint) (fint, bool) {
+func (x fint) quo(y fint) (z fint, ok bool) {
 	if y == 0 {
 		return 0, false
 	}
-	z := x / y
+	z = x / y
 	if y*z != x {
 		return 0, false
 	}
@@ -79,7 +79,7 @@ func (x fint) dist(y fint) fint {
 }
 
 // lsh (Left Shift) calculates x * 10^shift and checks overflow.
-func (x fint) lsh(shift int) (fint, bool) {
+func (x fint) lsh(shift int) (z fint, ok bool) {
 	// Special cases
 	switch {
 	case x == 0:
@@ -97,8 +97,8 @@ func (x fint) lsh(shift int) (fint, bool) {
 }
 
 // fsa (Fused Shift and Addition) calculates x * 10^shift + y and checks overflow.
-func (x fint) fsa(shift int, y byte) (fint, bool) {
-	z, ok := x.lsh(shift)
+func (x fint) fsa(shift int, y byte) (z fint, ok bool) {
+	z, ok = x.lsh(shift)
 	if !ok {
 		return 0, false
 	}
@@ -187,7 +187,7 @@ func (x fint) prec() int {
 	return left
 }
 
-// tzeroes returns number of trailing zeros in x
+// tzeroes returns number of trailing zeros in x.
 func (x fint) tzeros() int {
 	left, right := 1, x.prec()
 	for left < right {
@@ -362,7 +362,7 @@ func (z *sint) mul(x, y *sint) {
 	(*big.Int)(z).Mul((*big.Int)(x), (*big.Int)(y))
 }
 
-// quo calculates z = x / y
+// quo calculates z = x / y.
 func (z *sint) quo(x, y *sint) {
 	(*big.Int)(z).Quo((*big.Int)(x), (*big.Int)(y))
 }

@@ -73,6 +73,8 @@ func TestFint_dist(t *testing.T) {
 		{20, 4, 16},
 		{20, 3, 17},
 		{maxFint, 2, 9_999_999_999_999_999_997},
+		{maxFint, 1, 9_999_999_999_999_999_998},
+		{maxFint, 0, maxFint},
 	}
 	for _, tt := range cases {
 		x, y := tt.x, tt.y

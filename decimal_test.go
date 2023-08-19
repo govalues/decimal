@@ -1879,7 +1879,7 @@ func TestDecimal_CopySign(t *testing.T) {
 		{"0", "0", "0"},
 		{"0", "-1", "0"},
 		{"-10", "1", "10"},
-		{"-10", "0", "-10"},
+		{"-10", "0", "10"},
 		{"-10", "-1", "-10"},
 	}
 	for _, tt := range tests {
@@ -2374,7 +2374,7 @@ func FuzzParse(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_String_StringVsParse(f *testing.F) {
+func FuzzDecimalString(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -2402,7 +2402,7 @@ func FuzzDecimal_String_StringVsParse(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Int64_Int64VsNew(f *testing.F) {
+func FuzzDecimalInt64(f *testing.F) {
 	for _, d := range corpus {
 		for s := 0; s <= MaxScale; s++ {
 			f.Add(d.neg, d.scale, d.coef, s)
@@ -2438,7 +2438,7 @@ func FuzzDecimal_Int64_Int64VsNew(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Float64_Float64VsNew(f *testing.F) {
+func FuzzDecimalFloat64(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -2472,7 +2472,7 @@ func FuzzDecimal_Float64_Float64VsNew(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Mul_FintVsSint(f *testing.F) {
+func FuzzDecimalMul(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -2525,7 +2525,7 @@ func FuzzDecimal_Mul_FintVsSint(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_FMA_FintVsSint(f *testing.F) {
+func FuzzDecimalFMA(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for _, g := range corpus {
@@ -2585,7 +2585,7 @@ func FuzzDecimal_FMA_FintVsSint(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Add_FintVsSint(f *testing.F) {
+func FuzzDecimalAdd(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -2638,7 +2638,7 @@ func FuzzDecimal_Add_FintVsSint(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Quo_FintVsSint(f *testing.F) {
+func FuzzDecimalQuo(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -2698,7 +2698,7 @@ func FuzzDecimal_Quo_FintVsSint(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Cmp_FintVsSint(f *testing.F) {
+func FuzzDecimalCmp(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef)
@@ -2737,7 +2737,7 @@ func FuzzDecimal_Cmp_FintVsSint(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_New_FintVsSint(f *testing.F) {
+func FuzzDecimalNew(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}

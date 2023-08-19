@@ -1,50 +1,61 @@
 # Changelog
 
+## [0.1.6] - 2023-08-19
+
+### Added
+
+- Implemented `Decimal.Scan` and `Decimal.Value`.
+
+### Changed
+
+- `Decimal.CopySign` treats 0 as a positive.
+- Enabled `gosec`, `godot`, and `stylecheck` linters.
+
 ## [0.1.5] - 2023-08-12
 
 ### Added
 
-- Implemented NewFromFloat64 method.
+- Implemented `NewFromFloat64` method.
 - Added fuzzing job to continuous integration.
 
 ### Changed
 
-- NewFromInt64 can round to nearest if coefficient is too large.
+- `NewFromInt64` can round to nearest if coefficient is too large.
 
 ## [0.1.4] - 2023-08-04
 
 ### Changed
 
-- Implemented NewFromInt64 method.
+- Implemented `NewFromInt64` method.
 
 ## [0.1.3] - 2023-08-03
 
 ### Changed
 
-- Implemented scale argument for Decimal.Int64 method.
+- Implemented scale argument for `Decimal.Int64` method.
 
 ## [0.1.2] - 2023-06-17
 
 ### Changed
 
-- Rescale, ParseExact, MulExact, AddExact, FMAExact, and QuoExact methods
+- `Rescale`, `ParseExact`, `MulExact`, `AddExact`, `FMAExact`, and `QuoExact` methods
   return error if scale is out of range.
 
 ## [0.1.1] - 2023-06-10
 
 ### Changed
 
-- New method returns error if scale is out of range.
+- `New` method returns error if scale is out of range.
 
 ## [0.1.0] - 2023-06-03
 
 ### Changed
 
 - All methods now return errors, instead of panicking.
-- Implemented Decimal.Pad method.
-- Implemented Decimal.PowExact method.
-- Renamed Decimal.Round to Decimal.Rescale.
-- Renamed Decimal.Reduce to Decimal.Trim.
+- Implemented `Decimal.Pad` method.
+- Implemented `Decimal.PowExact` method.
+- Renamed `Decimal.Round` to `Decimal.Rescale`.
+- Renamed `Decimal.Reduce` to `Decimal.Trim`.
 
 ## [0.0.13] - 2023-04-22
 
@@ -63,8 +74,8 @@
 
 ### Added
 
-- Implemented Decimal.Int64 method.
-- Implemented Decimal.Float64 method.
+- Implemented `Decimal.Int64` method.
+- Implemented `Decimal.Float64` method.
 
 ### Changed
 
@@ -81,35 +92,35 @@
 
 ### Added
 
-- Implemented Decimal.One method.
-- Implemented Decimal.Zero method.
+- Implemented `Decimal.One` method.
+- Implemented `Decimal.Zero` method.
 
 ### Changed
 
 - Reduced memory consumption.
-- Renamed Decimal.LessThanOne to Decimal.WithinOne.
+- Renamed `Decimal.LessThanOne` to `Decimal.WithinOne`.
 
 ### Deleted
 
-- Removed Decimal.WithScale.
+- Removed `Decimal.WithScale`.
 
 ## [0.0.8] - 2023-03-25
 
 ### Changed
 
-- Simplified Decimal.Quo method.
+- Simplified `Decimal.Quo` method.
 
 ## [0.0.7] - 2023-03-22
 
 ### Added
 
-- Implemented Decimal.CopySign method.
+- Implemented `Decimal.CopySign` method.
 
 ## [0.0.6] - 2023-03-21
 
 ### Added
 
-- Implemented Decimal.ULP method.
+- Implemented `Decimal.ULP` method.
 
 ## [0.0.5] - 2023-03-19
 
@@ -122,21 +133,21 @@
 
 ### Fixed
 
-- Fixed index out of range in Parse.
-- Rounding error in Decimal.Quo.
+- Fixed index out of range in `Parse`.
+- Rounding error in `Decimal.Quo`.
 
 ## [0.0.3] - 2023-03-18
 
 ### Changed
 
 - Removed errors from public API.
-- Renamed Decimal.Fma to Decimal.FMA.
+- Renamed `Decimal.Fma` to `Decimal.FMA`.
 
 ## [0.0.2] - 2023-03-13
 
 ### Added
 
-- Implemented Decimal.Fma.
+- Implemented `Decimal.Fma`.
 
 ## [0.0.1] - 2023-02-28
 

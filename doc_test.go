@@ -12,16 +12,13 @@ func evaluate(input string) (decimal.Decimal, error) {
 	if err != nil {
 		return decimal.Decimal{}, fmt.Errorf("parsing tokens: %w", err)
 	}
-
 	stack, err := processTokens(tokens)
 	if err != nil {
 		return decimal.Decimal{}, fmt.Errorf("processing tokens: %w", err)
 	}
-
 	if len(stack) != 1 {
 		return decimal.Decimal{}, fmt.Errorf("post-processed stack contains %v, expected exactly one item", stack)
 	}
-
 	return stack[0], nil
 }
 
@@ -36,7 +33,6 @@ func parseTokens(input string) ([]string, error) {
 func processTokens(tokens []string) ([]decimal.Decimal, error) {
 	stack := make([]decimal.Decimal, 0, len(tokens))
 	var err error
-
 	for i := len(tokens) - 1; i >= 0; i-- {
 		token := tokens[i]
 		switch token {
@@ -49,7 +45,6 @@ func processTokens(tokens []string) ([]decimal.Decimal, error) {
 			return nil, fmt.Errorf("processing token %q: %w", token, err)
 		}
 	}
-
 	return stack, nil
 }
 
@@ -57,14 +52,11 @@ func processOperator(stack []decimal.Decimal, token string) ([]decimal.Decimal, 
 	if len(stack) < 2 {
 		return nil, fmt.Errorf("not enough operands")
 	}
-
 	right := stack[len(stack)-2]
 	left := stack[len(stack)-1]
 	stack = stack[:len(stack)-2]
-
 	var result decimal.Decimal
 	var err error
-
 	switch token {
 	case "+":
 		result, err = left.Add(right)
@@ -78,7 +70,6 @@ func processOperator(stack []decimal.Decimal, token string) ([]decimal.Decimal, 
 	if err != nil {
 		return nil, fmt.Errorf("evaluating \"%s %s %s\": %w", left, token, right, err)
 	}
-
 	return append(stack, result), nil
 }
 
@@ -87,7 +78,6 @@ func processOperand(stack []decimal.Decimal, token string) ([]decimal.Decimal, e
 	if err != nil {
 		return nil, err
 	}
-
 	return append(stack, d), nil
 }
 
@@ -106,36 +96,31 @@ func Example_polishNotation() {
 }
 
 func calculate(terms int) (decimal.Decimal, error) {
-	pi := decimal.MustNew(0, 0)
-	multiplier := decimal.MustNew(4, 0)
-	denominator := decimal.MustNew(1, 0)
-	sign := decimal.MustNew(1, 0)
-	increment := decimal.MustNew(2, 0)
+	pi := decimal.MustParse("0")
+	multiplier := decimal.MustParse("4")
+	denominator := decimal.MustParse("1")
+	sign := decimal.MustParse("1")
+	increment := decimal.MustParse("2")
 
 	for i := 0; i < terms; i++ {
 		term, err := multiplier.Quo(denominator)
 		if err != nil {
 			return decimal.Decimal{}, err
 		}
-
 		signedTerm, err := term.Mul(sign)
 		if err != nil {
 			return decimal.Decimal{}, err
 		}
-
 		pi, err = pi.Add(signedTerm)
 		if err != nil {
 			return decimal.Decimal{}, err
 		}
-
 		denominator, err = denominator.Add(increment)
 		if err != nil {
 			return decimal.Decimal{}, err
 		}
-
 		sign = sign.Neg()
 	}
-
 	return pi, nil
 }
 
@@ -320,6 +305,27 @@ func ExampleDecimal_MarshalText() {
 		panic(err)
 	}
 	fmt.Println(string(b))
+	// Output: -15.67
+}
+
+func ExampleDecimal_Scan() {
+	d := &decimal.Decimal{}
+	s := "-15.67"
+	err := d.Scan(s)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(d)
+	// Output: -15.67
+}
+
+func ExampleDecimal_Value() {
+	d := decimal.MustParse("-15.67")
+	s, err := d.Value()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(s)
 	// Output: -15.67
 }
 
