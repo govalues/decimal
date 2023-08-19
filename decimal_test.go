@@ -535,6 +535,65 @@ func TestDecimal_Int64(t *testing.T) {
 	}
 }
 
+func TestDecimal_Scan(t *testing.T) {
+	t.Run("float64", func(t *testing.T) {
+		tests := []struct {
+			f    float64
+			want string
+		}{
+			{1e-20, "0.0000000000000000000"},
+			{1e-5, "0.00001"},
+			{1e0, "1"},
+			{1e5, "100000"},
+			{1e18, "1000000000000000000"},
+		}
+		for _, tt := range tests {
+			got := Decimal{}
+			err := got.Scan(tt.f)
+			if err != nil {
+				t.Errorf("Scan(1.23456) failed: %v", err)
+			}
+			want := MustParse(tt.want)
+			if got != want {
+				t.Errorf("Scan(%v) = %v, want %v", tt.f, got, want)
+			}
+		}
+	})
+
+	t.Run("int64", func(t *testing.T) {
+		tests := []struct {
+			i    int64
+			want string
+		}{
+			{math.MinInt64, "-9223372036854775808"},
+			{0, "0"},
+			{math.MaxInt64, "9223372036854775807"},
+		}
+		for _, tt := range tests {
+			got := Decimal{}
+			err := got.Scan(tt.i)
+			if err != nil {
+				t.Errorf("Scan(%v) failed: %v", tt.i, err)
+			}
+			want := MustParse(tt.want)
+			if got != want {
+				t.Errorf("Scan(%v) = %v, want %v", tt.i, got, want)
+			}
+		}
+	})
+
+	t.Run("[]byte", func(t *testing.T) {
+		tests := []string{"0"}
+		for _, tt := range tests {
+			got := Decimal{}
+			err := got.Scan([]byte(tt))
+			if err == nil {
+				t.Errorf("Scan(%q) did not fail", tt)
+			}
+		}
+	})
+}
+
 func TestDecimal_Format(t *testing.T) {
 	tests := []struct {
 		decimal, format, want string
@@ -1879,7 +1938,7 @@ func TestDecimal_CopySign(t *testing.T) {
 		{"0", "0", "0"},
 		{"0", "-1", "0"},
 		{"-10", "1", "10"},
-		{"-10", "0", "-10"},
+		{"-10", "0", "10"},
 		{"-10", "-1", "-10"},
 	}
 	for _, tt := range tests {
@@ -2374,7 +2433,7 @@ func FuzzParse(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_String_StringVsParse(f *testing.F) {
+func FuzzDecimalString(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -2402,7 +2461,7 @@ func FuzzDecimal_String_StringVsParse(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Int64_Int64VsNew(f *testing.F) {
+func FuzzDecimalInt64(f *testing.F) {
 	for _, d := range corpus {
 		for s := 0; s <= MaxScale; s++ {
 			f.Add(d.neg, d.scale, d.coef, s)
@@ -2438,7 +2497,7 @@ func FuzzDecimal_Int64_Int64VsNew(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Float64_Float64VsNew(f *testing.F) {
+func FuzzDecimalFloat64(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -2472,7 +2531,7 @@ func FuzzDecimal_Float64_Float64VsNew(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Mul_FintVsSint(f *testing.F) {
+func FuzzDecimalMul(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -2525,7 +2584,7 @@ func FuzzDecimal_Mul_FintVsSint(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_FMA_FintVsSint(f *testing.F) {
+func FuzzDecimalFMA(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for _, g := range corpus {
@@ -2585,7 +2644,7 @@ func FuzzDecimal_FMA_FintVsSint(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Add_FintVsSint(f *testing.F) {
+func FuzzDecimalAdd(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -2638,7 +2697,7 @@ func FuzzDecimal_Add_FintVsSint(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Quo_FintVsSint(f *testing.F) {
+func FuzzDecimalQuo(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -2698,7 +2757,7 @@ func FuzzDecimal_Quo_FintVsSint(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Cmp_FintVsSint(f *testing.F) {
+func FuzzDecimalCmp(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef)
@@ -2737,7 +2796,7 @@ func FuzzDecimal_Cmp_FintVsSint(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_New_FintVsSint(f *testing.F) {
+func FuzzDecimalNew(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}

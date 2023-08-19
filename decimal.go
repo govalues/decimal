@@ -1,6 +1,7 @@
 package decimal
 
 import (
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"math"
@@ -196,7 +197,7 @@ func NewFromInt64(whole, frac int64, scale int) (Decimal, error) {
 //   - if the float is a special value (NaN or Inf).
 func NewFromFloat64(f float64) (Decimal, error) {
 	if math.IsNaN(f) || math.IsInf(f, 0) {
-		return Decimal{}, fmt.Errorf("special values")
+		return Decimal{}, fmt.Errorf("special value")
 	}
 	d, err := Parse(strconv.FormatFloat(f, 'f', -1, 64))
 	if err != nil {
@@ -413,10 +414,10 @@ func parseSint(s string, minScale int) (Decimal, error) {
 
 // MustParse is like [Parse] but panics if the string cannot be parsed.
 // It simplifies safe initialization of global variables holding decimals.
-func MustParse(dec string) Decimal {
-	d, err := Parse(dec)
+func MustParse(s string) Decimal {
+	d, err := Parse(s)
 	if err != nil {
-		panic(fmt.Sprintf("MustParse(%q) failed: %v", dec, err))
+		panic(fmt.Sprintf("MustParse(%q) failed: %v", s, err))
 	}
 	return d
 }
@@ -536,7 +537,34 @@ func (d Decimal) MarshalText() ([]byte, error) {
 	return []byte(d.String()), nil
 }
 
-// Format implements [fmt.Formatter] interface.
+// Scan implements the [sql.Scanner] interface.
+// See also method [Decimal.Parse].
+//
+// [sql.Scanner]: https://pkg.go.dev/database/sql#Scanner
+func (d *Decimal) Scan(v any) error {
+	var err error
+	switch v := v.(type) {
+	case string:
+		*d, err = Parse(v)
+	case int64:
+		*d, err = New(v, 0)
+	case float64:
+		*d, err = NewFromFloat64(v)
+	default:
+		err = fmt.Errorf("failed to convert from %T to %T", v, Decimal{})
+	}
+	return err
+}
+
+// Value implements the [driver.Valuer] interface.
+// See also method [Decimal.String].
+//
+// [driver.Valuer]: https://pkg.go.dev/database/sql/driver#Valuer
+func (d Decimal) Value() (driver.Value, error) {
+	return d.String(), nil
+}
+
+// Format implements the [fmt.Formatter] interface.
 // The following [verbs] are available:
 //
 //	%f, %s, %v: -123.456
@@ -908,15 +936,12 @@ func (d Decimal) Abs() Decimal {
 }
 
 // CopySign returns a decimal with the same sign as decimal e.
-// If decimal e is zero, the sign of the result remains unchanged.
+// Zero is always treated as positive.
 func (d Decimal) CopySign(e Decimal) Decimal {
-	switch {
-	case e.IsZero():
+	if d.IsNeg() == e.IsNeg() {
 		return d
-	case d.IsNeg() != e.IsNeg():
-		return d.Neg()
 	}
-	return d
+	return d.Neg()
 }
 
 // Sign returns:
@@ -985,8 +1010,7 @@ func (d Decimal) MulExact(e Decimal, scale int) (Decimal, error) {
 }
 
 func (d Decimal) mulFint(e Decimal, minScale int) (Decimal, error) {
-	dcoef := d.coef
-	ecoef := e.coef
+	dcoef, ecoef := d.coef, e.coef
 
 	// Coefficient
 	dcoef, ok := dcoef.mul(ecoef)
@@ -1092,8 +1116,7 @@ func (d Decimal) AddExact(e Decimal, scale int) (Decimal, error) {
 }
 
 func (d Decimal) addFint(e Decimal, minScale int) (Decimal, error) {
-	dcoef := d.coef
-	ecoef := e.coef
+	dcoef, ecoef := d.coef, e.coef
 
 	// Alignment and scale
 	var scale int
@@ -1219,9 +1242,7 @@ func (d Decimal) FMAExact(e, f Decimal, scale int) (Decimal, error) {
 }
 
 func (d Decimal) fmaFint(e, f Decimal, minScale int) (Decimal, error) {
-	dcoef := d.coef
-	ecoef := e.coef
-	fcoef := f.coef
+	dcoef, ecoef, fcoef := d.coef, e.coef, f.coef
 
 	// Coefficient (Multiplication)
 	var ok bool
@@ -1354,8 +1375,7 @@ func (d Decimal) QuoExact(e Decimal, scale int) (Decimal, error) {
 }
 
 func (d Decimal) quoFint(e Decimal, minScale int) (Decimal, error) {
-	dcoef := d.coef
-	ecoef := e.coef
+	dcoef, ecoef := d.coef, e.coef
 
 	// Scale
 	scale := d.Scale() - e.Scale()
@@ -1416,7 +1436,7 @@ func (d Decimal) quoSint(e Decimal, minScale int) (Decimal, error) {
 func (d Decimal) QuoRem(e Decimal) (q, r Decimal, err error) {
 	q, r, err = d.quoRem(e)
 	if err != nil {
-		return Decimal{}, Decimal{}, fmt.Errorf("⌊%v / %v⌋ and %v mod %v: %w", d, e, d, e, err)
+		return Decimal{}, Decimal{}, fmt.Errorf("[⌊%v / %v⌋ %v mod %v]: %w", d, e, d, e, err)
 	}
 	return q, r, nil
 }
@@ -1465,8 +1485,7 @@ func (d Decimal) Cmp(e Decimal) int {
 }
 
 func (d Decimal) cmpFint(e Decimal) (int, error) {
-	dcoef := d.coef
-	ecoef := e.coef
+	dcoef, ecoef := d.coef, e.coef
 
 	// Alignment
 	var ok bool

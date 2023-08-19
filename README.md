@@ -3,8 +3,8 @@
 [![githubb]][github]
 [![codecovb]][codecov]
 [![goreportb]][goreport]
-[![licenseb]][license]
 [![godocb]][godoc]
+[![licenseb]][license]
 [![versionb]][version]
 
 Package decimal implements immutable decimal floating-point numbers for Go.
@@ -61,20 +61,20 @@ pkg: github.com/govalues/benchmarks
 cpu: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx 
 ```
 
-| Test Case           | Expression           |   govalues | [cockroachdb] v3.1.2 | cockroachdb vs govalues | [shopspring] v1.3.1 | shopspring vs govalues |
-| ------------------- | -------------------- | ---------: | -------------------: | ----------------------: | ------------------: | ---------------------: |
-| Decimal_Add         | 2 + 3                |     15.54n |               47.39n |                +204.89% |             142.65n |               +817.66% |
-| Decimal_Mul         | 2 * 3                |     15.87n |               61.18n |                +285.51% |             136.60n |               +760.74% |
-| Decimal_QuoFinite   | 2 / 4                |     55.95n |              360.70n |                +544.74% |             654.45n |              +1069.81% |
-| Decimal_QuoInfinite | 2 / 3                |    570.10n |              936.40n |                 +64.27% |            2858.00n |               +401.36% |
-| Decimal_Pow         | 1.1^60               |      1.01µ |                3.06µ |                +202.92% |              20.09µ |              +1889.90% |
-| Parse               | 1                    |     17.35n |               88.44n |                +409.74% |             132.10n |               +661.38% |
-| Parse               | 123.456              |     36.75n |              220.15n |                +499.05% |             244.45n |               +565.17% |
-| Parse               | 123456789.1234567890 |    105.80n |              240.40n |                +127.33% |             496.00n |               +369.08% |
-| Decimal_String      | 1                    |      6.39n |               23.42n |                +266.32% |             237.95n |              +3622.62% |
-| Decimal_String      | 123.456              |     37.65n |               38.27n |                  +1.66% |             230.40n |               +512.03% |
-| Decimal_String      | 123456789.1234567890 |     74.95n |              189.70n |                +153.10% |             324.10n |               +332.42% |
-| **Geometric Mean**  |                      | **53.20n** |          **164.50n** |            **+209.17%** |         **462.80n** |           **+769.86%** |
+| Test Case           | Expression           | govalues | [cockroachdb] v3.2.0 | cockroachdb vs govalues | [shopspring] v1.3.1 | shopspring vs govalues |
+| ------------------- | -------------------- | -------: | -------------------: | ----------------------: | ------------------: | ---------------------: |
+| Decimal_Add         | 2 + 3                |   15.73n |               50.24n |                +219.39% |             141.85n |               +801.78% |
+| Decimal_Mul         | 2 * 3                |   15.67n |               67.34n |                +329.57% |             139.55n |               +790.27% |
+| Decimal_QuoFinite   | 2 / 4                |   61.08n |              371.35n |                +508.02% |             629.70n |               +931.03% |
+| Decimal_QuoInfinite | 2 / 3                |  560.80n |              946.10n |                 +68.69% |            2736.50n |               +387.92% |
+| Decimal_Pow         | 1.1^60               |    1.02µ |                2.89µ |                +182.58% |              20.08µ |              +1865.17% |
+| Parse               | 123456789.1234567890 |   99.16n |              219.15n |                +121.01% |             480.10n |               +384.17% |
+| Parse               | 123.456              |   37.41n |              203.80n |                +444.85% |             229.20n |               +512.75% |
+| Parse               | 1                    |   16.37n |               76.27n |                +365.91% |             128.90n |               +687.42% |
+| Decimal_String      | 123456789.1234567890 |   76.47n |              215.15n |                +181.35% |             329.35n |               +330.69% |
+| Decimal_String      | 123.456              |   40.86n |               70.52n |                 +72.59% |             222.10n |               +443.56% |
+| Decimal_String      | 1                    |    5.32n |               19.41n |                +264.88% |             192.75n |              +3523.46% |
+| **Geometric Mean**  |                      |   52.70n |              170.10n |                +222.71% |             445.40n |               +745.22% |
 
 The benchmark results shown in the table are provided for informational purposes only and may vary depending on your specific use case.
 
