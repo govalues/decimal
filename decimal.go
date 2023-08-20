@@ -276,6 +276,8 @@ func ParseExact(s string, scale int) (Decimal, error) {
 }
 
 // parseFint does not support exponential notation to make it as fast as possible.
+//
+//gocylo:ignore
 func parseFint(s string, minScale int) (Decimal, error) {
 	pos := 0
 	width := len(s)
@@ -329,6 +331,8 @@ func parseFint(s string, minScale int) (Decimal, error) {
 }
 
 // parseSint supports exponential notation.
+//
+//gocylo:ignore
 func parseSint(s string, minScale int) (Decimal, error) {
 	pos := 0
 	width := len(s)
@@ -538,7 +542,7 @@ func (d Decimal) MarshalText() ([]byte, error) {
 }
 
 // Scan implements the [sql.Scanner] interface.
-// See also method [Decimal.Parse].
+// See also method [Parse].
 //
 // [sql.Scanner]: https://pkg.go.dev/database/sql#Scanner
 func (d *Decimal) Scan(v any) error {
@@ -579,14 +583,16 @@ func (d Decimal) Value() (driver.Value, error) {
 //
 // [verbs]: https://pkg.go.dev/fmt#hdr-Printing
 // [fmt.Formatter]: https://pkg.go.dev/fmt#Formatter
+//
+//gocyclo:ignore
 func (d Decimal) Format(state fmt.State, verb rune) {
 	var err error
 
-	// Percentage
+	// Percentage multiplier
 	if verb == 'k' || verb == 'K' {
 		d, err = d.Mul(Hundred)
 		if err != nil {
-			panic(fmt.Errorf("formatting percent: %w", err)) // this panic is handled by the fmt package
+			panic(fmt.Errorf("formatting percent: %w", err)) // this panic is handled inside the fmt package
 		}
 	}
 
@@ -640,13 +646,13 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 		psign = 1
 	}
 
-	// Quotes
+	// Openning and closing quotes
 	lquote, tquote := 0, 0
 	if verb == 'q' || verb == 'Q' {
 		lquote, tquote = 1, 1
 	}
 
-	// Padding
+	// Calculating padding
 	width := lquote + rsign + intdigs + dpoint + fracdigs + tzeroes + psign + tquote
 	lspaces, tspaces, lzeroes := 0, 0, 0
 	if w, ok := state.Width(); ok && w > width {
@@ -661,44 +667,61 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 		width = w
 	}
 
-	// Writing buffer
 	buf := make([]byte, width)
 	pos := width - 1
+
+	// Trailing spaces
 	for i := 0; i < tspaces; i++ {
 		buf[pos] = ' '
 		pos--
 	}
+
+	// Closing quote
 	if tquote > 0 {
 		buf[pos] = '"'
 		pos--
 	}
+
+	// Percentage sign
 	if psign > 0 {
 		buf[pos] = '%'
 		pos--
 	}
+
+	// Trailling zeroes
 	for i := 0; i < tzeroes; i++ {
 		buf[pos] = '0'
 		pos--
 	}
+
+	// Fractional digits
 	dcoef := d.Coef()
 	for i := 0; i < fracdigs; i++ {
 		buf[pos] = byte(dcoef%10) + '0'
 		pos--
 		dcoef /= 10
 	}
+
+	// Decimal point
 	if dpoint > 0 {
 		buf[pos] = '.'
 		pos--
 	}
+
+	// Integer digits
 	for i := 0; i < intdigs; i++ {
 		buf[pos] = byte(dcoef%10) + '0'
 		pos--
 		dcoef /= 10
 	}
+
+	// Leading zeroes
 	for i := 0; i < lzeroes; i++ {
 		buf[pos] = '0'
 		pos--
 	}
+
+	// Arithmetic sign
 	if rsign > 0 {
 		if d.IsNeg() {
 			buf[pos] = '-'
@@ -709,10 +732,14 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 		}
 		pos--
 	}
+
+	// Opening quote
 	if lquote > 0 {
 		buf[pos] = '"'
 		pos--
 	}
+
+	// Leading spaces
 	for i := 0; i < lspaces; i++ {
 		buf[pos] = ' '
 		pos--

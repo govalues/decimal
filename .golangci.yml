@@ -16,3 +16,4 @@ linters:
     - staticcheck
     - typecheck
     - unused
+    - gocyclo
