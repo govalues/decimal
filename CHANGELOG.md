@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.7] - 2023-08-20
+
+### Changed
+
+- Enabled `gocyclo` linter.
+
 ## [0.1.6] - 2023-08-19
 
 ### Added

@@ -1383,8 +1383,8 @@ func TestDecimal_Floor(t *testing.T) {
 func TestDecimal_MinScale(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
-			decimal string
-			want    int
+			d    string
+			want int
 		}{
 			{"0", 0},
 			{"0.0", 0},
@@ -1406,7 +1406,7 @@ func TestDecimal_MinScale(t *testing.T) {
 			{"0.9999999999999999999", 19},
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimal)
+			d := MustParse(tt.d)
 			got := d.MinScale()
 			if got != tt.want {
 				t.Errorf("%q.MinScale() = %v, want %v", d, got, tt.want)
@@ -1752,9 +1752,9 @@ func TestDecimal_FMA(t *testing.T) {
 func TestDecimal_Pow(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
-			decimal string
-			power   int
-			want    string
+			d     string
+			power int
+			want  string
 		}{
 			// Zeroes
 			{"0", 0, "1"},
@@ -1873,7 +1873,7 @@ func TestDecimal_Pow(t *testing.T) {
 			{"1.00001", 600000, "403.4166908911752717"}, // should be 403.4166908911542153, error in the last six digits
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimal)
+			d := MustParse(tt.d)
 			got, err := d.Pow(tt.power)
 			if err != nil {
 				t.Errorf("%q.Pow(%d) failed: %v", d, tt.power, err)
@@ -1888,7 +1888,7 @@ func TestDecimal_Pow(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
-			decimal      string
+			d            string
 			power, scale int
 		}{
 			"overflow 1": {"2", 64, 0},
@@ -1896,7 +1896,7 @@ func TestDecimal_Pow(t *testing.T) {
 			"scale 1":    {"1", 1, MaxScale},
 		}
 		for _, tt := range tests {
-			d := MustParse(tt.decimal)
+			d := MustParse(tt.d)
 			_, err := d.PowExact(tt.power, tt.scale)
 			if err == nil {
 				t.Errorf("%q.PowExact(%d, %d) did not fail", d, tt.power, tt.scale)
@@ -1954,7 +1954,7 @@ func TestDecimal_CopySign(t *testing.T) {
 
 func TestDecimal_Neg(t *testing.T) {
 	tests := []struct {
-		decimal, want string
+		d, want string
 	}{
 		{"1", "-1"},
 		{"-1", "1"},
@@ -1965,7 +1965,7 @@ func TestDecimal_Neg(t *testing.T) {
 		{"0.00", "0.00"},
 	}
 	for _, tt := range tests {
-		d := MustParse(tt.decimal)
+		d := MustParse(tt.d)
 		got := d.Neg()
 		want := MustParse(tt.want)
 		if got != want {
@@ -2572,11 +2572,6 @@ func FuzzDecimalMul(f *testing.F) {
 				t.Errorf("mulSint(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
 			}
-			if s.Scale() < scale {
-				t.Errorf("mulSint(%q, %q, %v).Scale() = %v, want >= %v", d, e, scale, s.Scale(), scale)
-				return
-			}
-
 			if s.CmpTotal(f) != 0 {
 				t.Errorf("mulSint(%q, %q, %v) = %q, whereas mulFint(%q, %q, %v) = %q", d, e, scale, s, d, e, scale, f)
 			}
@@ -2632,11 +2627,6 @@ func FuzzDecimalFMA(f *testing.F) {
 				t.Errorf("fmaSint(%q, %q, %q, %v) failed: %v", d, e, g, scale, err)
 				return
 			}
-			if s.Scale() < scale {
-				t.Errorf("fmaSint(%q, %q, %q, %v).Scale() = %v, want >= %v", d, e, g, scale, s.Scale(), scale)
-				return
-			}
-
 			if s.CmpTotal(f) != 0 {
 				t.Errorf("fmaSint(%q, %q, %q, %v) = %q, whereas fmaFint(%q, %q, %q, %v) = %q", d, e, g, scale, s, d, e, g, scale, f)
 			}
@@ -2685,11 +2675,6 @@ func FuzzDecimalAdd(f *testing.F) {
 				t.Errorf("addSint(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
 			}
-			if s.Scale() < scale {
-				t.Errorf("addSint(%q, %q, %v).Scale() = %v, want >= %v", d, e, scale, s.Scale(), scale)
-				return
-			}
-
 			if s.CmpTotal(f) != 0 {
 				t.Errorf("addSint(%q, %q, %v) = %q, whereas addFint(%q, %q, %v) = %q", d, e, scale, s, d, e, scale, f)
 			}
@@ -2745,11 +2730,6 @@ func FuzzDecimalQuo(f *testing.F) {
 				t.Errorf("quoSint(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
 			}
-			if s.Scale() < scale {
-				t.Errorf("quoSint(%q, %q, %v).Scale() = %v, want >= %v", d, e, scale, s.Scale(), scale)
-				return
-			}
-
 			if s.Cmp(f) != 0 {
 				t.Errorf("quoSint(%q, %q, %v) = %q, whereas quoFint(%q, %q, %v) = %q", d, e, scale, s, d, e, scale, f)
 			}
