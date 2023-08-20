@@ -277,7 +277,7 @@ func ParseExact(s string, scale int) (Decimal, error) {
 
 // parseFint does not support exponential notation to make it as fast as possible.
 //
-//gocylo:ignore
+//gocyclo:ignore
 func parseFint(s string, minScale int) (Decimal, error) {
 	pos := 0
 	width := len(s)
@@ -332,7 +332,7 @@ func parseFint(s string, minScale int) (Decimal, error) {
 
 // parseSint supports exponential notation.
 //
-//gocylo:ignore
+//gocyclo:ignore
 func parseSint(s string, minScale int) (Decimal, error) {
 	pos := 0
 	width := len(s)
