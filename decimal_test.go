@@ -1894,7 +1894,9 @@ func TestDecimal_Pow(t *testing.T) {
 			"overflow 1": {"2", 64, 0},
 			"overflow 2": {"2", -64, 0},
 			"overflow 3": {"10", 19, 0},
+			"zero":       {"0.1", -20, 0},
 			"scale 1":    {"1", 1, MaxScale},
+			"scale 2":    {"1", 1, -1},
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.d)
