@@ -1866,11 +1866,11 @@ func TestDecimal_Pow(t *testing.T) {
 			{"0.5", 9, "0.001953125"},
 
 			// Interest accrual
-			{"1.1", 60, "304.4816395414180996"},         // no error
-			{"1.01", 600, "391.5833969993197775"},       // should be 391.5833969993197743, error in the last two digits
-			{"1.001", 6000, "402.2211245663552073"},     // should be 402.2211245663552923, error in the last three digits
-			{"1.0001", 60000, "403.3077910727185768"},   // should be 403.3077910727185433, error in the last three digits
-			{"1.00001", 600000, "403.4166908911752717"}, // should be 403.4166908911542153, error in the last six digits
+			{"1.1", 60, "304.4816395414180996"},
+			{"1.01", 600, "391.5833969993197743"},
+			{"1.001", 6000, "402.2211245663552923"},
+			{"1.0001", 60000, "403.3077910727185433"},
+			{"1.00001", 600000, "403.4166908911542153"},
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.d)
@@ -1892,7 +1892,8 @@ func TestDecimal_Pow(t *testing.T) {
 			power, scale int
 		}{
 			"overflow 1": {"2", 64, 0},
-			"overflow 2": {"10", 19, 0},
+			"overflow 2": {"2", -64, 0},
+			"overflow 3": {"10", 19, 0},
 			"scale 1":    {"1", 1, MaxScale},
 		}
 		for _, tt := range tests {
