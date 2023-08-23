@@ -1073,8 +1073,8 @@ func (d Decimal) mulSint(e Decimal, minScale int) (Decimal, error) {
 // Pow returns the (possibly rounded) decimal raised to the given power.
 //
 // Pow returns an error if the integer part of the power has more than [MaxPrec] digits.
-func (d Decimal) Pow(exp int) (Decimal, error) {
-	return d.PowExact(exp, 0)
+func (d Decimal) Pow(power int) (Decimal, error) {
+	return d.PowExact(power, 0)
 }
 
 // PowExact is similar to [Decimal.Pow], but it allows you to specify the number of digits
@@ -1082,38 +1082,118 @@ func (d Decimal) Pow(exp int) (Decimal, error) {
 // If any of the significant digits are lost during rounding, the method will return an error.
 // This method is useful for financial calculations where the scale should be
 // equal to or greater than the currency's scale.
-func (d Decimal) PowExact(exp, scale int) (Decimal, error) {
-	e, err := d.powLoop(exp, scale)
-	if err != nil {
-		return Decimal{}, fmt.Errorf("%v^%v: %w", d, exp, err)
+func (d Decimal) PowExact(power, scale int) (Decimal, error) {
+	if scale < 0 || scale > MaxScale {
+		return Decimal{}, fmt.Errorf("%v^%v: %w", d, power, errScaleRange)
 	}
-	// Trailing zeros (Workaround)
-	e = e.Trim(scale)
-	return e, nil
-}
 
-func (d Decimal) powLoop(exp, scale int) (Decimal, error) {
-	// Special case: power of 0
-	if exp == 0 {
-		return One, nil
+	// Special case: negative power
+	if power < 0 {
+		e, err := d.PowExact(-power, scale)
+		if err != nil {
+			return Decimal{}, fmt.Errorf("%v^(%v): %w", d, power, err)
+		}
+		e, err = One.QuoExact(e, scale)
+		if err != nil {
+			return Decimal{}, fmt.Errorf("%v^(%v): %w", d, power, err)
+		}
+		return e, nil
 	}
 
 	// General case
-	e, err := d.powLoop(exp/2, scale)
+	e, err := d.powFint(power, scale)
 	if err != nil {
-		return Decimal{}, err
+		e, err = d.powSint(power, scale)
+		if err != nil {
+			return Decimal{}, fmt.Errorf("%v^%v: %w", d, power, err)
+		}
 	}
-	e, err = e.MulExact(e, scale)
-	if err != nil {
-		return Decimal{}, err
+
+	return e, nil
+}
+
+func (d Decimal) powFint(power, minScale int) (Decimal, error) {
+	dneg, dcoef, dscale := d.IsNeg(), d.coef, d.Scale()
+	eneg, ecoef, escale := false, fint(1), 0
+
+	for power > 0 {
+		if power%2 == 1 {
+			power = power - 1
+
+			// Coefficient (Multiplication)
+			var ok bool
+			ecoef, ok = ecoef.mul(dcoef)
+			if !ok {
+				return Decimal{}, errDecimalOverflow
+			}
+
+			// Sign
+			eneg = eneg != dneg
+
+			// Scale
+			escale = escale + dscale
+		}
+		if power > 0 {
+			power = power / 2
+
+			// Coefficient (Squaring)
+			var ok bool
+			dcoef, ok = dcoef.mul(dcoef)
+			if !ok {
+				return Decimal{}, errDecimalOverflow
+			}
+
+			// Sign
+			dneg = false
+
+			// Scale
+			dscale = dscale * 2
+		}
 	}
-	if exp%2 == 0 {
-		return e, nil
+	return newDecimalFromFint(eneg, ecoef, escale, minScale)
+}
+
+func (d Decimal) powSint(power, minScale int) (Decimal, error) {
+	dneg, dcoef, dscale := d.IsNeg(), newSintFromFint(d.coef), d.Scale()
+	eneg, ecoef, escale := false, newSintFromFint(1), 0
+
+	for power > 0 {
+		if power%2 == 1 {
+			power = power - 1
+
+			// Coefficient (Multiplication)
+			ecoef.mul(dcoef, ecoef)
+
+			// Sign
+			eneg = eneg != dneg
+
+			// Scale and truncation
+			escale = escale + dscale
+			if escale > 2*MaxScale {
+				shift := escale - 2*MaxScale
+				ecoef.rshDown(ecoef, shift)
+				escale = escale - shift
+			}
+		}
+		if power > 0 {
+			power = power / 2
+
+			// Coefficient (Squaring)
+			dcoef.mul(dcoef, dcoef)
+
+			// Sign
+			dneg = false
+
+			// Scale and truncation
+			dscale = dscale * 2
+			if dscale > 2*MaxScale {
+				shift := dscale - 2*MaxScale
+				dcoef.rshDown(dcoef, shift)
+				dscale = dscale - shift
+			}
+		}
 	}
-	if exp > 0 {
-		return e.MulExact(d, scale)
-	}
-	return e.QuoExact(d, scale)
+	return newDecimalFromSint(eneg, ecoef, escale, minScale)
 }
 
 // Add returns the (possibly rounded) sum of decimals d and e.

@@ -285,6 +285,41 @@ var spow10 = [...]*sint{
 	newSintFromPow10(62),
 	newSintFromPow10(63),
 	newSintFromPow10(64),
+	newSintFromPow10(65),
+	newSintFromPow10(66),
+	newSintFromPow10(67),
+	newSintFromPow10(68),
+	newSintFromPow10(69),
+	newSintFromPow10(70),
+	newSintFromPow10(71),
+	newSintFromPow10(72),
+	newSintFromPow10(73),
+	newSintFromPow10(74),
+	newSintFromPow10(75),
+	newSintFromPow10(76),
+	newSintFromPow10(77),
+	newSintFromPow10(78),
+	newSintFromPow10(79),
+	newSintFromPow10(80),
+	newSintFromPow10(81),
+	newSintFromPow10(82),
+	newSintFromPow10(83),
+	newSintFromPow10(84),
+	newSintFromPow10(85),
+	newSintFromPow10(86),
+	newSintFromPow10(87),
+	newSintFromPow10(88),
+	newSintFromPow10(89),
+	newSintFromPow10(90),
+	newSintFromPow10(91),
+	newSintFromPow10(92),
+	newSintFromPow10(93),
+	newSintFromPow10(94),
+	newSintFromPow10(95),
+	newSintFromPow10(96),
+	newSintFromPow10(97),
+	newSintFromPow10(98),
+	newSintFromPow10(99),
 }
 
 // newSintFromFint converts fint to *sint.
@@ -392,6 +427,17 @@ func (z *sint) lsh(x *sint, shift int) {
 func (z *sint) fsa(shift int, y byte) {
 	z.lsh(z, shift)
 	z.add(z, newSintFromFint(fint(y)))
+}
+
+// rshDown (Right Shift) calculates x / 10^shift and rounds result towards 0.
+func (z *sint) rshDown(x *sint, shift int) {
+	var y *sint
+	if shift < len(spow10) {
+		y = spow10[shift]
+	} else {
+		y = newSintFromPow10(shift)
+	}
+	z.quo(x, y)
 }
 
 // rshHalfEven (Right Shift) calculates x / 10^shift and
