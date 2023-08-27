@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.9] - 2025-08-27
+
+### Changed
+
+- Reviewed error descriptions.
+
 ## [0.1.8] - 2023-08-23
 
 ### Changed
