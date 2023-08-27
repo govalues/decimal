@@ -68,7 +68,7 @@ jobs:
     - name: Run fuzzing for multiplication
       run: go test -fuzztime 20s -fuzz ^FuzzDecimalMul$ github.com/govalues/decimal
 
-    - name: Run fuzzing for fused multiply-addidtion
+    - name: Run fuzzing for fused multiply-addition
       run: go test -fuzztime 40s -fuzz ^FuzzDecimalFMA$ github.com/govalues/decimal
 
     - name: Run fuzzing for division
