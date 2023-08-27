@@ -14,8 +14,8 @@ import (
 //
 // A decimal is a struct with three fields:
 //
-//   - Sign: a boolean indicating whether the decimal is negative.
-//   - Scale: an integer indicating the position of the floating decimal point.
+//   - Sign: a boolean indicating whether the decimal is negative;
+//   - Scale: an integer indicating the position of the floating decimal point;
 //   - Coefficient: an integer value of the decimal without the decimal point.
 //
 // The scale field determines the position of the decimal point in the coefficient.
@@ -161,13 +161,13 @@ func MustNew(coef int64, scale int) Decimal {
 // See also method [Decimal.Int64].
 //
 // NewFromInt64 returns an error:
-//   - if whole and frac have different signs.
-//   - if scale is negative or more than [MaxScale].
-//   - if frac / 10^scale is not within the range (-1, 1).
-//   - if the integer part of the result has more than ([MaxPrec] - scale) digits.
+//   - if whole and fractional parts have different signs;
+//   - if scale is negative or more than [MaxScale];
+//   - if frac / 10^scale is not within the range (-1, 1);
+//   - if the integer part of the result has more than [MaxPrec] digits.
 func NewFromInt64(whole, frac int64, scale int) (Decimal, error) {
 	if whole > 0 && frac < 0 || whole < 0 && frac > 0 {
-		return Decimal{}, fmt.Errorf("inconsistent signs")
+		return Decimal{}, fmt.Errorf("converting integers: inconsistent signs")
 	}
 	// Integer
 	w, err := New(whole, 0)
@@ -180,7 +180,7 @@ func NewFromInt64(whole, frac int64, scale int) (Decimal, error) {
 		return Decimal{}, fmt.Errorf("converting integers: %w", err)
 	}
 	if !f.WithinOne() {
-		return Decimal{}, fmt.Errorf("inconsistent fraction")
+		return Decimal{}, fmt.Errorf("converting integers: inconsistent fraction")
 	}
 	// Decimal
 	d, err := w.Add(f)
@@ -193,11 +193,11 @@ func NewFromInt64(whole, frac int64, scale int) (Decimal, error) {
 // NewFromFloat64 converts a float to a (possibly rounded) decimal.
 //
 // NewFromFloat64 returns an error:
-//   - if the integer part of the result has more than [MaxPrec] digits.
+//   - if the integer part of the result has more than [MaxPrec] digits;
 //   - if the float is a special value (NaN or Inf).
 func NewFromFloat64(f float64) (Decimal, error) {
 	if math.IsNaN(f) || math.IsInf(f, 0) {
-		return Decimal{}, fmt.Errorf("special value")
+		return Decimal{}, fmt.Errorf("converting float: special value %v", f)
 	}
 	d, err := Parse(strconv.FormatFloat(f, 'f', -1, 64))
 	if err != nil {
@@ -245,9 +245,9 @@ func (d Decimal) ULP() Decimal {
 // but tries to maintain trailing zeros in the fractional part to preserve scale.
 //
 // Parse returns an error:
-//   - if the integer part of the result has more than [MaxPrec] digits.
-//   - if the string does not represent a valid decimal number.
-//   - if the string is longer than 330 bytes.
+//   - if the integer part of the result has more than [MaxPrec] digits;
+//   - if the string does not represent a valid decimal number;
+//   - if the string is longer than 330 bytes;
 //   - if the exponent is less than -330 or greater than 330.
 func Parse(s string) (Decimal, error) {
 	return ParseExact(s, 0)
@@ -1072,7 +1072,9 @@ func (d Decimal) mulSint(e Decimal, minScale int) (Decimal, error) {
 
 // Pow returns the (possibly rounded) decimal raised to the given power.
 //
-// Pow returns an error if the integer part of the power has more than [MaxPrec] digits.
+// Pow returns an error if:
+//   - the integer part of the result has more than [MaxPrec] digits;
+//   - the decimal is zero and the power is negative.
 func (d Decimal) Pow(power int) (Decimal, error) {
 	return d.PowExact(power, 0)
 }
@@ -1162,7 +1164,7 @@ func (d Decimal) powSint(power, minScale int) (Decimal, error) {
 			power = power - 1
 
 			// Coefficient (Multiplication)
-			ecoef.mul(dcoef, ecoef)
+			ecoef.mul(ecoef, dcoef)
 
 			// Sign
 			eneg = eneg != dneg
@@ -1171,8 +1173,8 @@ func (d Decimal) powSint(power, minScale int) (Decimal, error) {
 			escale = escale + dscale
 			if escale > 2*MaxScale {
 				shift := escale - 2*MaxScale
+				escale = 2 * MaxScale
 				ecoef.rshDown(ecoef, shift)
-				escale = escale - shift
 			}
 		}
 		if power > 0 {
@@ -1188,8 +1190,8 @@ func (d Decimal) powSint(power, minScale int) (Decimal, error) {
 			dscale = dscale * 2
 			if dscale > 2*MaxScale {
 				shift := dscale - 2*MaxScale
+				dscale = 2 * MaxScale
 				dcoef.rshDown(dcoef, shift)
-				dscale = dscale - shift
 			}
 		}
 	}
@@ -1435,7 +1437,7 @@ func (d Decimal) fmaSint(e, f Decimal, minScale int) (Decimal, error) {
 //
 // Quo returns an error if:
 //   - the integer part of the result has more than [MaxPrec] digits;
-//   - divisor e is zero.
+//   - the divisor is zero.
 func (d Decimal) Quo(e Decimal) (Decimal, error) {
 	return d.QuoExact(e, 0)
 }
@@ -1452,7 +1454,7 @@ func (d Decimal) QuoExact(e Decimal, scale int) (Decimal, error) {
 
 	// Special case: zero divisor
 	if e.IsZero() {
-		return Decimal{}, errDivisionByZero
+		return Decimal{}, fmt.Errorf("%v / %v: %w", d, e, errDivisionByZero)
 	}
 
 	// Special case: zero dividend
