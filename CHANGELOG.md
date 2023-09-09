@@ -1,6 +1,17 @@
 # Changelog
 
-## [0.1.9] - 2025-08-27
+## [0.1.10] - 2023-09-09
+
+### Added
+
+- Implemented `Decimal.SubAbs`, `Decimal.CmpAbs`, `Decimal.Inv`.
+- Added `Decimal.Pi`, `Decimal.E`, `Decimal.NegOne`, `Decimal.Two`, `Decimal.Thousand`
+
+### Changed
+
+- Reviewed descriptions of rounding methods.
+
+## [0.1.9] - 2023-08-27
 
 ### Changed
 

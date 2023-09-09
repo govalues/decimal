@@ -101,6 +101,8 @@ Arithmetic operations return errors in the following cases:
     Unlike the standard library, this package does not panic when dividing by zero.
     Instead, it returns an error.
 
+Arithmetic operations do not return error in case of decimal underflow.
+
 [General Decimal Arithmetic]: https://speleotrove.com/decimal/daops.html
 [ShopSpring Decimal]: https://pkg.go.dev/github.com/shopspring/decimal
 [CockroachDB Decimal]: https://pkg.go.dev/github.com/cockroachdb/apd

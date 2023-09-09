@@ -1539,6 +1539,54 @@ func TestDecimal_Add(t *testing.T) {
 	})
 }
 
+func TestDecimal_SubAbs(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			d, e, want string
+		}{
+			{"1", "1", "0"},
+			{"2", "3", "1"},
+			{"5.75", "3.3", "2.45"},
+			{"5", "-3", "8"},
+			{"-5", "-3", "2"},
+			{"-7", "2.5", "9.5"},
+			{"0.7", "0.3", "0.4"},
+			{"1.25", "1.25", "0.00"},
+		}
+		for _, tt := range tests {
+			d := MustParse(tt.d)
+			e := MustParse(tt.e)
+			got, err := d.SubAbs(e)
+			if err != nil {
+				t.Errorf("%q.SubAbs(%q) failed: %v", d, e, err)
+				continue
+			}
+			want := MustParse(tt.want)
+			if got != want {
+				t.Errorf("%q.SubAbs(%q) = %q, want %q", d, e, got, want)
+			}
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		tests := map[string]struct {
+			d, e string
+		}{
+			"overflow 1": {"1", "-9999999999999999999"},
+			"overflow 2": {"9999999999999999999", "-1"},
+			"overflow 3": {"9999999999999999999", "-9999999999999999999"},
+		}
+		for _, tt := range tests {
+			d := MustParse(tt.d)
+			e := MustParse(tt.e)
+			_, err := d.SubAbs(e)
+			if err == nil {
+				t.Errorf("%q.SubAbs(%q) did not fail", d, e)
+			}
+		}
+	})
+}
+
 func TestDecimal_Mul(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
@@ -2174,6 +2222,49 @@ func TestDecimal_Quo(t *testing.T) {
 			_, err := d.QuoExact(e, tt.scale)
 			if err == nil {
 				t.Errorf("%q.QuoExact(%q, %v) did not fail", d, e, tt.scale)
+			}
+		}
+	})
+}
+
+func TestDecimal_Inv(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			d, want string
+		}{
+			{"0.1", "10"},
+			{"1", "1"},
+			{"10", "0.1"},
+			{"2", "0.5"},
+			{"2.0", "0.5"},
+			{"2.00", "0.5"},
+		}
+		for _, tt := range tests {
+			d := MustParse(tt.d)
+			got, err := d.Inv()
+			if err != nil {
+				t.Errorf("%q.Inv() failed: %v", d, err)
+				continue
+			}
+			want := MustParse(tt.want)
+			if got != want {
+				t.Errorf("%q.Inv() = %q, want %q", d, got, want)
+			}
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		tests := map[string]struct {
+			d string
+		}{
+			"zero 1":     {"0"},
+			"overflow 1": {"0.0000000000000000001"},
+		}
+		for _, tt := range tests {
+			d := MustParse(tt.d)
+			_, err := d.Inv()
+			if err == nil {
+				t.Errorf("%q.Inv() did not fail", d)
 			}
 		}
 	})
