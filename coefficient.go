@@ -113,7 +113,8 @@ func (x fint) isOdd() bool {
 	return x&1 != 0
 }
 
-// rshHalfEven (Right Shift) calculates x / 10^shift and rounds result using "half to even" rule.
+// rshHalfEven (Right Shift) calculates x / 10^shift and rounds result
+// using "half to even" rule.
 func (x fint) rshHalfEven(shift int) fint {
 	// Special cases
 	switch {
@@ -135,7 +136,7 @@ func (x fint) rshHalfEven(shift int) fint {
 	return z
 }
 
-// rshUp (Right Shift) calculates x / 10^shift and rounds result away from 0.
+// rshUp (Right Shift) calculates x / 10^shift and rounds result away from zero.
 func (x fint) rshUp(shift int) fint {
 	// Special cases
 	switch {
@@ -156,7 +157,7 @@ func (x fint) rshUp(shift int) fint {
 	return z
 }
 
-// rshDown (Right Shift) calculates x / 10^shift and rounds result towards 0.
+// rshDown (Right Shift) calculates x / 10^shift and rounds result towards zero.
 func (x fint) rshDown(shift int) fint {
 	// Special cases
 	switch {
@@ -429,7 +430,7 @@ func (z *sint) fsa(shift int, y byte) {
 	z.add(z, newSintFromFint(fint(y)))
 }
 
-// rshDown (Right Shift) calculates x / 10^shift and rounds result towards 0.
+// rshDown (Right Shift) calculates x / 10^shift and rounds result towards zero.
 func (z *sint) rshDown(x *sint, shift int) {
 	var y *sint
 	if shift < len(spow10) {

@@ -43,10 +43,15 @@ const (
 )
 
 var (
-	Zero               = MustNew(0, 0)   // Zero is a decimal with a value of 0 and a scale of 0
-	One                = MustNew(1, 0)   // One is a decimal with a value of 1 and a scale of 0
-	Ten                = MustNew(10, 0)  // Ten is a decimal with a value of 10 and a scale of 0
-	Hundred            = MustNew(100, 0) // Hundred is a decimal with a value of 100 and a scale of 0
+	NegOne             = MustNew(-1, 0)                         // NegOne represents the decimal value of -1.
+	Zero               = MustNew(0, 0)                          // Zero represents the decimal value of 0.
+	One                = MustNew(1, 0)                          // One represents the decimal value of 1.
+	Two                = MustNew(2, 0)                          // Two represents the decimal value of 2.
+	Ten                = MustNew(10, 0)                         // Ten represents the decimal value of 10.
+	Hundred            = MustNew(100, 0)                        // Hundred represents the decimal value of 100.
+	Thousand           = MustNew(1_000, 0)                      // Thousand represents the decimal value of 1,000.
+	E                  = MustNew(2_718_281_828_459_045_235, 18) // E represents Euler’s number rounded to 18 decimals.
+	Pi                 = MustNew(3_141_592_653_589_793_238, 18) // Pi represents the value of π rounded to 18 decimals.
 	errDecimalOverflow = errors.New("decimal overflow")
 	errInvalidDecimal  = errors.New("invalid decimal")
 	errScaleRange      = errors.New("scale out of range")
@@ -486,7 +491,7 @@ func (d Decimal) Float64() (f float64, ok bool) {
 	return f, true
 }
 
-// Int64 returns a pair of int64 values representing the integer part w and the
+// Int64 returns a pair of int64 values representing the whole part w and the
 // fractional part f of the decimal.
 // The relationship between the decimal and the returned values can be expressed
 // as d = w + f / 10^scale.
@@ -798,7 +803,7 @@ func (d Decimal) IsInt() bool {
 
 // IsOne returns:
 //
-//	true  if d == -1 or d == 1
+//	true  if d = -1 or d = 1
 //	false otherwise
 func (d Decimal) IsOne() bool {
 	return d.coef == pow10[d.Scale()]
@@ -813,11 +818,13 @@ func (d Decimal) WithinOne() bool {
 }
 
 // Round returns a decimal rounded to the specified number of digits after
-// the decimal point.
+// the decimal point using [rounding half to even] (banker's rounding).
 // If the given scale is negative, it is redefined to zero.
 // For financial calculations, the scale should be equal to or greater than
 // the scale of the currency.
 // See also method [Decimal.Rescale].
+//
+// [rounding half to even]: https://en.wikipedia.org/wiki/Rounding#Rounding_half_to_even
 func (d Decimal) Round(scale int) Decimal {
 	if scale < 0 {
 		scale = 0
@@ -880,10 +887,12 @@ func (d Decimal) Quantize(e Decimal) (Decimal, error) {
 }
 
 // Trunc returns a decimal truncated to the specified number of digits
-// after the decimal point.
+// after the decimal point using [rounding toward zero].
 // If the given scale is negative, it is redefined to zero.
 // For financial calculations, the scale should be equal to or greater than
 // the scale of the currency.
+//
+// [rounding toward zero]: https://en.wikipedia.org/wiki/Rounding#Rounding_toward_zero
 func (d Decimal) Trunc(scale int) Decimal {
 	if scale < 0 {
 		scale = 0
@@ -902,18 +911,20 @@ func (d Decimal) Trunc(scale int) Decimal {
 // See also method [Decimal.Pad].
 func (d Decimal) Trim(scale int) Decimal {
 	m := d.MinScale()
-	if m > scale {
+	if scale < m {
 		scale = m
 	}
 	return d.Trunc(scale)
 }
 
 // Ceil returns a decimal rounded up to the given number of digits
-// after the decimal point.
+// after the decimal point using [rounding toward positive infinity].
 // If the given scale is negative, it is redefined to zero.
 // For financial calculations, the scale should be equal to or greater than
 // the scale of the currency.
 // See also method [Decimal.Floor].
+//
+// [rounding toward positive infinity]: https://en.wikipedia.org/wiki/Rounding#Rounding_up
 func (d Decimal) Ceil(scale int) Decimal {
 	if scale < 0 {
 		scale = 0
@@ -931,11 +942,13 @@ func (d Decimal) Ceil(scale int) Decimal {
 }
 
 // Floor returns a decimal rounded down to the specified number of digits
-// after the decimal point.
+// after the decimal point using [rounding toward negative infinity].
 // If the given scale is negative, it is redefined to zero.
 // For financial calculations, the scale should be equal to or greater than
 // the scale of the currency.
 // See also method [Decimal.Ceil].
+//
+// [rounding toward negative infinity]: https://en.wikipedia.org/wiki/Rounding#Rounding_down
 func (d Decimal) Floor(scale int) Decimal {
 	if scale < 0 {
 		scale = 0
@@ -963,7 +976,7 @@ func (d Decimal) Abs() Decimal {
 }
 
 // CopySign returns a decimal with the same sign as decimal e.
-// Zero is always treated as positive.
+// CopySign treates zero as positive.
 func (d Decimal) CopySign(e Decimal) Decimal {
 	if d.IsNeg() == e.IsNeg() {
 		return d
@@ -974,7 +987,7 @@ func (d Decimal) CopySign(e Decimal) Decimal {
 // Sign returns:
 //
 //	-1 if d < 0
-//	 0 if d == 0
+//	 0 if d = 0
 //	+1 if d > 0
 func (d Decimal) Sign() int {
 	switch {
@@ -1004,7 +1017,7 @@ func (d Decimal) IsNeg() bool {
 
 // IsZero returns:
 //
-//	true  if d == 0
+//	true  if d = 0
 //	false otherwise
 func (d Decimal) IsZero() bool {
 	return d.coef == 0
@@ -1319,6 +1332,17 @@ func (d Decimal) SubExact(e Decimal, scale int) (Decimal, error) {
 	return d.AddExact(e.Neg(), scale)
 }
 
+// SubAbs returns the (possibly rounded) absolute difference between decimals d and e.
+//
+// SubAbs returns an error if the integer part of the absolute difference has more than [MaxPrec] digits.
+func (d Decimal) SubAbs(e Decimal) (Decimal, error) {
+	f, err := d.Sub(e)
+	if err != nil {
+		return Decimal{}, fmt.Errorf("|%v - %v|: %w", d, e, errScaleRange)
+	}
+	return f.Abs(), nil
+}
+
 // FMA returns the (possibly rounded) [fused multiply-addition] of decimals d, e, and f.
 // It computes d * e + f without any intermediate rounding.
 // This method is useful for improving the accuracy and performance of algorithms
@@ -1540,8 +1564,8 @@ func (d Decimal) quoSint(e Decimal, minScale int) (Decimal, error) {
 // such that d = e * q + r, where q is an integer.
 //
 // QuoRem returns an error if:
-//   - the integer part of the quotient q has more than [MaxPrec] digits;
-//   - the divisor e is zero.
+//   - the integer part of the quotient has more than [MaxPrec] digits;
+//   - the divisor is zero.
 func (d Decimal) QuoRem(e Decimal) (q, r Decimal, err error) {
 	q, r, err = d.quoRem(e)
 	if err != nil {
@@ -1571,10 +1595,23 @@ func (d Decimal) quoRem(e Decimal) (q, r Decimal, err error) {
 	return q, r, nil
 }
 
-// Cmp numerically compares decimals and returns:
+// Inv returns the (possibly rounded) inverse of the decimal.
+//
+// Inv returns an error if:
+//   - the integer part of the result has more than [MaxPrec] digits;
+//   - the decimal is zero.
+func (d Decimal) Inv() (Decimal, error) {
+	f, err := One.Quo(d)
+	if err != nil {
+		return Decimal{}, fmt.Errorf("inverse of %v: %w", d, err)
+	}
+	return f, nil
+}
+
+// Cmp compares decimals and returns:
 //
 //	-1 if d < e
-//	 0 if d == e
+//	 0 if d = e
 //	+1 if d > e
 func (d Decimal) Cmp(e Decimal) int {
 	// Special case: different signs
@@ -1645,12 +1682,22 @@ func (d Decimal) cmpSint(e Decimal) int {
 	}
 }
 
+// CmpAbs compares absolute values of decimals and returns:
+//
+//	-1 if |d| < |e|
+//	 0 if |d| = |e|
+//	+1 if |d| > |e|
+func (d Decimal) CmpAbs(e Decimal) int {
+	d, e = d.Abs(), e.Abs()
+	return d.Cmp(e)
+}
+
 // CmpTotal compares decimal representations and returns:
 //
 //	-1 if d < e
-//	-1 if d == e && d.scale >  e.scale
-//	 0 if d == e && d.scale == e.scale
-//	+1 if d == e && d.scale <  e.scale
+//	-1 if d = e and d.scale > e.scale
+//	 0 if d = e and d.scale = e.scale
+//	+1 if d = e and d.scale < e.scale
 //	+1 if d > e
 //
 // See also method [Decimal.Cmp].

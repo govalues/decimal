@@ -85,7 +85,7 @@ func processOperand(stack []decimal.Decimal, token string) ([]decimal.Decimal, e
 // expressions written in postfix (or reverse Polish) notation.
 // The calculator can handle basic arithmetic operations such as addition,
 // subtraction, multiplication, and division.
-func Example_polishNotation() {
+func Example_postfixCalculator() {
 	d, err := evaluate("* 10 + 1.23 4.56")
 	if err != nil {
 		panic(err)
@@ -95,23 +95,20 @@ func Example_polishNotation() {
 	// 57.90
 }
 
-func calculate(terms int) (decimal.Decimal, error) {
-	pi := decimal.MustParse("0")
+func approximate(terms int) (decimal.Decimal, error) {
+	pi := decimal.Zero
+	sign := decimal.One
+	denominator := decimal.One
+	increment := decimal.Two
 	multiplier := decimal.MustParse("4")
-	denominator := decimal.MustParse("1")
-	sign := decimal.MustParse("1")
-	increment := decimal.MustParse("2")
 
 	for i := 0; i < terms; i++ {
 		term, err := multiplier.Quo(denominator)
 		if err != nil {
 			return decimal.Decimal{}, err
 		}
-		signedTerm, err := term.Mul(sign)
-		if err != nil {
-			return decimal.Decimal{}, err
-		}
-		pi, err = pi.Add(signedTerm)
+		term = term.CopySign(sign)
+		pi, err = pi.Add(term)
 		if err != nil {
 			return decimal.Decimal{}, err
 		}
@@ -127,15 +124,18 @@ func calculate(terms int) (decimal.Decimal, error) {
 // This example calculates an approximate value of pi using the Leibniz formula for pi.
 // The Leibniz formula is an infinite series that converges to pi/4, and is
 // given by the equation: 1 - 1/3 + 1/5 - 1/7 + 1/9 - 1/11 + ... = pi/4.
-// This example computes the series up to the 5000th term using decimal arithmetic
+// This example computes the series up to the 50000th term using decimal arithmetic
 // and returns the approximate value of pi.
-func Example_leibnizPi() {
-	pi, err := calculate(5000)
+func Example_piApproximation() {
+	pi, err := approximate(50000)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(pi)
-	// Output: 3.141392653591793247
+	fmt.Println(decimal.Pi)
+	// Output:
+	// 3.141572653589795330
+	// 3.141592653589793238
 }
 
 func ExampleMustNew() {
@@ -453,6 +453,13 @@ func ExampleDecimal_Sub() {
 	// Output: 7.6 <nil>
 }
 
+func ExampleDecimal_SubAbs() {
+	d := decimal.MustParse("-15.6")
+	e := decimal.MustParse("8")
+	fmt.Println(d.SubAbs(e))
+	// Output: 23.6 <nil>
+}
+
 func ExampleDecimal_SubExact() {
 	d := decimal.MustParse("15.6")
 	e := decimal.MustParse("8")
@@ -481,12 +488,30 @@ func ExampleDecimal_QuoRem() {
 	// Output: -7 -1.67 <nil>
 }
 
+func ExampleDecimal_Inv() {
+	d := decimal.MustParse("2")
+	fmt.Println(d.Inv())
+	// Output: 0.5 <nil>
+}
+
 func ExampleDecimal_Cmp() {
-	d := decimal.MustParse("23")
-	e := decimal.MustParse("-15.67")
+	d := decimal.MustParse("-23")
+	e := decimal.MustParse("15.67")
 	fmt.Println(d.Cmp(e))
 	fmt.Println(d.Cmp(d))
 	fmt.Println(e.Cmp(d))
+	// Output:
+	// -1
+	// 0
+	// 1
+}
+
+func ExampleDecimal_CmpAbs() {
+	d := decimal.MustParse("-23")
+	e := decimal.MustParse("15.67")
+	fmt.Println(d.CmpAbs(e))
+	fmt.Println(d.CmpAbs(d))
+	fmt.Println(e.CmpAbs(d))
 	// Output:
 	// 1
 	// 0
