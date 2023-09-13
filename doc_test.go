@@ -544,6 +544,21 @@ func ExampleDecimal_Min() {
 	// Output: -15.67
 }
 
+func ExampleDecimal_Clamp() {
+	d := decimal.MustParse("-15.67")
+	e := decimal.MustParse("0")
+	f := decimal.MustParse("23")
+	min := decimal.MustParse("-10")
+	max := decimal.MustParse("10")
+	fmt.Println(d.Clamp(min, max))
+	fmt.Println(e.Clamp(min, max))
+	fmt.Println(f.Clamp(min, max))
+	// Output:
+	// -10 <nil>
+	// 0 <nil>
+	// 10 <nil>
+}
+
 func ExampleDecimal_Rescale() {
 	d := decimal.MustParse("15.679")
 	fmt.Println(d.Rescale(5))

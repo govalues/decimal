@@ -1654,9 +1654,8 @@ func (d Decimal) cmpFint(e Decimal) (int, error) {
 		return d.Sign(), nil
 	case ecoef > dcoef:
 		return -e.Sign(), nil
-	default:
-		return 0, nil
 	}
+	return 0, nil
 }
 
 func (d Decimal) cmpSint(e Decimal) int {
@@ -1677,9 +1676,8 @@ func (d Decimal) cmpSint(e Decimal) int {
 		return d.Sign()
 	case -1:
 		return -e.Sign()
-	default:
-		return 0
 	}
+	return 0
 }
 
 // CmpAbs compares absolute values of decimals and returns:
@@ -1733,4 +1731,26 @@ func (d Decimal) Min(e Decimal) Decimal {
 		return d
 	}
 	return e
+}
+
+// Clamp returns a decimal clamped to the range [min, max].
+// See also method [Decimal.CmpTotal].
+//
+// Clamp returns an error if min > max.
+func (d Decimal) Clamp(min, max Decimal) (Decimal, error) {
+	if min.Cmp(max) > 0 {
+		return Decimal{}, fmt.Errorf("clamping %v: invalid range", d)
+	}
+	if min.CmpTotal(max) > 0 {
+		// Numerically min and max are equal but have different scales.
+		// Swaping min and max to ensure total ordering.
+		min, max = max, min
+	}
+	if d.CmpTotal(min) < 0 {
+		return min, nil
+	}
+	if d.CmpTotal(max) > 0 {
+		return max, nil
+	}
+	return d, nil
 }

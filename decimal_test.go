@@ -1539,19 +1539,51 @@ func TestDecimal_Add(t *testing.T) {
 	})
 }
 
+func TestDecimal_Sub(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			d, e, want string
+		}{
+			// Signs
+			{"5", "3", "2"},
+			{"3", "5", "-2"},
+			{"-5", "-3", "-2"},
+			{"-3", "-5", "2"},
+			{"-5", "3", "-8"},
+			{"-3", "5", "-8"},
+			{"5", "-3", "8"},
+			{"3", "-5", "8"},
+		}
+		for _, tt := range tests {
+			d := MustParse(tt.d)
+			e := MustParse(tt.e)
+			got, err := d.Sub(e)
+			if err != nil {
+				t.Errorf("%q.Sub(%q) failed: %v", d, e, err)
+				continue
+			}
+			want := MustParse(tt.want)
+			if got != want {
+				t.Errorf("%q.Sub(%q) = %q, want %q", d, e, got, want)
+			}
+		}
+	})
+}
+
 func TestDecimal_SubAbs(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			d, e, want string
 		}{
-			{"1", "1", "0"},
-			{"2", "3", "1"},
-			{"5.75", "3.3", "2.45"},
-			{"5", "-3", "8"},
+			// Signs
+			{"5", "3", "2"},
+			{"3", "5", "2"},
 			{"-5", "-3", "2"},
-			{"-7", "2.5", "9.5"},
-			{"0.7", "0.3", "0.4"},
-			{"1.25", "1.25", "0.00"},
+			{"-3", "-5", "2"},
+			{"-5", "3", "8"},
+			{"-3", "5", "8"},
+			{"5", "-3", "8"},
+			{"3", "-5", "8"},
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.d)
@@ -2533,6 +2565,74 @@ func TestDecimal_Min(t *testing.T) {
 			t.Errorf("%q.Min(%q) = %q, want %q", d, e, got, want)
 		}
 	}
+}
+
+func TestDecimal_Clamp(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			d, min, max, want string
+		}{
+			{"0", "-2", "-1", "-1"},
+			{"0", "-1", "1", "0"},
+			{"0", "1", "2", "1"},
+
+			{"0.000", "0.0", "0.000", "0.000"},
+			{"0.000", "0.000", "0.0", "0.000"},
+			{"0.0", "0.0", "0.000", "0.0"},
+			{"0.0", "0.000", "0.0", "0.0"},
+
+			{"0.000", "0.000", "1", "0.000"},
+			{"0.000", "0.0", "1", "0.0"},
+			{"0.0", "0.000", "1", "0.0"},
+			{"0.0", "0.0", "1", "0.0"},
+
+			{"0.000", "-1", "0.000", "0.000"},
+			{"0.000", "-1", "0.0", "0.000"},
+			{"0.0", "-1", "0.000", "0.000"},
+			{"0.0", "-1", "0.0", "0.0"},
+
+			{"1.2300", "1.2300", "2", "1.2300"},
+			{"1.2300", "1.23", "2", "1.23"},
+			{"1.23", "1.2300", "2", "1.23"},
+			{"1.23", "1.23", "2", "1.23"},
+
+			{"1.2300", "1", "1.2300", "1.2300"},
+			{"1.2300", "1", "1.23", "1.2300"},
+			{"1.23", "1", "1.2300", "1.2300"},
+			{"1.23", "1", "1.23", "1.23"},
+		}
+		for _, tt := range tests {
+			d := MustParse(tt.d)
+			min := MustParse(tt.min)
+			max := MustParse(tt.max)
+			got, err := d.Clamp(min, max)
+			if err != nil {
+				t.Errorf("%q.Clamp(%q, %q) failed: %v", d, min, max, err)
+				continue
+			}
+			want := MustParse(tt.want)
+			if got != want {
+				t.Errorf("%q.Clamp(%q, %q) = %q, want %q", d, min, max, got, want)
+			}
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		tests := []struct {
+			d, min, max string
+		}{
+			{"0", "1", "-1"},
+		}
+		for _, tt := range tests {
+			d := MustParse(tt.d)
+			min := MustParse(tt.min)
+			max := MustParse(tt.max)
+			_, err := d.Clamp(min, max)
+			if err == nil {
+				t.Errorf("%q.Clamp(%q, %q) did not fail", d, min, max)
+			}
+		}
+	})
 }
 
 /******************************************************
