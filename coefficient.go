@@ -216,170 +216,170 @@ func (x fint) hasPrec(prec int) bool {
 	return x >= pow10[prec-1]
 }
 
-// sint (Slow Integer) is a wrapper around big.Int.
-type sint big.Int
-
-// spow10 is a cache of powers of 10.
-var spow10 = [...]*sint{
-	newSintFromPow10(0),
-	newSintFromPow10(1),
-	newSintFromPow10(2),
-	newSintFromPow10(3),
-	newSintFromPow10(4),
-	newSintFromPow10(5),
-	newSintFromPow10(6),
-	newSintFromPow10(7),
-	newSintFromPow10(8),
-	newSintFromPow10(9),
-	newSintFromPow10(10),
-	newSintFromPow10(11),
-	newSintFromPow10(12),
-	newSintFromPow10(13),
-	newSintFromPow10(14),
-	newSintFromPow10(15),
-	newSintFromPow10(16),
-	newSintFromPow10(17),
-	newSintFromPow10(18),
-	newSintFromPow10(19),
-	newSintFromPow10(20),
-	newSintFromPow10(21),
-	newSintFromPow10(22),
-	newSintFromPow10(23),
-	newSintFromPow10(24),
-	newSintFromPow10(25),
-	newSintFromPow10(26),
-	newSintFromPow10(27),
-	newSintFromPow10(28),
-	newSintFromPow10(29),
-	newSintFromPow10(30),
-	newSintFromPow10(31),
-	newSintFromPow10(32),
-	newSintFromPow10(33),
-	newSintFromPow10(34),
-	newSintFromPow10(35),
-	newSintFromPow10(36),
-	newSintFromPow10(37),
-	newSintFromPow10(38),
-	newSintFromPow10(39),
-	newSintFromPow10(40),
-	newSintFromPow10(41),
-	newSintFromPow10(42),
-	newSintFromPow10(43),
-	newSintFromPow10(44),
-	newSintFromPow10(45),
-	newSintFromPow10(46),
-	newSintFromPow10(47),
-	newSintFromPow10(48),
-	newSintFromPow10(49),
-	newSintFromPow10(50),
-	newSintFromPow10(51),
-	newSintFromPow10(52),
-	newSintFromPow10(53),
-	newSintFromPow10(54),
-	newSintFromPow10(55),
-	newSintFromPow10(56),
-	newSintFromPow10(57),
-	newSintFromPow10(58),
-	newSintFromPow10(59),
-	newSintFromPow10(60),
-	newSintFromPow10(61),
-	newSintFromPow10(62),
-	newSintFromPow10(63),
-	newSintFromPow10(64),
-	newSintFromPow10(65),
-	newSintFromPow10(66),
-	newSintFromPow10(67),
-	newSintFromPow10(68),
-	newSintFromPow10(69),
-	newSintFromPow10(70),
-	newSintFromPow10(71),
-	newSintFromPow10(72),
-	newSintFromPow10(73),
-	newSintFromPow10(74),
-	newSintFromPow10(75),
-	newSintFromPow10(76),
-	newSintFromPow10(77),
-	newSintFromPow10(78),
-	newSintFromPow10(79),
-	newSintFromPow10(80),
-	newSintFromPow10(81),
-	newSintFromPow10(82),
-	newSintFromPow10(83),
-	newSintFromPow10(84),
-	newSintFromPow10(85),
-	newSintFromPow10(86),
-	newSintFromPow10(87),
-	newSintFromPow10(88),
-	newSintFromPow10(89),
-	newSintFromPow10(90),
-	newSintFromPow10(91),
-	newSintFromPow10(92),
-	newSintFromPow10(93),
-	newSintFromPow10(94),
-	newSintFromPow10(95),
-	newSintFromPow10(96),
-	newSintFromPow10(97),
-	newSintFromPow10(98),
-	newSintFromPow10(99),
-}
-
-// newSintFromFint converts fint to *sint.
-func newSintFromFint(x fint) *sint {
+// bint converts uint64 to *big.Int.
+func (x fint) bint() *bint {
 	z := new(big.Int).SetUint64(uint64(x))
-	return (*sint)(z)
+	return (*bint)(z)
 }
 
-// newSintFromPow10 returns 10^exp as *sint.
-func newSintFromPow10(exp int) *sint {
+// bint (Big Integer) is a wrapper around big.Int.
+type bint big.Int
+
+// bpow10 is a cache of powers of 10.
+var bpow10 = [...]*bint{
+	newBintFromPow10(0),
+	newBintFromPow10(1),
+	newBintFromPow10(2),
+	newBintFromPow10(3),
+	newBintFromPow10(4),
+	newBintFromPow10(5),
+	newBintFromPow10(6),
+	newBintFromPow10(7),
+	newBintFromPow10(8),
+	newBintFromPow10(9),
+	newBintFromPow10(10),
+	newBintFromPow10(11),
+	newBintFromPow10(12),
+	newBintFromPow10(13),
+	newBintFromPow10(14),
+	newBintFromPow10(15),
+	newBintFromPow10(16),
+	newBintFromPow10(17),
+	newBintFromPow10(18),
+	newBintFromPow10(19),
+	newBintFromPow10(20),
+	newBintFromPow10(21),
+	newBintFromPow10(22),
+	newBintFromPow10(23),
+	newBintFromPow10(24),
+	newBintFromPow10(25),
+	newBintFromPow10(26),
+	newBintFromPow10(27),
+	newBintFromPow10(28),
+	newBintFromPow10(29),
+	newBintFromPow10(30),
+	newBintFromPow10(31),
+	newBintFromPow10(32),
+	newBintFromPow10(33),
+	newBintFromPow10(34),
+	newBintFromPow10(35),
+	newBintFromPow10(36),
+	newBintFromPow10(37),
+	newBintFromPow10(38),
+	newBintFromPow10(39),
+	newBintFromPow10(40),
+	newBintFromPow10(41),
+	newBintFromPow10(42),
+	newBintFromPow10(43),
+	newBintFromPow10(44),
+	newBintFromPow10(45),
+	newBintFromPow10(46),
+	newBintFromPow10(47),
+	newBintFromPow10(48),
+	newBintFromPow10(49),
+	newBintFromPow10(50),
+	newBintFromPow10(51),
+	newBintFromPow10(52),
+	newBintFromPow10(53),
+	newBintFromPow10(54),
+	newBintFromPow10(55),
+	newBintFromPow10(56),
+	newBintFromPow10(57),
+	newBintFromPow10(58),
+	newBintFromPow10(59),
+	newBintFromPow10(60),
+	newBintFromPow10(61),
+	newBintFromPow10(62),
+	newBintFromPow10(63),
+	newBintFromPow10(64),
+	newBintFromPow10(65),
+	newBintFromPow10(66),
+	newBintFromPow10(67),
+	newBintFromPow10(68),
+	newBintFromPow10(69),
+	newBintFromPow10(70),
+	newBintFromPow10(71),
+	newBintFromPow10(72),
+	newBintFromPow10(73),
+	newBintFromPow10(74),
+	newBintFromPow10(75),
+	newBintFromPow10(76),
+	newBintFromPow10(77),
+	newBintFromPow10(78),
+	newBintFromPow10(79),
+	newBintFromPow10(80),
+	newBintFromPow10(81),
+	newBintFromPow10(82),
+	newBintFromPow10(83),
+	newBintFromPow10(84),
+	newBintFromPow10(85),
+	newBintFromPow10(86),
+	newBintFromPow10(87),
+	newBintFromPow10(88),
+	newBintFromPow10(89),
+	newBintFromPow10(90),
+	newBintFromPow10(91),
+	newBintFromPow10(92),
+	newBintFromPow10(93),
+	newBintFromPow10(94),
+	newBintFromPow10(95),
+	newBintFromPow10(96),
+	newBintFromPow10(97),
+	newBintFromPow10(98),
+	newBintFromPow10(99),
+}
+
+// newBintFromPow10 returns 10^exp as *big.Int.
+func newBintFromPow10(exp int) *bint {
 	z := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(exp)), nil)
-	return (*sint)(z)
+	return (*bint)(z)
 }
 
-func (z *sint) sign() int {
+func (z *bint) sign() int {
 	return (*big.Int)(z).Sign()
 }
 
-func (z *sint) cmp(x *sint) int {
+func (z *bint) cmp(x *bint) int {
 	return (*big.Int)(z).Cmp((*big.Int)(x))
 }
 
-func (z *sint) string() string {
+func (z *bint) string() string {
 	return (*big.Int)(z).String()
 }
 
-func (z *sint) setSint(x *sint) {
+func (z *bint) setBint(x *bint) {
 	(*big.Int)(z).Set((*big.Int)(x))
 }
 
-func (z *sint) setFint(x fint) {
+func (z *bint) setFint(x fint) {
 	(*big.Int)(z).SetUint64(uint64(x))
 }
 
-// fint converts *sint to fint.
-// If z cannot be represented as fint, the result is undefined.
-func (z *sint) fint() fint {
+// fint converts *big.Int to uint64.
+// If z cannot be represented as uint64, the result is undefined.
+func (z *bint) fint() fint {
 	i := (*big.Int)(z).Uint64()
 	return fint(i)
 }
 
 // add calculates z = x + y.
-func (z *sint) add(x, y *sint) {
+func (z *bint) add(x, y *bint) {
 	(*big.Int)(z).Add((*big.Int)(x), (*big.Int)(y))
 }
 
 // inc calcualtes z = x + 1.
-func (z *sint) inc(x *sint) {
-	y := spow10[0]
+func (z *bint) inc(x *bint) {
+	y := bpow10[0]
 	z.add(x, y)
 }
 
 // sub calculates z = x - y.
-func (z *sint) sub(x, y *sint) {
+func (z *bint) sub(x, y *bint) {
 	(*big.Int)(z).Sub((*big.Int)(x), (*big.Int)(y))
 }
 
 // dist calculates z = abs(x - y).
-func (z *sint) dist(x, y *sint) {
+func (z *bint) dist(x, y *bint) {
 	switch x.cmp(y) {
 	case 1:
 		z.sub(x, y)
@@ -389,76 +389,76 @@ func (z *sint) dist(x, y *sint) {
 }
 
 // dbl calculates z = 2 * x.
-func (z *sint) dbl(x *sint) {
+func (z *bint) dbl(x *bint) {
 	(*big.Int)(z).Lsh((*big.Int)(x), 1)
 }
 
 // mul calculates z = x * y.
-func (z *sint) mul(x, y *sint) {
+func (z *bint) mul(x, y *bint) {
 	(*big.Int)(z).Mul((*big.Int)(x), (*big.Int)(y))
 }
 
 // quo calculates z = x / y.
-func (z *sint) quo(x, y *sint) {
+func (z *bint) quo(x, y *bint) {
 	(*big.Int)(z).Quo((*big.Int)(x), (*big.Int)(y))
 }
 
 // quoRem calculates z and r such that x = z * y + r.
-func (z *sint) quoRem(x, y *sint) *sint {
+func (z *bint) quoRem(x, y *bint) *bint {
 	_, r := (*big.Int)(z).QuoRem((*big.Int)(x), (*big.Int)(y), new(big.Int))
-	return (*sint)(r)
+	return (*bint)(r)
 }
 
-func (z *sint) isOdd() bool {
+func (z *bint) isOdd() bool {
 	return (*big.Int)(z).Bit(0) != 0
 }
 
 // lsh (Left Shift) calculates x * 10^shift.
-func (z *sint) lsh(x *sint, shift int) {
-	var y *sint
-	if shift < len(spow10) {
-		y = spow10[shift]
+func (z *bint) lsh(x *bint, shift int) {
+	var y *bint
+	if shift < len(bpow10) {
+		y = bpow10[shift]
 	} else {
-		y = newSintFromPow10(shift)
+		y = newBintFromPow10(shift)
 	}
 	z.mul(x, y)
 }
 
 // fsa (Fused Shift and Addition) calculates x * 10^shift + y.
-func (z *sint) fsa(shift int, y byte) {
+func (z *bint) fsa(shift int, y byte) {
 	z.lsh(z, shift)
-	z.add(z, newSintFromFint(fint(y)))
+	z.add(z, fint(y).bint())
 }
 
 // rshDown (Right Shift) calculates x / 10^shift and rounds result towards zero.
-func (z *sint) rshDown(x *sint, shift int) {
-	var y *sint
-	if shift < len(spow10) {
-		y = spow10[shift]
+func (z *bint) rshDown(x *bint, shift int) {
+	var y *bint
+	if shift < len(bpow10) {
+		y = bpow10[shift]
 	} else {
-		y = newSintFromPow10(shift)
+		y = newBintFromPow10(shift)
 	}
 	z.quo(x, y)
 }
 
 // rshHalfEven (Right Shift) calculates x / 10^shift and
 // rounds result using "half to even" rule.
-func (z *sint) rshHalfEven(x *sint, shift int) {
+func (z *bint) rshHalfEven(x *bint, shift int) {
 	// Special cases
 	switch {
 	case x.sign() == 0:
 		z.setFint(0)
 		return
 	case shift <= 0:
-		z.setSint(x)
+		z.setBint(x)
 		return
 	}
 	// General case
-	var y *sint
-	if shift < len(spow10) {
-		y = spow10[shift]
+	var y *bint
+	if shift < len(bpow10) {
+		y = bpow10[shift]
 	} else {
-		y = newSintFromPow10(shift)
+		y = newBintFromPow10(shift)
 	}
 	r := z.quoRem(x, y)
 	r.dbl(r) // r = r * 2
@@ -473,22 +473,22 @@ func (z *sint) rshHalfEven(x *sint, shift int) {
 	}
 }
 
-// prec returns length of *sint in decimal digits.
+// prec returns length of *big.Int in decimal digits.
 // It considers 0 to have zero digits.
-// If *sint is negative, the result is unpredictable.
+// If *big.Int is negative, the result is unpredictable.
 //
 // z.prec() provides a more efficient approach than len(z.string())
-// when dealing with decimals having less than len(spow10) digits.
-func (z *sint) prec() int {
+// when dealing with decimals having less than len(bpow10) digits.
+func (z *bint) prec() int {
 	// Special case
-	if z.cmp(spow10[len(spow10)-1]) > 0 {
+	if z.cmp(bpow10[len(bpow10)-1]) > 0 {
 		return len(z.string())
 	}
 	// General case
-	left, right := 0, len(spow10)
+	left, right := 0, len(bpow10)
 	for left < right {
 		mid := (left + right) / 2
-		if z.cmp(spow10[mid]) < 0 {
+		if z.cmp(bpow10[mid]) < 0 {
 			right = mid
 		} else {
 			left = mid + 1
@@ -497,20 +497,20 @@ func (z *sint) prec() int {
 	return left
 }
 
-// hasPrec checks if *sint has a given number of digits or more.
+// hasPrec checks if *big.Int has a given number of digits or more.
 // It considers 0 to have zero digits.
-// If *sint is negative, the result is unpredictable.
+// If *big.Int is negative, the result is unpredictable.
 //
 // z.hasPrec() provides a more efficient approach than (z.prec() >= prec)
-// when dealing with decimals having less than len(spow10) digits.
-func (z *sint) hasPrec(prec int) bool {
+// when dealing with decimals having less than len(bpow10) digits.
+func (z *bint) hasPrec(prec int) bool {
 	// Special cases
 	switch {
 	case prec < 1:
 		return true
-	case prec > len(spow10):
+	case prec > len(bpow10):
 		return len(z.string()) >= prec
 	}
 	// General case
-	return z.cmp(spow10[prec-1]) >= 0
+	return z.cmp(bpow10[prec-1]) >= 0
 }

@@ -37,9 +37,10 @@ type Decimal struct {
 }
 
 const (
-	MaxPrec  = 19      // MaxPrec is a maximum length of the coefficient in decimal digits
-	MaxScale = MaxPrec // MaxScale is a maximum number of digits after the decimal point
-	maxCoef  = maxFint // maxCoef is a maximum absolute value of the coefficient, which is equal to (10^MaxPrec - 1)
+	MaxPrec  = 19      // MaxPrec is a maximum length of the coefficient in decimal digits.
+	MinScale = 0       // MinScale is a minimum number of digits after the decimal point.
+	MaxScale = 19      // MaxScale is a maximum number of digits after the decimal point.
+	maxCoef  = maxFint // maxCoef is a maximum absolute value of the coefficient, which is equal to (10^MaxPrec - 1).
 )
 
 var (
@@ -69,7 +70,7 @@ func newDecimalUnsafe(neg bool, coef fint, scale int) Decimal {
 
 func newDecimalSafe(neg bool, coef fint, scale int) (Decimal, error) {
 	switch {
-	case scale < 0 || scale > MaxScale:
+	case scale < MinScale || scale > MaxScale:
 		return Decimal{}, errScaleRange
 	case coef > maxCoef:
 		return Decimal{}, errDecimalOverflow
@@ -77,7 +78,7 @@ func newDecimalSafe(neg bool, coef fint, scale int) (Decimal, error) {
 	return newDecimalUnsafe(neg, coef, scale), nil
 }
 
-// newDecimalFromFloat converts fint to decimal.
+// newDecimalFromFint creates a new decimal from uint64 coefficient.
 // This method does not use overflowError to return descriptive errors,
 // as it must be as fast as possible.
 func newDecimalFromFint(neg bool, coef fint, scale, minScale int) (Decimal, error) {
@@ -110,9 +111,9 @@ func overflowError(gotPrec, gotScale, wantScale int) error {
 	}
 }
 
-// newDecimalFromSint converts *sint to decimal.
+// newDecimalFromBint creates a new decimal from *big.Int coefficient.
 // This method uses overflowError to return descriptive errors.
-func newDecimalFromSint(neg bool, coef *sint, scale, minScale int) (Decimal, error) {
+func newDecimalFromBint(neg bool, coef *bint, scale, minScale int) (Decimal, error) {
 	// Check for overflow
 	prec := coef.prec()
 	if prec-scale > MaxPrec-minScale {
@@ -133,7 +134,7 @@ func newDecimalFromSint(neg bool, coef *sint, scale, minScale int) (Decimal, err
 	// Handle the rare case when rshHalfEven rounded
 	// a 19-digit coefficient to a 20-digit coefficient.
 	if coef.hasPrec(MaxPrec + 1) {
-		return newDecimalFromSint(neg, coef, scale, minScale)
+		return newDecimalFromBint(neg, coef, scale, minScale)
 	}
 	return newDecimalSafe(neg, coef.fint(), scale)
 }
@@ -160,7 +161,8 @@ func MustNew(coef int64, scale int) Decimal {
 	return d
 }
 
-// NewFromFloat64 converts a pair of int64 to a (possibly rounded) decimal.
+// NewFromFloat64 converts a pair of int64 values representing whole and
+// fractional parts to a (possibly rounded decimal).
 // The relationship between the values and the returned decimal can be expressed
 // as d = whole + frac / 10^scale.
 // See also method [Decimal.Int64].
@@ -174,7 +176,7 @@ func NewFromInt64(whole, frac int64, scale int) (Decimal, error) {
 	if whole > 0 && frac < 0 || whole < 0 && frac > 0 {
 		return Decimal{}, fmt.Errorf("converting integers: inconsistent signs")
 	}
-	// Integer
+	// Whole
 	w, err := New(whole, 0)
 	if err != nil {
 		return Decimal{}, fmt.Errorf("converting integers: %w", err)
@@ -196,6 +198,7 @@ func NewFromInt64(whole, frac int64, scale int) (Decimal, error) {
 }
 
 // NewFromFloat64 converts a float to a (possibly rounded) decimal.
+// See also method [Decimal.Float64].
 //
 // NewFromFloat64 returns an error:
 //   - if the integer part of the result has more than [MaxPrec] digits;
@@ -204,7 +207,8 @@ func NewFromFloat64(f float64) (Decimal, error) {
 	if math.IsNaN(f) || math.IsInf(f, 0) {
 		return Decimal{}, fmt.Errorf("converting float: special value %v", f)
 	}
-	d, err := Parse(strconv.FormatFloat(f, 'f', -1, 64))
+	s := strconv.FormatFloat(f, 'f', -1, 64)
+	d, err := Parse(s)
 	if err != nil {
 		return Decimal{}, fmt.Errorf("converting float: %w", err)
 	}
@@ -267,12 +271,12 @@ func ParseExact(s string, scale int) (Decimal, error) {
 	if len(s) > 330 {
 		return Decimal{}, fmt.Errorf("parsing decimal: %w", errInvalidDecimal)
 	}
-	if scale < 0 || scale > MaxScale {
+	if scale < MinScale || scale > MaxScale {
 		return Decimal{}, fmt.Errorf("parsing decimal: %w", errScaleRange)
 	}
 	d, err := parseFint(s, scale)
 	if err != nil {
-		d, err = parseSint(s, scale)
+		d, err = parseBint(s, scale)
 		if err != nil {
 			return Decimal{}, fmt.Errorf("parsing decimal: %w", err)
 		}
@@ -335,10 +339,10 @@ func parseFint(s string, minScale int) (Decimal, error) {
 	return newDecimalFromFint(neg, coef, scale, minScale)
 }
 
-// parseSint supports exponential notation.
+// parseBint supports exponential notation.
 //
 //gocyclo:ignore
-func parseSint(s string, minScale int) (Decimal, error) {
+func parseBint(s string, minScale int) (Decimal, error) {
 	pos := 0
 	width := len(s)
 
@@ -355,7 +359,7 @@ func parseSint(s string, minScale int) (Decimal, error) {
 	}
 
 	// Integer
-	coef := new(sint)
+	coef := new(bint)
 	hascoef := false
 	for pos < width && s[pos] >= '0' && s[pos] <= '9' {
 		coef.fsa(1, s[pos]-'0')
@@ -418,7 +422,7 @@ func parseSint(s string, minScale int) (Decimal, error) {
 		scale = scale - exp
 	}
 
-	return newDecimalFromSint(neg, coef, scale, minScale)
+	return newDecimalFromBint(neg, coef, scale, minScale)
 }
 
 // MustParse is like [Parse] but panics if the string cannot be parsed.
@@ -483,6 +487,7 @@ func (d Decimal) String() string {
 // Float64 returns a float64 representation of the decimal.
 // This conversion may lose data, as float64 has a limited precision
 // compared to the decimal type.
+// See also method [NewFromFloat64].
 func (d Decimal) Float64() (f float64, ok bool) {
 	f, err := strconv.ParseFloat(d.String(), 64)
 	if err != nil {
@@ -499,7 +504,7 @@ func (d Decimal) Float64() (f float64, ok bool) {
 // the method returns false.
 // See also method [NewFromInt64].
 func (d Decimal) Int64(scale int) (w, f int64, ok bool) {
-	if scale < 0 || scale > MaxScale {
+	if scale < MinScale || scale > MaxScale {
 		return 0, 0, false
 	}
 	x := d.coef
@@ -613,8 +618,8 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 		case verb == 'f' || verb == 'F':
 			scale = d.Scale()
 		}
-		if scale < 0 {
-			scale = 0
+		if scale < MinScale {
+			scale = MinScale
 		}
 		switch {
 		case scale < d.Scale():
@@ -785,13 +790,13 @@ func (d Decimal) Scale() int {
 // See also method [Decimal.Trim].
 func (d Decimal) MinScale() int {
 	// Special case: no scale
-	if d.Scale() == 0 || d.IsZero() {
-		return 0
+	if d.Scale() == MinScale || d.IsZero() {
+		return MinScale
 	}
 	// General case
 	z := d.coef.tzeros()
-	if z > d.Scale() {
-		return 0
+	if d.Scale() <= z {
+		return MinScale
 	}
 	return d.Scale() - z
 }
@@ -826,8 +831,8 @@ func (d Decimal) WithinOne() bool {
 //
 // [rounding half to even]: https://en.wikipedia.org/wiki/Rounding#Rounding_half_to_even
 func (d Decimal) Round(scale int) Decimal {
-	if scale < 0 {
-		scale = 0
+	if scale < MinScale {
+		scale = MinScale
 	}
 	if scale >= d.Scale() {
 		return d
@@ -865,7 +870,7 @@ func (d Decimal) Pad(scale int) (Decimal, error) {
 // Rescale returns an error if the integer part of the result has more
 // than ([MaxPrec] - scale) digits.
 func (d Decimal) Rescale(scale int) (Decimal, error) {
-	if scale < 0 || scale > MaxScale {
+	if scale < MinScale || scale > MaxScale {
 		return Decimal{}, fmt.Errorf("rescaling %v: %w", d, errScaleRange)
 	}
 	switch {
@@ -894,8 +899,8 @@ func (d Decimal) Quantize(e Decimal) (Decimal, error) {
 //
 // [rounding toward zero]: https://en.wikipedia.org/wiki/Rounding#Rounding_toward_zero
 func (d Decimal) Trunc(scale int) Decimal {
-	if scale < 0 {
-		scale = 0
+	if scale < MinScale {
+		scale = MinScale
 	}
 	if scale >= d.Scale() {
 		return d
@@ -926,8 +931,8 @@ func (d Decimal) Trim(scale int) Decimal {
 //
 // [rounding toward positive infinity]: https://en.wikipedia.org/wiki/Rounding#Rounding_up
 func (d Decimal) Ceil(scale int) Decimal {
-	if scale < 0 {
-		scale = 0
+	if scale < MinScale {
+		scale = MinScale
 	}
 	if scale >= d.Scale() {
 		return d
@@ -950,8 +955,8 @@ func (d Decimal) Ceil(scale int) Decimal {
 //
 // [rounding toward negative infinity]: https://en.wikipedia.org/wiki/Rounding#Rounding_down
 func (d Decimal) Floor(scale int) Decimal {
-	if scale < 0 {
-		scale = 0
+	if scale < MinScale {
+		scale = MinScale
 	}
 	if scale >= d.Scale() {
 		return d
@@ -1036,12 +1041,12 @@ func (d Decimal) Mul(e Decimal) (Decimal, error) {
 // This method is useful for financial calculations where the scale should be
 // equal to or greater than the currency's scale.
 func (d Decimal) MulExact(e Decimal, scale int) (Decimal, error) {
-	if scale < 0 || scale > MaxScale {
+	if scale < MinScale || scale > MaxScale {
 		return Decimal{}, fmt.Errorf("%v * %v: %w", d, e, errScaleRange)
 	}
 	f, err := d.mulFint(e, scale)
 	if err != nil {
-		f, err = d.mulSint(e, scale)
+		f, err = d.mulBint(e, scale)
 		if err != nil {
 			return Decimal{}, fmt.Errorf("%v * %v: %w", d, e, err)
 		}
@@ -1067,9 +1072,9 @@ func (d Decimal) mulFint(e Decimal, minScale int) (Decimal, error) {
 	return newDecimalFromFint(neg, dcoef, scale, minScale)
 }
 
-func (d Decimal) mulSint(e Decimal, minScale int) (Decimal, error) {
-	dcoef := newSintFromFint(d.coef)
-	ecoef := newSintFromFint(e.coef)
+func (d Decimal) mulBint(e Decimal, minScale int) (Decimal, error) {
+	dcoef := d.coef.bint()
+	ecoef := e.coef.bint()
 
 	// Coefficient
 	dcoef.mul(dcoef, ecoef)
@@ -1080,7 +1085,7 @@ func (d Decimal) mulSint(e Decimal, minScale int) (Decimal, error) {
 	// Scale
 	scale := d.Scale() + e.Scale()
 
-	return newDecimalFromSint(neg, dcoef, scale, minScale)
+	return newDecimalFromBint(neg, dcoef, scale, minScale)
 }
 
 // Pow returns the (possibly rounded) decimal raised to the given power.
@@ -1098,7 +1103,7 @@ func (d Decimal) Pow(power int) (Decimal, error) {
 // This method is useful for financial calculations where the scale should be
 // equal to or greater than the currency's scale.
 func (d Decimal) PowExact(power, scale int) (Decimal, error) {
-	if scale < 0 || scale > MaxScale {
+	if scale < MinScale || scale > MaxScale {
 		return Decimal{}, fmt.Errorf("%v^%v: %w", d, power, errScaleRange)
 	}
 
@@ -1118,7 +1123,7 @@ func (d Decimal) PowExact(power, scale int) (Decimal, error) {
 	// General case
 	e, err := d.powFint(power, scale)
 	if err != nil {
-		e, err = d.powSint(power, scale)
+		e, err = d.powBint(power, scale)
 		if err != nil {
 			return Decimal{}, fmt.Errorf("%v^%v: %w", d, power, err)
 		}
@@ -1129,7 +1134,7 @@ func (d Decimal) PowExact(power, scale int) (Decimal, error) {
 
 func (d Decimal) powFint(power, minScale int) (Decimal, error) {
 	dneg, dcoef, dscale := d.IsNeg(), d.coef, d.Scale()
-	eneg, ecoef, escale := false, fint(1), 0
+	eneg, ecoef, escale := One.IsNeg(), One.coef, One.Scale()
 
 	for power > 0 {
 		if power%2 == 1 {
@@ -1168,9 +1173,9 @@ func (d Decimal) powFint(power, minScale int) (Decimal, error) {
 	return newDecimalFromFint(eneg, ecoef, escale, minScale)
 }
 
-func (d Decimal) powSint(power, minScale int) (Decimal, error) {
-	dneg, dcoef, dscale := d.IsNeg(), newSintFromFint(d.coef), d.Scale()
-	eneg, ecoef, escale := false, newSintFromFint(1), 0
+func (d Decimal) powBint(power, minScale int) (Decimal, error) {
+	dneg, dcoef, dscale := d.IsNeg(), d.coef.bint(), d.Scale()
+	eneg, ecoef, escale := One.IsNeg(), One.coef.bint(), One.Scale()
 
 	for power > 0 {
 		if power%2 == 1 {
@@ -1208,7 +1213,7 @@ func (d Decimal) powSint(power, minScale int) (Decimal, error) {
 			}
 		}
 	}
-	return newDecimalFromSint(eneg, ecoef, escale, minScale)
+	return newDecimalFromBint(eneg, ecoef, escale, minScale)
 }
 
 // Add returns the (possibly rounded) sum of decimals d and e.
@@ -1224,12 +1229,12 @@ func (d Decimal) Add(e Decimal) (Decimal, error) {
 // This method is useful for financial calculations where the scale should be
 // equal to or greater than the currency's scale.
 func (d Decimal) AddExact(e Decimal, scale int) (Decimal, error) {
-	if scale < 0 || scale > MaxScale {
+	if scale < MinScale || scale > MaxScale {
 		return Decimal{}, fmt.Errorf("%v + %v: %w", d, e, errScaleRange)
 	}
 	f, err := d.addFint(e, scale)
 	if err != nil {
-		f, err = d.addSint(e, scale)
+		f, err = d.addBint(e, scale)
 		if err != nil {
 			return Decimal{}, fmt.Errorf("%v + %v: %w", d, e, err)
 		}
@@ -1281,9 +1286,9 @@ func (d Decimal) addFint(e Decimal, minScale int) (Decimal, error) {
 	return newDecimalFromFint(neg, dcoef, scale, minScale)
 }
 
-func (d Decimal) addSint(e Decimal, minScale int) (Decimal, error) {
-	dcoef := newSintFromFint(d.coef)
-	ecoef := newSintFromFint(e.coef)
+func (d Decimal) addBint(e Decimal, minScale int) (Decimal, error) {
+	dcoef := d.coef.bint()
+	ecoef := e.coef.bint()
 
 	// Alignment and scale
 	var scale int
@@ -1313,7 +1318,7 @@ func (d Decimal) addSint(e Decimal, minScale int) (Decimal, error) {
 		dcoef.add(dcoef, ecoef)
 	}
 
-	return newDecimalFromSint(neg, dcoef, scale, minScale)
+	return newDecimalFromBint(neg, dcoef, scale, minScale)
 }
 
 // Sub returns the (possibly rounded) difference between decimals d and e.
@@ -1361,12 +1366,12 @@ func (d Decimal) FMA(e, f Decimal) (Decimal, error) {
 // This method is useful for financial calculations where the scale should be
 // equal to or greater than the currency's scale.
 func (d Decimal) FMAExact(e, f Decimal, scale int) (Decimal, error) {
-	if scale < 0 || scale > MaxScale {
+	if scale < MinScale || scale > MaxScale {
 		return Decimal{}, fmt.Errorf("%v * %v + %v: %w", d, e, f, errScaleRange)
 	}
 	g, err := d.fmaFint(e, f, scale)
 	if err != nil {
-		g, err = d.fmaSint(e, f, scale)
+		g, err = d.fmaBint(e, f, scale)
 		if err != nil {
 			return Decimal{}, fmt.Errorf("%v * %v + %v: %w", d, e, f, err)
 		}
@@ -1421,10 +1426,10 @@ func (d Decimal) fmaFint(e, f Decimal, minScale int) (Decimal, error) {
 	return newDecimalFromFint(neg, dcoef, scale, minScale)
 }
 
-func (d Decimal) fmaSint(e, f Decimal, minScale int) (Decimal, error) {
-	dcoef := newSintFromFint(d.coef)
-	ecoef := newSintFromFint(e.coef)
-	fcoef := newSintFromFint(f.coef)
+func (d Decimal) fmaBint(e, f Decimal, minScale int) (Decimal, error) {
+	dcoef := d.coef.bint()
+	ecoef := e.coef.bint()
+	fcoef := f.coef.bint()
 
 	// Coefficient (Multiplication)
 	dcoef.mul(dcoef, ecoef)
@@ -1454,7 +1459,7 @@ func (d Decimal) fmaSint(e, f Decimal, minScale int) (Decimal, error) {
 		dcoef.add(dcoef, fcoef)
 	}
 
-	return newDecimalFromSint(neg, dcoef, scale, minScale)
+	return newDecimalFromBint(neg, dcoef, scale, minScale)
 }
 
 // Quo returns the (possibly rounded) quotient of decimals d and e.
@@ -1472,7 +1477,7 @@ func (d Decimal) Quo(e Decimal) (Decimal, error) {
 // This method is useful for financial calculations where the scale should be
 // equal to or greater than the currency's scale.
 func (d Decimal) QuoExact(e Decimal, scale int) (Decimal, error) {
-	if scale < 0 || scale > MaxScale {
+	if scale < MinScale || scale > MaxScale {
 		return Decimal{}, fmt.Errorf("%v / %v: %w", d, e, errScaleRange)
 	}
 
@@ -1492,7 +1497,7 @@ func (d Decimal) QuoExact(e Decimal, scale int) (Decimal, error) {
 	// General case
 	f, err := d.quoFint(e, scale)
 	if err != nil {
-		f, err = d.quoSint(e, scale)
+		f, err = d.quoBint(e, scale)
 		if err != nil {
 			return Decimal{}, fmt.Errorf("%v / %v: %w", d, e, err)
 		}
@@ -1541,9 +1546,9 @@ func (d Decimal) quoFint(e Decimal, minScale int) (Decimal, error) {
 	return newDecimalFromFint(neg, dcoef, scale, minScale)
 }
 
-func (d Decimal) quoSint(e Decimal, minScale int) (Decimal, error) {
-	dcoef := newSintFromFint(d.coef)
-	ecoef := newSintFromFint(e.coef)
+func (d Decimal) quoBint(e Decimal, minScale int) (Decimal, error) {
+	dcoef := d.coef.bint()
+	ecoef := e.coef.bint()
 
 	// Scale
 	scale := 2 * MaxScale
@@ -1557,7 +1562,7 @@ func (d Decimal) quoSint(e Decimal, minScale int) (Decimal, error) {
 	// Sign
 	neg := d.IsNeg() != e.IsNeg()
 
-	return newDecimalFromSint(neg, dcoef, scale, minScale)
+	return newDecimalFromBint(neg, dcoef, scale, minScale)
 }
 
 // QuoRem returns the quotient q and remainder r of decimals d and e
@@ -1625,7 +1630,7 @@ func (d Decimal) Cmp(e Decimal) int {
 	// General case
 	r, err := d.cmpFint(e)
 	if err != nil {
-		r = d.cmpSint(e)
+		r = d.cmpBint(e)
 	}
 	return r
 }
@@ -1658,9 +1663,9 @@ func (d Decimal) cmpFint(e Decimal) (int, error) {
 	return 0, nil
 }
 
-func (d Decimal) cmpSint(e Decimal) int {
-	dcoef := newSintFromFint(d.coef)
-	ecoef := newSintFromFint(e.coef)
+func (d Decimal) cmpBint(e Decimal) int {
+	dcoef := d.coef.bint()
+	ecoef := e.coef.bint()
 
 	// Alignment
 	switch {

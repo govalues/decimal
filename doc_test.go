@@ -175,15 +175,17 @@ func ExampleNewFromInt64() {
 }
 
 func ExampleNewFromFloat64() {
-	fmt.Println(decimal.NewFromFloat64(-1.23))
-	fmt.Println(decimal.NewFromFloat64(-1.023))
-	fmt.Println(decimal.NewFromFloat64(-1.0023))
-	fmt.Println(decimal.NewFromFloat64(-1.00023))
+	fmt.Println(decimal.NewFromFloat64(1.23e-2))
+	fmt.Println(decimal.NewFromFloat64(1.23e-1))
+	fmt.Println(decimal.NewFromFloat64(1.23e0))
+	fmt.Println(decimal.NewFromFloat64(1.23e1))
+	fmt.Println(decimal.NewFromFloat64(1.23e2))
 	// Output:
-	// -1.23 <nil>
-	// -1.023 <nil>
-	// -1.0023 <nil>
-	// -1.00023 <nil>
+	// 0.0123 <nil>
+	// 0.123 <nil>
+	// 1.23 <nil>
+	// 12.3 <nil>
+	// 123 <nil>
 }
 
 func ExampleDecimal_Zero() {
@@ -809,12 +811,15 @@ func ExampleDecimal_IsOne() {
 func ExampleDecimal_WithinOne() {
 	d := decimal.MustParse("1")
 	e := decimal.MustParse("0.9")
-	f := decimal.MustParse("-1")
+	f := decimal.MustParse("-0.9")
+	g := decimal.MustParse("-1")
 	fmt.Println(d.WithinOne())
 	fmt.Println(e.WithinOne())
 	fmt.Println(f.WithinOne())
+	fmt.Println(g.WithinOne())
 	// Output:
 	// false
+	// true
 	// true
 	// false
 }
