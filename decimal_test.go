@@ -1539,19 +1539,51 @@ func TestDecimal_Add(t *testing.T) {
 	})
 }
 
+func TestDecimal_Sub(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			d, e, want string
+		}{
+			// Signs
+			{"5", "3", "2"},
+			{"3", "5", "-2"},
+			{"-5", "-3", "-2"},
+			{"-3", "-5", "2"},
+			{"-5", "3", "-8"},
+			{"-3", "5", "-8"},
+			{"5", "-3", "8"},
+			{"3", "-5", "8"},
+		}
+		for _, tt := range tests {
+			d := MustParse(tt.d)
+			e := MustParse(tt.e)
+			got, err := d.Sub(e)
+			if err != nil {
+				t.Errorf("%q.Sub(%q) failed: %v", d, e, err)
+				continue
+			}
+			want := MustParse(tt.want)
+			if got != want {
+				t.Errorf("%q.Sub(%q) = %q, want %q", d, e, got, want)
+			}
+		}
+	})
+}
+
 func TestDecimal_SubAbs(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			d, e, want string
 		}{
-			{"1", "1", "0"},
-			{"2", "3", "1"},
-			{"5.75", "3.3", "2.45"},
-			{"5", "-3", "8"},
+			// Signs
+			{"5", "3", "2"},
+			{"3", "5", "2"},
 			{"-5", "-3", "2"},
-			{"-7", "2.5", "9.5"},
-			{"0.7", "0.3", "0.4"},
-			{"1.25", "1.25", "0.00"},
+			{"-3", "-5", "2"},
+			{"-5", "3", "8"},
+			{"-3", "5", "8"},
+			{"5", "-3", "8"},
+			{"3", "-5", "8"},
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.d)
@@ -2535,6 +2567,74 @@ func TestDecimal_Min(t *testing.T) {
 	}
 }
 
+func TestDecimal_Clamp(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			d, min, max, want string
+		}{
+			{"0", "-2", "-1", "-1"},
+			{"0", "-1", "1", "0"},
+			{"0", "1", "2", "1"},
+
+			{"0.000", "0.0", "0.000", "0.000"},
+			{"0.000", "0.000", "0.0", "0.000"},
+			{"0.0", "0.0", "0.000", "0.0"},
+			{"0.0", "0.000", "0.0", "0.0"},
+
+			{"0.000", "0.000", "1", "0.000"},
+			{"0.000", "0.0", "1", "0.0"},
+			{"0.0", "0.000", "1", "0.0"},
+			{"0.0", "0.0", "1", "0.0"},
+
+			{"0.000", "-1", "0.000", "0.000"},
+			{"0.000", "-1", "0.0", "0.000"},
+			{"0.0", "-1", "0.000", "0.000"},
+			{"0.0", "-1", "0.0", "0.0"},
+
+			{"1.2300", "1.2300", "2", "1.2300"},
+			{"1.2300", "1.23", "2", "1.23"},
+			{"1.23", "1.2300", "2", "1.23"},
+			{"1.23", "1.23", "2", "1.23"},
+
+			{"1.2300", "1", "1.2300", "1.2300"},
+			{"1.2300", "1", "1.23", "1.2300"},
+			{"1.23", "1", "1.2300", "1.2300"},
+			{"1.23", "1", "1.23", "1.23"},
+		}
+		for _, tt := range tests {
+			d := MustParse(tt.d)
+			min := MustParse(tt.min)
+			max := MustParse(tt.max)
+			got, err := d.Clamp(min, max)
+			if err != nil {
+				t.Errorf("%q.Clamp(%q, %q) failed: %v", d, min, max, err)
+				continue
+			}
+			want := MustParse(tt.want)
+			if got != want {
+				t.Errorf("%q.Clamp(%q, %q) = %q, want %q", d, min, max, got, want)
+			}
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		tests := []struct {
+			d, min, max string
+		}{
+			{"0", "1", "-1"},
+		}
+		for _, tt := range tests {
+			d := MustParse(tt.d)
+			min := MustParse(tt.min)
+			max := MustParse(tt.max)
+			_, err := d.Clamp(min, max)
+			if err == nil {
+				t.Errorf("%q.Clamp(%q, %q) did not fail", d, min, max)
+			}
+		}
+	})
+}
+
 /******************************************************
 * Fuzzing
 ******************************************************/
@@ -2719,13 +2819,13 @@ func FuzzDecimalMul(f *testing.F) {
 				return
 			}
 
-			s, err := d.mulSint(e, scale)
+			s, err := d.mulBint(e, scale)
 			if err != nil {
-				t.Errorf("mulSint(%q, %q, %v) failed: %v", d, e, scale, err)
+				t.Errorf("mulBint(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
 			}
 			if s.CmpTotal(f) != 0 {
-				t.Errorf("mulSint(%q, %q, %v) = %q, whereas mulFint(%q, %q, %v) = %q", d, e, scale, s, d, e, scale, f)
+				t.Errorf("mulBint(%q, %q, %v) = %q, whereas mulFint(%q, %q, %v) = %q", d, e, scale, s, d, e, scale, f)
 			}
 		},
 	)
@@ -2774,13 +2874,13 @@ func FuzzDecimalFMA(f *testing.F) {
 				return
 			}
 
-			s, err := d.fmaSint(e, g, scale)
+			s, err := d.fmaBint(e, g, scale)
 			if err != nil {
-				t.Errorf("fmaSint(%q, %q, %q, %v) failed: %v", d, e, g, scale, err)
+				t.Errorf("fmaBint(%q, %q, %q, %v) failed: %v", d, e, g, scale, err)
 				return
 			}
 			if s.CmpTotal(f) != 0 {
-				t.Errorf("fmaSint(%q, %q, %q, %v) = %q, whereas fmaFint(%q, %q, %q, %v) = %q", d, e, g, scale, s, d, e, g, scale, f)
+				t.Errorf("fmaBint(%q, %q, %q, %v) = %q, whereas fmaFint(%q, %q, %q, %v) = %q", d, e, g, scale, s, d, e, g, scale, f)
 			}
 		},
 	)
@@ -2822,13 +2922,13 @@ func FuzzDecimalAdd(f *testing.F) {
 				return
 			}
 
-			s, err := d.addSint(e, scale)
+			s, err := d.addBint(e, scale)
 			if err != nil {
-				t.Errorf("addSint(%q, %q, %v) failed: %v", d, e, scale, err)
+				t.Errorf("addBint(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
 			}
 			if s.CmpTotal(f) != 0 {
-				t.Errorf("addSint(%q, %q, %v) = %q, whereas addFint(%q, %q, %v) = %q", d, e, scale, s, d, e, scale, f)
+				t.Errorf("addBint(%q, %q, %v) = %q, whereas addFint(%q, %q, %v) = %q", d, e, scale, s, d, e, scale, f)
 			}
 		},
 	)
@@ -2877,13 +2977,13 @@ func FuzzDecimalQuo(f *testing.F) {
 				return
 			}
 
-			s, err := d.quoSint(e, scale)
+			s, err := d.quoBint(e, scale)
 			if err != nil {
-				t.Errorf("quoSint(%q, %q, %v) failed: %v", d, e, scale, err)
+				t.Errorf("quoBint(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
 			}
 			if s.Cmp(f) != 0 {
-				t.Errorf("quoSint(%q, %q, %v) = %q, whereas quoFint(%q, %q, %v) = %q", d, e, scale, s, d, e, scale, f)
+				t.Errorf("quoBint(%q, %q, %v) = %q, whereas quoFint(%q, %q, %v) = %q", d, e, scale, s, d, e, scale, f)
 			}
 		},
 	)
@@ -2920,9 +3020,9 @@ func FuzzDecimalCmp(f *testing.F) {
 				return
 			}
 
-			s := d.cmpSint(e)
+			s := d.cmpBint(e)
 			if s != f {
-				t.Errorf("cmpSint(%q, %q) = %v, whereas cmpFint(%q, %q) = %v", d, e, s, d, e, f)
+				t.Errorf("cmpBint(%q, %q) = %v, whereas cmpFint(%q, %q) = %v", d, e, s, d, e, f)
 			}
 		},
 	)
@@ -2936,16 +3036,16 @@ func FuzzDecimalNew(f *testing.F) {
 	f.Fuzz(
 		func(t *testing.T, neg bool, scale int, coef uint64) {
 			f, ferr := newDecimalFromFint(neg, fint(coef), scale, 0)
-			s, serr := newDecimalFromSint(neg, newSintFromFint(fint(coef)), scale, 0)
+			s, serr := newDecimalFromBint(neg, fint(coef).bint(), scale, 0)
 			if ferr != nil {
 				t.Skip()
 				return
 			} else if serr != nil {
-				t.Errorf("newDecimalFromSint(%v, %v, %v, 0) failed: %v", neg, coef, scale, serr)
+				t.Errorf("newDecimalFromBint(%v, %v, %v, 0) failed: %v", neg, coef, scale, serr)
 				return
 			}
 			if f.CmpTotal(s) != 0 {
-				t.Errorf("newDecimalFromFint(%v, %v, %v, 0) = %q, whereas newDecimalFromSint(%v, %v, %v, 0) = %q", neg, coef, scale, f, neg, coef, scale, s)
+				t.Errorf("newDecimalFromFint(%v, %v, %v, 0) = %q, whereas newDecimalFromBint(%v, %v, %v, 0) = %q", neg, coef, scale, f, neg, coef, scale, s)
 			}
 		},
 	)

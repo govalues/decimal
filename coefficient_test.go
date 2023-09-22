@@ -479,7 +479,7 @@ func TestFint_hasPrec(t *testing.T) {
 	}
 }
 
-func TestSint_rshDown(t *testing.T) {
+func TestBint_rshDown(t *testing.T) {
 	cases := []struct {
 		z     string
 		shift int
@@ -546,16 +546,16 @@ func TestSint_rshDown(t *testing.T) {
 		{"18446744073709551615", 21, "0"},
 	}
 	for _, tt := range cases {
-		got := mustParseSint(tt.z)
+		got := mustParseBint(tt.z)
 		got.rshDown(got, tt.shift)
-		want := mustParseSint(tt.want)
+		want := mustParseBint(tt.want)
 		if got.cmp(want) != 0 {
 			t.Errorf("%v.rshDown(%v) = %v, want %v", tt.z, tt.shift, got, want)
 		}
 	}
 }
 
-func TestSint_rshHalfEven(t *testing.T) {
+func TestBint_rshHalfEven(t *testing.T) {
 	cases := []struct {
 		z     string
 		shift int
@@ -622,16 +622,16 @@ func TestSint_rshHalfEven(t *testing.T) {
 		{"18446744073709551615", 21, "0"},
 	}
 	for _, tt := range cases {
-		got := mustParseSint(tt.z)
+		got := mustParseBint(tt.z)
 		got.rshHalfEven(got, tt.shift)
-		want := mustParseSint(tt.want)
+		want := mustParseBint(tt.want)
 		if got.cmp(want) != 0 {
 			t.Errorf("%v.rshHalfEven(%v) = %v, want %v", tt.z, tt.shift, got, want)
 		}
 	}
 }
 
-func TestSint_lsh(t *testing.T) {
+func TestBint_lsh(t *testing.T) {
 	cases := []struct {
 		z     string
 		shift int
@@ -643,16 +643,16 @@ func TestSint_lsh(t *testing.T) {
 		{"1", 100, "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
 	}
 	for _, tt := range cases {
-		got := mustParseSint(tt.z)
+		got := mustParseBint(tt.z)
 		got.lsh(got, tt.shift)
-		want := mustParseSint(tt.want)
+		want := mustParseBint(tt.want)
 		if got.cmp(want) != 0 {
 			t.Errorf("%v.lsh(%v) = %v, want %v", tt.z, tt.shift, got, want)
 		}
 	}
 }
 
-func TestSint_prec(t *testing.T) {
+func TestBint_prec(t *testing.T) {
 	cases := []struct {
 		z    string
 		want int
@@ -861,7 +861,7 @@ func TestSint_prec(t *testing.T) {
 		{"10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", 101},
 	}
 	for _, tt := range cases {
-		z := mustParseSint(tt.z)
+		z := mustParseBint(tt.z)
 		got := z.prec()
 		if got != tt.want {
 			t.Errorf("%q.prec() = %v, want %v", tt.z, got, tt.want)
@@ -869,7 +869,7 @@ func TestSint_prec(t *testing.T) {
 	}
 }
 
-func TestSint_hasPrec(t *testing.T) {
+func TestBint_hasPrec(t *testing.T) {
 	cases := []struct {
 		z    string
 		prec int
@@ -900,7 +900,7 @@ func TestSint_hasPrec(t *testing.T) {
 		{"1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", 101, false}, // 100 digits
 	}
 	for _, tt := range cases {
-		z := mustParseSint(tt.z)
+		z := mustParseBint(tt.z)
 		got := z.hasPrec(tt.prec)
 		if got != tt.want {
 			t.Errorf("%v.hasPrec(%v) = %v, want %v", tt.z, tt.prec, got, tt.want)
@@ -908,14 +908,14 @@ func TestSint_hasPrec(t *testing.T) {
 	}
 }
 
-// mustParseSint converts string to big.Int.
-func mustParseSint(s string) *sint {
+// mustParseBint converts string to big.Int.
+func mustParseBint(s string) *bint {
 	z, ok := new(big.Int).SetString(s, 10)
 	if !ok {
-		panic(fmt.Errorf("mustParseSint(%q) failed: parsing error", s))
+		panic(fmt.Errorf("mustParseBint(%q) failed: parsing error", s))
 	}
 	if z.Sign() < 0 {
-		panic(fmt.Errorf("mustParseSint(%q) failed: negative number", s))
+		panic(fmt.Errorf("mustParseBint(%q) failed: negative number", s))
 	}
-	return (*sint)(z)
+	return (*bint)(z)
 }

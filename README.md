@@ -1,4 +1,4 @@
-# Decimal
+# decimal
 
 [![githubb]][github]
 [![codecovb]][codecov]
@@ -8,51 +8,74 @@
 [![versionb]][version]
 
 Package decimal implements immutable decimal floating-point numbers for Go.
+This packages is designed specifically for use in transactional financial systems.
 
-## Getting started
+## Features
 
-To install the decimal package into your Go workspace, you can use the go get command:
+- **Optimized Performance**: Utilizes uint64 for coefficients, reducing heap allocations and memory consumption.
+- **Immutability**: Once a decimal is set, it remains unchanged. This immutability ensures safe concurrent access across goroutines.
+- **Banker's Rounding**: Methods use half even rounding, also known as "banker's rounding", which minimizes cumulative rounding errors commonly seen in financial calculations.
+- **Error Handling**: All methods are designed to be panic-free. Instead of potentially crashing your application, they return errors for issues such as overflow or division by zero.
+- **Simple String Representation**: Decimals are represented without the complexities of scientific or engineering notation.
+
+## Getting Started
+
+### Installation
+
+To add the decimal package to your Go workspace:
 
 ```bash
 go get github.com/govalues/decimal
 ```
 
-To use the decimal package in your Go project, you can import it as follows:
+### Usage
+
+Create decimal values using constructors such as `MustNew` or `MustParse`.
+After creating a decimal value, various arithmetic operations can be performed:
 
 ```go
-import "github.com/govalues/decimal"
+package main
+
+import (
+    "fmt"
+    "github.com/govalues/decimal"
+)
+
+func main() {
+    d := decimal.MustNew(156, 1) // d = 15.6
+    e := decimal.MustParse("8")  // e = 8
+    fmt.Println(d.Add(e))        // Sum
+    fmt.Println(d.Sub(e))        // Difference
+    fmt.Println(d.Mul(e))        // Product
+    fmt.Println(d.Quo(e))        // Quotient
+    fmt.Println(d.Pow(2))        // Square
+    fmt.Println(d.Inv())         // Reciprocal
+}
 ```
 
-## Using Decimal
+For detailed documentation and additional examples, visit the
+[package documentation](https://pkg.go.dev/github.com/govalues/decimal#pkg-examples).
+For examples related to financial calculations, see the
+[money package documentation](https://pkg.go.dev/github.com/govalues/money#pkg-examples).
 
-To create a new decimal value, you can use one of the provided constructors,
-such as `New`, `MustNew`, `Parse` or `MustParse`.
+## Comparison
 
-```go
-d := decimal.MustNew(12345, 2) // d = 123.45
-e := decimal.MustParse("123.45")
-```
+Comparison of decimal with other popular decimal packages:
 
-Once you have a decimal value, you can perform arithmetic operations such as
-addition, subtraction, multiplication, division, and exponentiation, as well
-as rounding operations such as ceiling, floor, truncation, and rounding.
+| Feature          | govalues     | [cockroachdb] v3.2.0 | [shopspring] v1.3.1 |
+| ---------------- | ------------ | -------------------- | ------------------- |
+| Speed            | High         | Medium               | Low                 |
+| Mutability       | Immutable    | Mutable              | Immutable           |
+| Memory Footprint | Low          | Medium               | High                |
+| Panic Free       | Yes          | Yes                  | No                  |
+| Precision        | 19 digits    | Arbitrary            | Arbitrary           |
+| Default Rounding | Half to even | Half up              | Half away from 0    |
+| Context          | Implicit     | Explicit             | Implicit            |
 
-```go
-sum, _ := d.Add(e)
-difference, _ := d.Sub(e)
-product, _ := d.Mul(e)
-quotient, _ := d.Quo(e)
-power, _ := d.Pow(5)
-ceil := d.Ceil(0)
-floor := d.Floor(0)
-trunc := d.Trunc(0)
-round := d.Round(0)
-```
+decimal package was created simply because shopspring's decimal was too slow
+and cockroachdb's decimal was mutable.
 
-For more details on these and other methods, see the package documentation
-at [pkg.go.dev](https://pkg.go.dev/github.com/govalues/decimal).
-
-## Benchmarks
+### Benchmarks
 
 ```text
 goos: linux
@@ -76,30 +99,23 @@ cpu: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx
 | String         | 1                    |    5.45n |               19.91n |                +265.49% |             197.85n |              +3531.94% |
 | String         | 123.456              |   42.38n |               74.83n |                 +76.57% |             229.50n |               +441.53% |
 | String         | 123456789.1234567890 |   77.90n |              210.40n |                +170.11% |             328.90n |               +322.24% |
-| NewFromFloat64 | 1                    |  155.50n |              361.00n |                +132.23% |             234.40n |                +50.76% |
-| NewFromFloat64 | 123.456              |  237.10n |              588.80n |                +148.37% |             770.30n |               +224.95% |
-| NewFromFloat64 | 123456789.1234567890 |  335.60n |              636.80n |                 +89.78% |             753.80n |               +124.65% |
-| Float64        | 1                    |   28.92n |               51.64n |                 +78.59% |             456.70n |              +1479.46% |
-| Float64        | 123.456              |   97.36n |              102.68n |                  +5.46% |             680.05n |               +598.49% |
-| Float64        | 123456789.1234567890 |  206.10n |              304.60n |                 +47.79% |             792.60n |               +284.55% |
-| **Geom. Mean** |                      |  121.40n |              313.60n |                +158.28% |             912.20n |               +651.24% |
 
 The benchmark results shown in the table are provided for informational purposes only and may vary depending on your specific use case.
 
-## Contributing to the project
+## Contributing
 
-The decimal package is hosted on [GitHub](https://github.com/govalues/decimal).
-To contribute to the project, follow these steps:
+Interested in contributing? Here's how to get started:
 
- 1. Fork the repository and clone it to your local machine.
- 1. Make the desired changes to the code.
- 1. Write tests for the changes you made.
- 1. Ensure that all tests pass by running `go test`.
- 1. Commit the changes and push them to your fork.
- 1. Submit a pull request with a clear description of the changes you made.
- 1. Wait for the maintainers to review and merge your changes.
+1. Fork and clone the repository.
+1. Implement your changes.
+1. Write tests to cover your changes.
+1. Ensure all tests pass with `go test`.
+1. Commit and push to your fork.
+1. Open a pull request detailing your changes.
 
-Note: Before making any significant changes to the code, it is recommended to open an issue to discuss the proposed changes with the maintainers. This will help to ensure that the changes align with the project's goals and roadmap.
+**Note**: If you're considering significant changes, please open an issue first to
+discuss with the maintainers.
+This ensures alignment with the project's objectives and roadmap.
 
 [codecov]: https://codecov.io/gh/govalues/decimal
 [codecovb]: https://img.shields.io/codecov/c/github/govalues/decimal/main?color=brightcolor

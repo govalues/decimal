@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.11] - 2023-09-21
+
+### Added
+
+- Implemented `Decimal.Clamp` method.
+
+### Changed
+
+- Reviewed and improved documentation.
+
 ## [0.1.10] - 2023-09-09
 
 ### Added

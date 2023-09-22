@@ -1,6 +1,7 @@
 package decimal_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -124,7 +125,7 @@ func approximate(terms int) (decimal.Decimal, error) {
 // This example calculates an approximate value of pi using the Leibniz formula for pi.
 // The Leibniz formula is an infinite series that converges to pi/4, and is
 // given by the equation: 1 - 1/3 + 1/5 - 1/7 + 1/9 - 1/11 + ... = pi/4.
-// This example computes the series up to the 50000th term using decimal arithmetic
+// This example computes the series up to the 50,000th term using decimal arithmetic
 // and returns the approximate value of pi.
 func Example_piApproximation() {
 	pi, err := approximate(50000)
@@ -175,15 +176,17 @@ func ExampleNewFromInt64() {
 }
 
 func ExampleNewFromFloat64() {
-	fmt.Println(decimal.NewFromFloat64(-1.23))
-	fmt.Println(decimal.NewFromFloat64(-1.023))
-	fmt.Println(decimal.NewFromFloat64(-1.0023))
-	fmt.Println(decimal.NewFromFloat64(-1.00023))
+	fmt.Println(decimal.NewFromFloat64(1.23e-2))
+	fmt.Println(decimal.NewFromFloat64(1.23e-1))
+	fmt.Println(decimal.NewFromFloat64(1.23e0))
+	fmt.Println(decimal.NewFromFloat64(1.23e1))
+	fmt.Println(decimal.NewFromFloat64(1.23e2))
 	// Output:
-	// -1.23 <nil>
-	// -1.023 <nil>
-	// -1.0023 <nil>
-	// -1.00023 <nil>
+	// 0.0123 <nil>
+	// 0.123 <nil>
+	// 1.23 <nil>
+	// 12.3 <nil>
+	// 123 <nil>
 }
 
 func ExampleDecimal_Zero() {
@@ -287,25 +290,30 @@ func ExampleDecimal_Int64() {
 	// 124 0 true
 }
 
+type Value struct {
+	Number decimal.Decimal `json:"number"`
+}
+
 func ExampleDecimal_UnmarshalText() {
-	d := &decimal.Decimal{}
-	b := []byte("-15.67")
-	err := d.UnmarshalText(b)
+	b := []byte(`{"number": "-15.67"}`)
+	var v Value
+	err := json.Unmarshal(b, &v)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(d)
-	// Output: -15.67
+	fmt.Println(v)
+	// Output: {-15.67}
 }
 
 func ExampleDecimal_MarshalText() {
 	d := decimal.MustParse("-15.67")
-	b, err := d.MarshalText()
+	v := Value{Number: d}
+	b, err := json.Marshal(v)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(string(b))
-	// Output: -15.67
+	// Output: {"number":"-15.67"}
 }
 
 func ExampleDecimal_Scan() {
@@ -542,6 +550,21 @@ func ExampleDecimal_Min() {
 	e := decimal.MustParse("-15.67")
 	fmt.Println(d.Min(e))
 	// Output: -15.67
+}
+
+func ExampleDecimal_Clamp() {
+	d := decimal.MustParse("-15.67")
+	e := decimal.MustParse("0")
+	f := decimal.MustParse("23")
+	min := decimal.MustParse("-10")
+	max := decimal.MustParse("10")
+	fmt.Println(d.Clamp(min, max))
+	fmt.Println(e.Clamp(min, max))
+	fmt.Println(f.Clamp(min, max))
+	// Output:
+	// -10 <nil>
+	// 0 <nil>
+	// 10 <nil>
 }
 
 func ExampleDecimal_Rescale() {
@@ -794,12 +817,15 @@ func ExampleDecimal_IsOne() {
 func ExampleDecimal_WithinOne() {
 	d := decimal.MustParse("1")
 	e := decimal.MustParse("0.9")
-	f := decimal.MustParse("-1")
+	f := decimal.MustParse("-0.9")
+	g := decimal.MustParse("-1")
 	fmt.Println(d.WithinOne())
 	fmt.Println(e.WithinOne())
 	fmt.Println(f.WithinOne())
+	fmt.Println(g.WithinOne())
 	// Output:
 	// false
+	// true
 	// true
 	// false
 }
