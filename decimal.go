@@ -681,7 +681,7 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 		pos--
 	}
 
-	// Trailling zeroes
+	// Trailing zeroes
 	for i := 0; i < tzeroes; i++ {
 		buf[pos] = '0'
 		pos--

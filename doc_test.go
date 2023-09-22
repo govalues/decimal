@@ -1,6 +1,7 @@
 package decimal_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -289,25 +290,30 @@ func ExampleDecimal_Int64() {
 	// 124 0 true
 }
 
+type Value struct {
+	Number decimal.Decimal `json:"number"`
+}
+
 func ExampleDecimal_UnmarshalText() {
-	d := &decimal.Decimal{}
-	b := []byte("-15.67")
-	err := d.UnmarshalText(b)
+	b := []byte(`{"number": "-15.67"}`)
+	var v Value
+	err := json.Unmarshal(b, &v)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(d)
-	// Output: -15.67
+	fmt.Println(v)
+	// Output: {-15.67}
 }
 
 func ExampleDecimal_MarshalText() {
 	d := decimal.MustParse("-15.67")
-	b, err := d.MarshalText()
+	v := Value{Number: d}
+	b, err := json.Marshal(v)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(string(b))
-	// Output: -15.67
+	// Output: {"number":"-15.67"}
 }
 
 func ExampleDecimal_Scan() {
