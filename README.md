@@ -53,7 +53,7 @@ func main() {
 }
 ```
 
-For detaild documentation and additional examples, visit the
+For detailed documentation and additional examples, visit the
 [package documentation](https://pkg.go.dev/github.com/govalues/decimal#pkg-examples).
 For examples related to financial calculations, see the
 [money package documentation](https://pkg.go.dev/github.com/govalues/money#pkg-examples).
@@ -99,7 +99,6 @@ cpu: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx
 | String         | 1                    |    5.45n |               19.91n |                +265.49% |             197.85n |              +3531.94% |
 | String         | 123.456              |   42.38n |               74.83n |                 +76.57% |             229.50n |               +441.53% |
 | String         | 123456789.1234567890 |   77.90n |              210.40n |                +170.11% |             328.90n |               +322.24% |
-| **Geom. Mean** |                      |  121.40n |              313.60n |                +158.28% |             912.20n |               +651.24% |
 
 The benchmark results shown in the table are provided for informational purposes only and may vary depending on your specific use case.
 

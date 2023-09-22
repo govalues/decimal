@@ -4,7 +4,7 @@ import (
 	"math/big"
 )
 
-// fint (Fast Integer) is a wrapper around uint64.
+// fint (Fast INTeger) is a wrapper around uint64.
 type fint uint64
 
 // maxFint is a maximum value of fint.
@@ -222,7 +222,7 @@ func (x fint) bint() *bint {
 	return (*bint)(z)
 }
 
-// bint (Big Integer) is a wrapper around big.Int.
+// bint (Big INTeger) is a wrapper around big.Int.
 type bint big.Int
 
 // bpow10 is a cache of powers of 10.

@@ -11,23 +11,6 @@ import (
 // Decimal type represents a finite floating-point decimal number.
 // Its zero value corresponds to the numeric value of 0.
 // This type is designed to be safe for concurrent use by multiple goroutines.
-//
-// A decimal is a struct with three fields:
-//
-//   - Sign: a boolean indicating whether the decimal is negative;
-//   - Scale: an integer indicating the position of the floating decimal point;
-//   - Coefficient: an integer value of the decimal without the decimal point.
-//
-// The scale field determines the position of the decimal point in the coefficient.
-// For example, a decimal value with a scale of 2 represents a value that has two
-// digits after the decimal point.
-// The coefficient field is the integer value of the decimal without the decimal point.
-// For example, a decimal with a coefficient of 12345 and a scale of 2 represents
-// the value 123.45.
-// Such approach allows for multiple representations of the same numerical value.
-// For example, 1, 1.0, and 1.00 all have the same value, but they
-// have different scales and coefficients.
-//
 // One important aspect of the decimal is that it does not support
 // special values such as NaN, Infinity, or signed zeros.
 type Decimal struct {

@@ -124,7 +124,7 @@ func approximate(terms int) (decimal.Decimal, error) {
 // This example calculates an approximate value of pi using the Leibniz formula for pi.
 // The Leibniz formula is an infinite series that converges to pi/4, and is
 // given by the equation: 1 - 1/3 + 1/5 - 1/7 + 1/9 - 1/11 + ... = pi/4.
-// This example computes the series up to the 50000th term using decimal arithmetic
+// This example computes the series up to the 50,000th term using decimal arithmetic
 // and returns the approximate value of pi.
 func Example_piApproximation() {
 	pi, err := approximate(50000)
