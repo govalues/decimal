@@ -37,7 +37,7 @@ jobs:
       run: go test -race -shuffle=on -coverprofile="coverage.txt" -covermode=atomic ./...
 
     - name: Upload test coverage
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-latest' && matrix.go-version == 'stable'
       uses: codecov/codecov-action@v3
 
   fuzz:
@@ -52,6 +52,9 @@ jobs:
 
     - name: Check out code
       uses: actions/checkout@v3
+
+    - name: Run fuzzing for string parsing
+      run: go test -fuzztime 20s -fuzz ^FuzzParse$ github.com/govalues/decimal
 
     - name: Run fuzzing for string conversion
       run: go test -fuzztime 20s -fuzz ^FuzzDecimalString$ github.com/govalues/decimal
@@ -69,11 +72,17 @@ jobs:
       run: go test -fuzztime 20s -fuzz ^FuzzDecimalMul$ github.com/govalues/decimal
 
     - name: Run fuzzing for fused multiply-addition
-      run: go test -fuzztime 40s -fuzz ^FuzzDecimalFMA$ github.com/govalues/decimal
+      run: go test -fuzztime 60s -fuzz ^FuzzDecimalFMA$ github.com/govalues/decimal
 
     - name: Run fuzzing for division
       run: go test -fuzztime 20s -fuzz ^FuzzDecimalQuo$ github.com/govalues/decimal
 
+    - name: Run fuzzing for integer division and remainder
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimalQuoRem$ github.com/govalues/decimal
+
     - name: Run fuzzing for comparison
       run: go test -fuzztime 20s -fuzz ^FuzzDecimalCmp$ github.com/govalues/decimal
+
+    - name: Run fuzzing for comparison and subtraction
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimalCmpSub$ github.com/govalues/decimal
  

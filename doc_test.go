@@ -98,7 +98,6 @@ func Example_postfixCalculator() {
 
 func approximate(terms int) (decimal.Decimal, error) {
 	pi := decimal.Zero
-	sign := decimal.One
 	denominator := decimal.One
 	increment := decimal.Two
 	multiplier := decimal.MustParse("4")
@@ -108,7 +107,6 @@ func approximate(terms int) (decimal.Decimal, error) {
 		if err != nil {
 			return decimal.Decimal{}, err
 		}
-		term = term.CopySign(sign)
 		pi, err = pi.Add(term)
 		if err != nil {
 			return decimal.Decimal{}, err
@@ -117,7 +115,7 @@ func approximate(terms int) (decimal.Decimal, error) {
 		if err != nil {
 			return decimal.Decimal{}, err
 		}
-		sign = sign.Neg()
+		multiplier = multiplier.Neg()
 	}
 	return pi, nil
 }
@@ -317,7 +315,7 @@ func ExampleDecimal_MarshalText() {
 }
 
 func ExampleDecimal_Scan() {
-	d := &decimal.Decimal{}
+	d := new(decimal.Decimal)
 	s := "-15.67"
 	err := d.Scan(s)
 	if err != nil {
@@ -556,15 +554,15 @@ func ExampleDecimal_Clamp() {
 	d := decimal.MustParse("-15.67")
 	e := decimal.MustParse("0")
 	f := decimal.MustParse("23")
-	min := decimal.MustParse("-10")
-	max := decimal.MustParse("10")
+	min := decimal.MustParse("-20")
+	max := decimal.MustParse("20")
 	fmt.Println(d.Clamp(min, max))
 	fmt.Println(e.Clamp(min, max))
 	fmt.Println(f.Clamp(min, max))
 	// Output:
-	// -10 <nil>
+	// -15.67 <nil>
 	// 0 <nil>
-	// 10 <nil>
+	// 20 <nil>
 }
 
 func ExampleDecimal_Rescale() {

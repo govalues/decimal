@@ -10,13 +10,15 @@ import (
 
 // Decimal type represents a finite floating-point decimal number.
 // Its zero value corresponds to the numeric value of 0.
-// This type is designed to be safe for concurrent use by multiple goroutines.
-// One important aspect of the decimal is that it does not support
-// special values such as NaN, Infinity, or signed zeros.
+// It is designed to be safe for concurrent use by multiple goroutines.
+// Numeric value of a decimal is equal to:
+//
+//	 coef / 10^scale if neg = false
+//	-coef / 10^scale if neg = true
 type Decimal struct {
 	neg   bool // indicates whether the decimal is negative
-	scale int8 // the position of the floating decimal point
-	coef  fint // the value without decimal point
+	scale int8 // position of the floating decimal point
+	coef  fint // numeric value without decimal point
 }
 
 const (
@@ -27,21 +29,21 @@ const (
 )
 
 var (
-	NegOne             = MustNew(-1, 0)                         // NegOne represents the decimal value of -1.
-	Zero               = MustNew(0, 0)                          // Zero represents the decimal value of 0.
-	One                = MustNew(1, 0)                          // One represents the decimal value of 1.
-	Two                = MustNew(2, 0)                          // Two represents the decimal value of 2.
-	Ten                = MustNew(10, 0)                         // Ten represents the decimal value of 10.
-	Hundred            = MustNew(100, 0)                        // Hundred represents the decimal value of 100.
-	Thousand           = MustNew(1_000, 0)                      // Thousand represents the decimal value of 1,000.
-	E                  = MustNew(2_718_281_828_459_045_235, 18) // E represents Euler’s number rounded to 18 decimals.
-	Pi                 = MustNew(3_141_592_653_589_793_238, 18) // Pi represents the value of π rounded to 18 decimals.
-	errDecimalOverflow = errors.New("decimal overflow")
-	errInvalidDecimal  = errors.New("invalid decimal")
-	errScaleRange      = errors.New("scale out of range")
-	errExponentRange   = errors.New("exponent out of range")
-	errInexactDivision = errors.New("inexact division")
-	errDivisionByZero  = errors.New("division by zero")
+	NegOne              = MustNew(-1, 0)                         // NegOne represents the decimal value of -1.
+	Zero                = MustNew(0, 0)                          // Zero represents the decimal value of 0.
+	One                 = MustNew(1, 0)                          // One represents the decimal value of 1.
+	Two                 = MustNew(2, 0)                          // Two represents the decimal value of 2.
+	Ten                 = MustNew(10, 0)                         // Ten represents the decimal value of 10.
+	Hundred             = MustNew(100, 0)                        // Hundred represents the decimal value of 100.
+	Thousand            = MustNew(1_000, 0)                      // Thousand represents the decimal value of 1,000.
+	E                   = MustNew(2_718_281_828_459_045_235, 18) // E represents Euler’s number rounded to 18 decimals.
+	Pi                  = MustNew(3_141_592_653_589_793_238, 18) // Pi represents the value of π rounded to 18 decimals.
+	errDecimalOverflow  = errors.New("decimal overflow")
+	errInvalidDecimal   = errors.New("invalid decimal")
+	errScaleRange       = errors.New("scale out of range")
+	errInvalidOperation = errors.New("invalid operation")
+	errInexactDivision  = errors.New("inexact division")
+	errDivisionByZero   = errors.New("division by zero")
 )
 
 func newDecimalUnsafe(neg bool, coef fint, scale int) Decimal {
@@ -87,10 +89,18 @@ func overflowError(gotPrec, gotScale, wantScale int) error {
 	switch wantScale {
 	case 0:
 		return fmt.Errorf("the integer part of a %T can have at most %v digits, but it has %v digits: %w", Decimal{}, maxDigits, gotDigits, errDecimalOverflow)
-	case 1:
-		return fmt.Errorf("with %v significant digit after the decimal point, the integer part of a %T can have at most %v digits, but it has %v digits: %w", wantScale, Decimal{}, maxDigits, gotDigits, errDecimalOverflow)
 	default:
 		return fmt.Errorf("with %v significant digits after the decimal point, the integer part of a %T can have at most %v digits, but it has %v digits: %w", wantScale, Decimal{}, maxDigits, gotDigits, errDecimalOverflow)
+	}
+}
+
+func unknownOverflowError(wantScale int) error {
+	maxDigits := MaxPrec - wantScale
+	switch wantScale {
+	case 0:
+		return fmt.Errorf("the integer part of a %T can have at most %v digits, but it has significantly more digits: %w", Decimal{}, maxDigits, errDecimalOverflow)
+	default:
+		return fmt.Errorf("with %v significant digits after the decimal point, the integer part of a %T can have at most %v digits, but it has significantly more digits: %w", wantScale, Decimal{}, maxDigits, errDecimalOverflow)
 	}
 }
 
@@ -145,7 +155,7 @@ func MustNew(coef int64, scale int) Decimal {
 }
 
 // NewFromFloat64 converts a pair of int64 values representing whole and
-// fractional parts to a (possibly rounded decimal).
+// fractional parts to a (possibly rounded) decimal.
 // The relationship between the values and the returned decimal can be expressed
 // as d = whole + frac / 10^scale.
 // See also method [Decimal.Int64].
@@ -153,8 +163,7 @@ func MustNew(coef int64, scale int) Decimal {
 // NewFromInt64 returns an error:
 //   - if whole and fractional parts have different signs;
 //   - if scale is negative or more than [MaxScale];
-//   - if frac / 10^scale is not within the range (-1, 1);
-//   - if the integer part of the result has more than [MaxPrec] digits.
+//   - if frac / 10^scale is not within the range (-1, 1).
 func NewFromInt64(whole, frac int64, scale int) (Decimal, error) {
 	if whole > 0 && frac < 0 || whole < 0 && frac > 0 {
 		return Decimal{}, fmt.Errorf("converting integers: inconsistent signs")
@@ -362,7 +371,7 @@ func parseBint(s string, minScale int) (Decimal, error) {
 		}
 	}
 
-	// Exponential part
+	// Exponent
 	exp := 0
 	eneg, hasexp, hasesym := false, false, false
 	if pos < width && (s[pos] == 'e' || s[pos] == 'E') {
@@ -382,7 +391,7 @@ func parseBint(s string, minScale int) (Decimal, error) {
 		for pos < width && s[pos] >= '0' && s[pos] <= '9' {
 			exp = exp*10 + int(s[pos]-'0')
 			if exp > 330 {
-				return Decimal{}, errExponentRange
+				return Decimal{}, errInvalidDecimal
 			}
 			hasexp = true
 			pos++
@@ -1013,7 +1022,7 @@ func (d Decimal) IsZero() bool {
 
 // Mul returns the (possibly rounded) product of decimals d and e.
 //
-// Mul returns an error if the integer part of the product has more than [MaxPrec] digits.
+// Mul returns an error if the integer part of the result has more than [MaxPrec] digits.
 func (d Decimal) Mul(e Decimal) (Decimal, error) {
 	return d.MulExact(e, 0)
 }
@@ -1025,13 +1034,13 @@ func (d Decimal) Mul(e Decimal) (Decimal, error) {
 // equal to or greater than the currency's scale.
 func (d Decimal) MulExact(e Decimal, scale int) (Decimal, error) {
 	if scale < MinScale || scale > MaxScale {
-		return Decimal{}, fmt.Errorf("%v * %v: %w", d, e, errScaleRange)
+		return Decimal{}, fmt.Errorf("computing [%v * %v]: %w", d, e, errScaleRange)
 	}
 	f, err := d.mulFint(e, scale)
 	if err != nil {
 		f, err = d.mulBint(e, scale)
 		if err != nil {
-			return Decimal{}, fmt.Errorf("%v * %v: %w", d, e, err)
+			return Decimal{}, fmt.Errorf("computing [%v * %v]: %w", d, e, err)
 		}
 	}
 	return f, nil
@@ -1075,7 +1084,7 @@ func (d Decimal) mulBint(e Decimal, minScale int) (Decimal, error) {
 //
 // Pow returns an error if:
 //   - the integer part of the result has more than [MaxPrec] digits;
-//   - the decimal is zero and the power is negative.
+//   - zero is raised to a negative power.
 func (d Decimal) Pow(power int) (Decimal, error) {
 	return d.PowExact(power, 0)
 }
@@ -1087,20 +1096,12 @@ func (d Decimal) Pow(power int) (Decimal, error) {
 // equal to or greater than the currency's scale.
 func (d Decimal) PowExact(power, scale int) (Decimal, error) {
 	if scale < MinScale || scale > MaxScale {
-		return Decimal{}, fmt.Errorf("%v^%v: %w", d, power, errScaleRange)
+		return Decimal{}, fmt.Errorf("computing [%v^%v]: %w", d, power, errScaleRange)
 	}
 
-	// Special case: negative power
-	if power < 0 {
-		e, err := d.PowExact(-power, scale)
-		if err != nil {
-			return Decimal{}, fmt.Errorf("%v^(%v): %w", d, power, err)
-		}
-		e, err = One.QuoExact(e, scale)
-		if err != nil {
-			return Decimal{}, fmt.Errorf("%v^(%v): %w", d, power, err)
-		}
-		return e, nil
+	// Special case: zero to a negative power
+	if power < 0 && d.IsZero() {
+		return Decimal{}, fmt.Errorf("computing [%v^%v]: %w", d, power, errInvalidOperation)
 	}
 
 	// General case
@@ -1108,14 +1109,23 @@ func (d Decimal) PowExact(power, scale int) (Decimal, error) {
 	if err != nil {
 		e, err = d.powBint(power, scale)
 		if err != nil {
-			return Decimal{}, fmt.Errorf("%v^%v: %w", d, power, err)
+			return Decimal{}, fmt.Errorf("computing [%v^%v]: %w", d, power, err)
 		}
+	}
+
+	// Preferred scale
+	if power < 0 {
+		e = e.Trim(0)
 	}
 
 	return e, nil
 }
 
 func (d Decimal) powFint(power, minScale int) (Decimal, error) {
+	if power < 0 {
+		return Decimal{}, errInvalidOperation
+	}
+
 	dneg, dcoef, dscale := d.IsNeg(), d.coef, d.Scale()
 	eneg, ecoef, escale := One.IsNeg(), One.coef, One.Scale()
 
@@ -1123,7 +1133,7 @@ func (d Decimal) powFint(power, minScale int) (Decimal, error) {
 		if power%2 == 1 {
 			power = power - 1
 
-			// Coefficient (Multiplication)
+			// Coefficient
 			var ok bool
 			ecoef, ok = ecoef.mul(dcoef)
 			if !ok {
@@ -1139,7 +1149,7 @@ func (d Decimal) powFint(power, minScale int) (Decimal, error) {
 		if power > 0 {
 			power = power / 2
 
-			// Coefficient (Squaring)
+			// Coefficient
 			var ok bool
 			dcoef, ok = dcoef.mul(dcoef)
 			if !ok {
@@ -1157,6 +1167,12 @@ func (d Decimal) powFint(power, minScale int) (Decimal, error) {
 }
 
 func (d Decimal) powBint(power, minScale int) (Decimal, error) {
+	inv := false
+	if power < 0 {
+		power = -power
+		inv = true
+	}
+
 	dneg, dcoef, dscale := d.IsNeg(), d.coef.bint(), d.Scale()
 	eneg, ecoef, escale := One.IsNeg(), One.coef.bint(), One.Scale()
 
@@ -1164,13 +1180,13 @@ func (d Decimal) powBint(power, minScale int) (Decimal, error) {
 		if power%2 == 1 {
 			power = power - 1
 
-			// Coefficient (Multiplication)
+			// Coefficient
 			ecoef.mul(ecoef, dcoef)
 
 			// Sign
 			eneg = eneg != dneg
 
-			// Scale and truncation
+			// Scale and intermediate truncation
 			escale = escale + dscale
 			if escale > 2*MaxScale {
 				shift := escale - 2*MaxScale
@@ -1181,13 +1197,13 @@ func (d Decimal) powBint(power, minScale int) (Decimal, error) {
 		if power > 0 {
 			power = power / 2
 
-			// Coefficient (Squaring)
+			// Coefficient
 			dcoef.mul(dcoef, dcoef)
 
 			// Sign
 			dneg = false
 
-			// Scale and truncation
+			// Scale and intermediate truncation
 			dscale = dscale * 2
 			if dscale > 2*MaxScale {
 				shift := dscale - 2*MaxScale
@@ -1196,12 +1212,29 @@ func (d Decimal) powBint(power, minScale int) (Decimal, error) {
 			}
 		}
 	}
+
+	if inv {
+		if ecoef.sign() == 0 {
+			return Decimal{}, unknownOverflowError(minScale)
+		}
+
+		// Divident
+		dscale = 2*MaxScale + escale
+		dcoef = bpow10[dscale]
+
+		// Coefficient and intermediate truncation
+		ecoef.quo(dcoef, ecoef)
+
+		// Scale
+		escale = 2 * MaxScale
+	}
+
 	return newDecimalFromBint(eneg, ecoef, escale, minScale)
 }
 
 // Add returns the (possibly rounded) sum of decimals d and e.
 //
-// Add returns an error if the integer part of the sum has more than [MaxPrec] digits.
+// Add returns an error if the integer part of the result has more than [MaxPrec] digits.
 func (d Decimal) Add(e Decimal) (Decimal, error) {
 	return d.AddExact(e, 0)
 }
@@ -1213,13 +1246,13 @@ func (d Decimal) Add(e Decimal) (Decimal, error) {
 // equal to or greater than the currency's scale.
 func (d Decimal) AddExact(e Decimal, scale int) (Decimal, error) {
 	if scale < MinScale || scale > MaxScale {
-		return Decimal{}, fmt.Errorf("%v + %v: %w", d, e, errScaleRange)
+		return Decimal{}, fmt.Errorf("computing [%v + %v]: %w", d, e, errScaleRange)
 	}
 	f, err := d.addFint(e, scale)
 	if err != nil {
 		f, err = d.addBint(e, scale)
 		if err != nil {
-			return Decimal{}, fmt.Errorf("%v + %v: %w", d, e, err)
+			return Decimal{}, fmt.Errorf("computing [%v + %v]: %w", d, e, err)
 		}
 	}
 	return f, nil
@@ -1306,7 +1339,7 @@ func (d Decimal) addBint(e Decimal, minScale int) (Decimal, error) {
 
 // Sub returns the (possibly rounded) difference between decimals d and e.
 //
-// Sub returns an error if the integer part of the difference has more than [MaxPrec] digits.
+// Sub returns an error if the integer part of the result has more than [MaxPrec] digits.
 func (d Decimal) Sub(e Decimal) (Decimal, error) {
 	return d.SubExact(e, 0)
 }
@@ -1322,11 +1355,11 @@ func (d Decimal) SubExact(e Decimal, scale int) (Decimal, error) {
 
 // SubAbs returns the (possibly rounded) absolute difference between decimals d and e.
 //
-// SubAbs returns an error if the integer part of the absolute difference has more than [MaxPrec] digits.
+// SubAbs returns an error if the integer part of the result has more than [MaxPrec] digits.
 func (d Decimal) SubAbs(e Decimal) (Decimal, error) {
 	f, err := d.Sub(e)
 	if err != nil {
-		return Decimal{}, fmt.Errorf("|%v - %v|: %w", d, e, errScaleRange)
+		return Decimal{}, fmt.Errorf("computing [abs(%v - %v)]: %w", d, e, errScaleRange)
 	}
 	return f.Abs(), nil
 }
@@ -1350,13 +1383,13 @@ func (d Decimal) FMA(e, f Decimal) (Decimal, error) {
 // equal to or greater than the currency's scale.
 func (d Decimal) FMAExact(e, f Decimal, scale int) (Decimal, error) {
 	if scale < MinScale || scale > MaxScale {
-		return Decimal{}, fmt.Errorf("%v * %v + %v: %w", d, e, f, errScaleRange)
+		return Decimal{}, fmt.Errorf("computing [%v * %v + %v]: %w", d, e, f, errScaleRange)
 	}
 	g, err := d.fmaFint(e, f, scale)
 	if err != nil {
 		g, err = d.fmaBint(e, f, scale)
 		if err != nil {
-			return Decimal{}, fmt.Errorf("%v * %v + %v: %w", d, e, f, err)
+			return Decimal{}, fmt.Errorf("computing [%v * %v + %v]: %w", d, e, f, err)
 		}
 	}
 	return g, nil
@@ -1456,17 +1489,17 @@ func (d Decimal) Quo(e Decimal) (Decimal, error) {
 
 // QuoExact is similar to [Decimal.Quo], but it allows you to specify the number of digits
 // after the decimal point that should be considered significant.
-// If any of the significant digits are lost during rounding, the method will panic.
+// If any of the significant digits are lost during rounding, the method will return an error.
 // This method is useful for financial calculations where the scale should be
 // equal to or greater than the currency's scale.
 func (d Decimal) QuoExact(e Decimal, scale int) (Decimal, error) {
 	if scale < MinScale || scale > MaxScale {
-		return Decimal{}, fmt.Errorf("%v / %v: %w", d, e, errScaleRange)
+		return Decimal{}, fmt.Errorf("computing [%v / %v]: %w", d, e, errScaleRange)
 	}
 
 	// Special case: zero divisor
 	if e.IsZero() {
-		return Decimal{}, fmt.Errorf("%v / %v: %w", d, e, errDivisionByZero)
+		return Decimal{}, fmt.Errorf("computing [%v / %v]: %w", d, e, errDivisionByZero)
 	}
 
 	// Special case: zero dividend
@@ -1482,11 +1515,11 @@ func (d Decimal) QuoExact(e Decimal, scale int) (Decimal, error) {
 	if err != nil {
 		f, err = d.quoBint(e, scale)
 		if err != nil {
-			return Decimal{}, fmt.Errorf("%v / %v: %w", d, e, err)
+			return Decimal{}, fmt.Errorf("computing [%v / %v]: %w", d, e, err)
 		}
 	}
 
-	// Trailing zeroes
+	// Preferred scale
 	if t := d.Scale() - e.Scale(); scale < t {
 		scale = t
 	}
@@ -1539,7 +1572,7 @@ func (d Decimal) quoBint(e Decimal, minScale int) (Decimal, error) {
 	// Divident alignment
 	dcoef.lsh(dcoef, scale+e.Scale()-d.Scale())
 
-	// Coefficient
+	// Coefficient and intermediate truncation
 	dcoef.quo(dcoef, ecoef)
 
 	// Sign
@@ -1557,7 +1590,7 @@ func (d Decimal) quoBint(e Decimal, minScale int) (Decimal, error) {
 func (d Decimal) QuoRem(e Decimal) (q, r Decimal, err error) {
 	q, r, err = d.quoRem(e)
 	if err != nil {
-		return Decimal{}, Decimal{}, fmt.Errorf("[⌊%v / %v⌋ %v mod %v]: %w", d, e, d, e, err)
+		return Decimal{}, Decimal{}, fmt.Errorf("computing [%v // %v] and [%v mod %v]: %w", d, e, d, e, err)
 	}
 	return q, r, nil
 }
@@ -1601,6 +1634,8 @@ func (d Decimal) Inv() (Decimal, error) {
 //	-1 if d < e
 //	 0 if d = e
 //	+1 if d > e
+//
+// See also methods [Decimal.CmpAbs] and [Decimal.CmpTotal].
 func (d Decimal) Cmp(e Decimal) int {
 	// Special case: different signs
 	switch {
@@ -1673,6 +1708,8 @@ func (d Decimal) cmpBint(e Decimal) int {
 //	-1 if |d| < |e|
 //	 0 if |d| = |e|
 //	+1 if |d| > |e|
+//
+// See also method [Decimal.Cmp].
 func (d Decimal) CmpAbs(e Decimal) int {
 	d, e = d.Abs(), e.Abs()
 	return d.Cmp(e)
@@ -1721,16 +1758,21 @@ func (d Decimal) Min(e Decimal) Decimal {
 	return e
 }
 
-// Clamp returns a decimal clamped to the range [min, max].
+// Clamp compares decimals and returns:
+//
+//	min if d < min
+//	max if d > max
+//	  d otherwise
+//
 // See also method [Decimal.CmpTotal].
 //
-// Clamp returns an error if min > max.
+// Clamp returns an error if min is greater than max.
 func (d Decimal) Clamp(min, max Decimal) (Decimal, error) {
 	if min.Cmp(max) > 0 {
 		return Decimal{}, fmt.Errorf("clamping %v: invalid range", d)
 	}
 	if min.CmpTotal(max) > 0 {
-		// Numerically min and max are equal but have different scales.
+		// min and max are equal numerically but have different scales.
 		// Swaping min and max to ensure total ordering.
 		min, max = max, min
 	}
