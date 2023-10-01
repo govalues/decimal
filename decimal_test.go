@@ -699,7 +699,7 @@ func TestDecimal_Format(t *testing.T) {
 		{"12.34", "%x", "%!x(decimal.Decimal=12.34)"},
 		{"12.34", "%X", "%!X(decimal.Decimal=12.34)"},
 		// errors
-		{"9999999999999999999", "%k", "%!k(PANIC=Format method: formatting percent: 9999999999999999999 * 100: the integer part of a decimal.Decimal can have at most 19 digits, but it has 21 digits: decimal overflow)"},
+		{"9999999999999999999", "%k", "%!k(PANIC=Format method: formatting percent: computing [9999999999999999999 * 100]: the integer part of a decimal.Decimal can have at most 19 digits, but it has 21 digits: decimal overflow)"},
 	}
 	for _, tt := range tests {
 		d := MustParse(tt.decimal)
@@ -1905,6 +1905,7 @@ func TestDecimal_Pow(t *testing.T) {
 			{"-0.1", 40, "0.0000000000000000000"},
 
 			// Twos
+			{"2", -64, "0.0000000000000000001"},
 			{"2", -63, "0.0000000000000000001"},
 			{"2", -32, "0.0000000002328306437"},
 			{"2", -16, "0.0000152587890625"},
@@ -1932,6 +1933,7 @@ func TestDecimal_Pow(t *testing.T) {
 			{"2", 63, "9223372036854775808"},
 
 			// Negative Twos
+			{"-2", -64, "0.0000000000000000001"},
 			{"-2", -63, "-0.0000000000000000001"},
 			{"-2", -32, "0.0000000002328306437"},
 			{"-2", -16, "0.0000152587890625"},
@@ -2004,6 +2006,10 @@ func TestDecimal_Pow(t *testing.T) {
 			{"1.001", 6000, "402.2211245663552923"},     // no error
 			{"1.0001", 60000, "403.3077910727185433"},   // no error
 			{"1.00001", 600000, "403.4166908911542153"}, // no error
+
+			// Captured during fuzzing
+			{"0.85", -267, "7000786514887173013"},
+			{"-0.9223372036854775808", -128, "31197.15320234751783"},
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.d)
@@ -2025,11 +2031,9 @@ func TestDecimal_Pow(t *testing.T) {
 			power, scale int
 		}{
 			"overflow 1": {"2", 64, 0},
-			"overflow 2": {"2", -64, 0},
-			"overflow 3": {"0.5", -64, 0},
-			"overflow 4": {"10", 19, 0},
-			"overflow 5": {"10", -19, 0},
-			"overflow 6": {"0.1", -19, 0},
+			"overflow 2": {"0.5", -64, 0},
+			"overflow 3": {"10", 19, 0},
+			"overflow 4": {"0.1", -19, 0},
 			"zero 1":     {"0", -1, 0},
 			"scale 1":    {"1", 1, MaxScale},
 			"scale 2":    {"1", 1, -1},
@@ -2698,15 +2702,14 @@ func FuzzDecimalString(f *testing.F) {
 				return
 			}
 
-			str := want.String()
-			got, err := Parse(str)
+			s := want.String()
+			got, err := Parse(s)
 			if err != nil {
-				t.Errorf("Parse(%q) failed: %v", str, err)
+				t.Errorf("Parse(%q) failed: %v", s, err)
 				return
 			}
-
 			if got.CmpTotal(want) != 0 {
-				t.Errorf("Parse(%q) = %v, want %v", str, got, want)
+				t.Errorf("Parse(%q) = %v, want %v", s, got, want)
 				return
 			}
 		},
@@ -2728,21 +2731,21 @@ func FuzzDecimalInt64(f *testing.F) {
 				return
 			}
 
-			base, frac, ok := want.Int64(scale)
+			w, f, ok := want.Int64(scale)
 			if !ok {
 				t.Skip()
 				return
 			}
 
-			got, err := NewFromInt64(base, frac, scale)
+			got, err := NewFromInt64(w, f, scale)
 			if err != nil {
-				t.Errorf("NewFromInt64(%v, %v, %v) failed: %v", base, frac, scale, err)
+				t.Errorf("NewFromInt64(%v, %v, %v) failed: %v", w, f, scale, err)
 				return
 			}
 
 			want = want.Round(scale)
 			if got.Cmp(want) != 0 {
-				t.Errorf("NewFromInt64(%v, %v, %v) = %v, want %v", base, frac, scale, got, want)
+				t.Errorf("NewFromInt64(%v, %v, %v) = %v, want %v", w, f, scale, got, want)
 				return
 			}
 		},
@@ -2809,7 +2812,7 @@ func FuzzDecimalMul(f *testing.F) {
 				return
 			}
 
-			f, err := d.mulFint(e, scale)
+			got, err := d.mulFint(e, scale)
 			if err != nil {
 				if errors.Is(err, errDecimalOverflow) {
 					t.Skip() // Decimal overflow is an expected error in fast multiplication
@@ -2819,13 +2822,13 @@ func FuzzDecimalMul(f *testing.F) {
 				return
 			}
 
-			s, err := d.mulBint(e, scale)
+			want, err := d.mulBint(e, scale)
 			if err != nil {
 				t.Errorf("mulBint(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
 			}
-			if s.CmpTotal(f) != 0 {
-				t.Errorf("mulBint(%q, %q, %v) = %q, whereas mulFint(%q, %q, %v) = %q", d, e, scale, s, d, e, scale, f)
+			if got.CmpTotal(want) != 0 {
+				t.Errorf("mulBint(%q, %q, %v) = %q, whereas mulFint(%q, %q, %v) = %q", d, e, scale, want, d, e, scale, got)
 			}
 		},
 	)
@@ -2864,7 +2867,7 @@ func FuzzDecimalFMA(f *testing.F) {
 				return
 			}
 
-			f, err := d.fmaFint(e, g, scale)
+			got, err := d.fmaFint(e, g, scale)
 			if err != nil {
 				if errors.Is(err, errDecimalOverflow) {
 					t.Skip() // Decimal overflow is an expected error in fast fused multiplication-addition
@@ -2874,13 +2877,13 @@ func FuzzDecimalFMA(f *testing.F) {
 				return
 			}
 
-			s, err := d.fmaBint(e, g, scale)
+			want, err := d.fmaBint(e, g, scale)
 			if err != nil {
 				t.Errorf("fmaBint(%q, %q, %q, %v) failed: %v", d, e, g, scale, err)
 				return
 			}
-			if s.CmpTotal(f) != 0 {
-				t.Errorf("fmaBint(%q, %q, %q, %v) = %q, whereas fmaFint(%q, %q, %q, %v) = %q", d, e, g, scale, s, d, e, g, scale, f)
+			if got.CmpTotal(want) != 0 {
+				t.Errorf("fmaBint(%q, %q, %q, %v) = %q, whereas fmaFint(%q, %q, %q, %v) = %q", d, e, g, scale, want, d, e, g, scale, got)
 			}
 		},
 	)
@@ -2912,7 +2915,7 @@ func FuzzDecimalAdd(f *testing.F) {
 				return
 			}
 
-			f, err := d.addFint(e, scale)
+			got, err := d.addFint(e, scale)
 			if err != nil {
 				if errors.Is(err, errDecimalOverflow) {
 					t.Skip() // Decimal overflow is an expected error in fast addition
@@ -2922,13 +2925,13 @@ func FuzzDecimalAdd(f *testing.F) {
 				return
 			}
 
-			s, err := d.addBint(e, scale)
+			want, err := d.addBint(e, scale)
 			if err != nil {
 				t.Errorf("addBint(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
 			}
-			if s.CmpTotal(f) != 0 {
-				t.Errorf("addBint(%q, %q, %v) = %q, whereas addFint(%q, %q, %v) = %q", d, e, scale, s, d, e, scale, f)
+			if got.CmpTotal(want) != 0 {
+				t.Errorf("addBint(%q, %q, %v) = %q, whereas addFint(%q, %q, %v) = %q", d, e, scale, want, d, e, scale, got)
 			}
 		},
 	)
@@ -2964,7 +2967,7 @@ func FuzzDecimalQuo(f *testing.F) {
 				return
 			}
 
-			f, err := d.quoFint(e, scale)
+			got, err := d.quoFint(e, scale)
 			if err != nil {
 				switch {
 				case errors.Is(err, errDecimalOverflow):
@@ -2977,13 +2980,71 @@ func FuzzDecimalQuo(f *testing.F) {
 				return
 			}
 
-			s, err := d.quoBint(e, scale)
+			want, err := d.quoBint(e, scale)
 			if err != nil {
 				t.Errorf("quoBint(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
 			}
-			if s.Cmp(f) != 0 {
-				t.Errorf("quoBint(%q, %q, %v) = %q, whereas quoFint(%q, %q, %v) = %q", d, e, scale, s, d, e, scale, f)
+			if got.Cmp(want) != 0 {
+				t.Errorf("quoBint(%q, %q, %v) = %q, whereas quoFint(%q, %q, %v) = %q", d, e, scale, want, d, e, scale, got)
+			}
+		},
+	)
+}
+
+func FuzzDecimalQuoRem(f *testing.F) {
+	for _, d := range corpus {
+		for _, e := range corpus {
+			for s := 0; s <= MaxScale; s++ {
+				f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef, s)
+			}
+		}
+	}
+
+	f.Fuzz(
+		func(t *testing.T, dneg bool, dscale int, dcoef uint64, eneg bool, escale int, ecoef uint64, scale int) {
+			if scale < 0 || MaxScale < scale {
+				t.Skip()
+				return
+			}
+			if dcoef == 0 || ecoef == 0 {
+				t.Skip()
+				return
+			}
+			want, err := newDecimalSafe(dneg, fint(dcoef), dscale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+			e, err := newDecimalSafe(eneg, fint(ecoef), escale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			q, r, err := want.QuoRem(e)
+			if err != nil {
+				switch {
+				case errors.Is(err, errDecimalOverflow):
+					t.Skip() // Decimal overflow is an expected error in division
+				default:
+					t.Errorf("QuoRem(%q, %q) failed: %v", want, e, err)
+				}
+				return
+			}
+
+			got, err := e.Mul(q)
+			if err != nil {
+				t.Errorf("%q.Mul(%q) failed: %v", e, q, err)
+				return
+			}
+			got, err = got.Add(r)
+			if err != nil {
+				t.Errorf("%q.Add(%q) failed: %v", got, r, err)
+				return
+			}
+			if got.Cmp(want) != 0 {
+				t.Errorf("%q.Mul(%q).Add(%q) = %q, want %q", e, q, r, got, want)
 			}
 		},
 	)
@@ -3010,7 +3071,7 @@ func FuzzDecimalCmp(f *testing.F) {
 				return
 			}
 
-			f, err := d.cmpFint(e)
+			got, err := d.cmpFint(e)
 			if err != nil {
 				if errors.Is(err, errDecimalOverflow) {
 					t.Skip() // Decimal overflow is an expected error in fast comparison
@@ -3020,9 +3081,50 @@ func FuzzDecimalCmp(f *testing.F) {
 				return
 			}
 
-			s := d.cmpBint(e)
-			if s != f {
-				t.Errorf("cmpBint(%q, %q) = %v, whereas cmpFint(%q, %q) = %v", d, e, s, d, e, f)
+			want := d.cmpBint(e)
+			if got != want {
+				t.Errorf("cmpBint(%q, %q) = %v, whereas cmpFint(%q, %q) = %v", d, e, want, d, e, got)
+				return
+			}
+		},
+	)
+}
+
+func FuzzDecimalCmpSub(f *testing.F) {
+	for _, d := range corpus {
+		for _, e := range corpus {
+			f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef)
+		}
+	}
+
+	f.Fuzz(
+		func(t *testing.T, dneg bool, dscale int, dcoef uint64, eneg bool, escale int, ecoef uint64) {
+			d, err := newDecimalSafe(dneg, fint(dcoef), dscale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			e, err := newDecimalSafe(eneg, fint(ecoef), escale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			got := d.Cmp(e)
+			f, err := d.Sub(e)
+			if err != nil {
+				if errors.Is(err, errDecimalOverflow) {
+					t.Skip() // Decimal overflow is an expected error in subtraction
+				} else {
+					t.Errorf("%q.Sub(%q) failed: %v", d, e, err)
+				}
+				return
+			}
+			want := f.Sign()
+			if got != want {
+				t.Errorf("%q.Cmp(%q) = %v, whereas %q.Sub(%q).Sign() = %v", d, e, got, d, e, want)
+				return
 			}
 		},
 	)
@@ -3035,17 +3137,18 @@ func FuzzDecimalNew(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, neg bool, scale int, coef uint64) {
-			f, ferr := newDecimalFromFint(neg, fint(coef), scale, 0)
-			s, serr := newDecimalFromBint(neg, fint(coef).bint(), scale, 0)
-			if ferr != nil {
+			got, err := newDecimalFromFint(neg, fint(coef), scale, 0)
+			if err != nil {
 				t.Skip()
 				return
-			} else if serr != nil {
-				t.Errorf("newDecimalFromBint(%v, %v, %v, 0) failed: %v", neg, coef, scale, serr)
+			}
+			want, err := newDecimalFromBint(neg, fint(coef).bint(), scale, 0)
+			if err != nil {
+				t.Errorf("newDecimalFromBint(%v, %v, %v, 0) failed: %v", neg, coef, scale, err)
 				return
 			}
-			if f.CmpTotal(s) != 0 {
-				t.Errorf("newDecimalFromFint(%v, %v, %v, 0) = %q, whereas newDecimalFromBint(%v, %v, %v, 0) = %q", neg, coef, scale, f, neg, coef, scale, s)
+			if got.CmpTotal(want) != 0 {
+				t.Errorf("newDecimalFromFint(%v, %v, %v, 0) = %q, whereas newDecimalFromBint(%v, %v, %v, 0) = %q", neg, coef, scale, got, neg, coef, scale, want)
 			}
 		},
 	)

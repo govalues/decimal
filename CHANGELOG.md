@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.12] - 2023-10-01
+
+### Changed
+
+- Improved accuracy of `Decimal.Pow` method for negative powers.
+- Reviewed and improved documentation.
+
 ## [0.1.11] - 2023-09-21
 
 ### Added

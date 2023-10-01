@@ -45,7 +45,7 @@ func (x fint) add(y fint) (z fint, ok bool) {
 
 // mul calculates x * y and checks overflow.
 func (x fint) mul(y fint) (z fint, ok bool) {
-	if x == 0 || y == 0 {
+	if y == 0 {
 		return 0, true
 	}
 	z = x * y
@@ -64,7 +64,7 @@ func (x fint) quo(y fint) (z fint, ok bool) {
 		return 0, false
 	}
 	z = x / y
-	if y*z != x {
+	if z*y != x {
 		return 0, false
 	}
 	return z, true
@@ -192,9 +192,8 @@ func (x fint) prec() int {
 func (x fint) tzeros() int {
 	left, right := 1, x.prec()
 	for left < right {
-		mid := (right + left) / 2
-		pow := pow10[mid]
-		if x%pow == 0 {
+		mid := (left + right) / 2
+		if x%pow10[mid] == 0 {
 			left = mid + 1
 		} else {
 			right = mid

@@ -8,15 +8,26 @@
 [![versionb]][version]
 
 Package decimal implements immutable decimal floating-point numbers for Go.
-This packages is designed specifically for use in transactional financial systems.
+This package is designed specifically for use in transactional financial systems.
 
 ## Features
 
-- **Optimized Performance**: Utilizes uint64 for coefficients, reducing heap allocations and memory consumption.
-- **Immutability**: Once a decimal is set, it remains unchanged. This immutability ensures safe concurrent access across goroutines.
-- **Banker's Rounding**: Methods use half even rounding, also known as "banker's rounding", which minimizes cumulative rounding errors commonly seen in financial calculations.
-- **Error Handling**: All methods are designed to be panic-free. Instead of potentially crashing your application, they return errors for issues such as overflow or division by zero.
-- **Simple String Representation**: Decimals are represented without the complexities of scientific or engineering notation.
+- **Optimized Performance** - Utilizes uint64 for coefficients, reducing heap
+  allocations and memory consumption.
+- **Immutability** - Once a decimal is set, it remains unchanged.
+  This immutability ensures safe concurrent access across goroutines.
+- **Banker's Rounding** - Methods use half even rounding, also known as "banker's rounding",
+  which minimizes cumulative rounding errors commonly seen in financial calculations.
+- **No Panics** - All methods are designed to be panic-free.
+  Instead of potentially crashing your application, they return errors for issues
+  such as overflow or division by zero.
+- **Simple String Representation** - Decimals are represented without the complexities
+  of scientific or engineering notation.
+- **Correctly Rounded** - All arithmetic operations are correctly rounded to the
+  precision of the result.
+- **Testing** - Fuzz testing is used to ensure correctness.
+  Arithmetic operations are cross-validated against both the [cockroachdb] and
+  [shopspring] decimal packages.
 
 ## Getting Started
 
@@ -42,16 +53,20 @@ import (
 )
 
 func main() {
-    d := decimal.MustNew(156, 1) // d = 15.6
-    e := decimal.MustParse("8")  // e = 8
-    fmt.Println(d.Add(e))        // Sum
-    fmt.Println(d.Sub(e))        // Difference
-    fmt.Println(d.Mul(e))        // Product
-    fmt.Println(d.Quo(e))        // Quotient
-    fmt.Println(d.Pow(2))        // Square
-    fmt.Println(d.Inv())         // Reciprocal
+    d := decimal.MustNew(8, 0)     // d = 8
+    e := decimal.MustParse("12.5") // e = 12.5
+    fmt.Println(d.Add(e))          // 8 + 12.5
+    fmt.Println(d.Sub(e))          // 8 - 12.5
+    fmt.Println(d.Mul(e))          // 8 * 12.5
+    fmt.Println(d.Quo(e))          // 8 / 12.5
+    fmt.Println(d.QuoRem(e))       // 8 // 12.5 and 8 mod 12.5
+    fmt.Println(d.FMA(e, e))       // 8 * 12.5 + 12.5
+    fmt.Println(d.Pow(2))          // 8^2
+    fmt.Println(d.Inv())           // 1 / 8
 }
 ```
+
+## Documentation
 
 For detailed documentation and additional examples, visit the
 [package documentation](https://pkg.go.dev/github.com/govalues/decimal#pkg-examples).
@@ -64,16 +79,16 @@ Comparison of decimal with other popular decimal packages:
 
 | Feature          | govalues     | [cockroachdb] v3.2.0 | [shopspring] v1.3.1 |
 | ---------------- | ------------ | -------------------- | ------------------- |
-| Speed            | High         | Medium               | Low                 |
-| Mutability       | Immutable    | Mutable              | Immutable           |
+| Speed            | High         | Medium               | Low[^reason]        |
+| Mutability       | Immutable    | Mutable[^reason]     | Immutable           |
 | Memory Footprint | Low          | Medium               | High                |
 | Panic Free       | Yes          | Yes                  | No                  |
 | Precision        | 19 digits    | Arbitrary            | Arbitrary           |
 | Default Rounding | Half to even | Half up              | Half away from 0    |
 | Context          | Implicit     | Explicit             | Implicit            |
 
-decimal package was created simply because shopspring's decimal was too slow
-and cockroachdb's decimal was mutable.
+[^reason]: decimal package was created simply because shopspring's decimal was
+too slow and cockroachdb's decimal was mutable.
 
 ### Benchmarks
 
@@ -84,21 +99,21 @@ pkg: github.com/govalues/benchmarks
 cpu: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx 
 ```
 
-| Test Case      | Expression           | govalues | [cockroachdb] v3.2.0 | cockroachdb vs govalues | [shopspring] v1.3.1 | shopspring vs govalues |
-| -------------- | -------------------- | -------: | -------------------: | ----------------------: | ------------------: | ---------------------: |
-| Add            | 2 + 3                |   15.79n |               47.95n |                +203.64% |             141.95n |               +798.99% |
-| Mul            | 2 * 3                |   16.61n |               54.66n |                +229.18% |             144.95n |               +772.93% |
-| QuoFinite      | 2 / 4                |   64.74n |              381.15n |                +488.74% |             645.35n |               +896.83% |
-| QuoInfinite    | 2 / 3                |  595.30n |             1001.50n |                 +68.23% |            2810.50n |               +372.11% |
-| Pow            | 1.1^60               |    1.31µ |                3.17µ |                +142.42% |              20.50µ |              +1469.53% |
-| Pow            | 1.01^600             |    4.36µ |               13.86µ |                +217.93% |              44.39µ |               +918.44% |
-| Pow            | 1.001^6000           |    7.39µ |               24.69µ |                +234.34% |             656.84µ |              +8793.66% |
-| Parse          | 1                    |   17.27n |               78.25n |                +353.23% |             128.80n |               +646.02% |
-| Parse          | 123.456              |   39.80n |              211.85n |                +432.22% |             237.60n |               +496.91% |
-| Parse          | 123456789.1234567890 |  106.20n |              233.10n |                +119.59% |             510.90n |               +381.30% |
-| String         | 1                    |    5.45n |               19.91n |                +265.49% |             197.85n |              +3531.94% |
-| String         | 123.456              |   42.38n |               74.83n |                 +76.57% |             229.50n |               +441.53% |
-| String         | 123456789.1234567890 |   77.90n |              210.40n |                +170.11% |             328.90n |               +322.24% |
+| Test Case   | Expression           | govalues | [cockroachdb] v3.2.0 | cockroachdb vs govalues | [shopspring] v1.3.1 | shopspring vs govalues |
+| ----------- | -------------------- | -------: | -------------------: | ----------------------: | ------------------: | ---------------------: |
+| Add         | 2 + 3                |   15.79n |               47.95n |                +203.64% |             141.95n |               +798.99% |
+| Mul         | 2 * 3                |   16.61n |               54.66n |                +229.18% |             144.95n |               +772.93% |
+| QuoFinite   | 2 / 4                |   64.74n |              381.15n |                +488.74% |             645.35n |               +896.83% |
+| QuoInfinite | 2 / 3                |  595.30n |             1001.50n |                 +68.23% |            2810.50n |               +372.11% |
+| Pow         | 1.1^60               |    1.31µ |                3.17µ |                +142.42% |              20.50µ |              +1469.53% |
+| Pow         | 1.01^600             |    4.36µ |               13.86µ |                +217.93% |              44.39µ |               +918.44% |
+| Pow         | 1.001^6000           |    7.39µ |               24.69µ |                +234.34% |             656.84µ |              +8793.66% |
+| Parse       | 1                    |   17.27n |               78.25n |                +353.23% |             128.80n |               +646.02% |
+| Parse       | 123.456              |   39.80n |              211.85n |                +432.22% |             237.60n |               +496.91% |
+| Parse       | 123456789.1234567890 |  106.20n |              233.10n |                +119.59% |             510.90n |               +381.30% |
+| String      | 1                    |    5.45n |               19.91n |                +265.49% |             197.85n |              +3531.94% |
+| String      | 123.456              |   42.38n |               74.83n |                 +76.57% |             229.50n |               +441.53% |
+| String      | 123456789.1234567890 |   77.90n |              210.40n |                +170.11% |             328.90n |               +322.24% |
 
 The benchmark results shown in the table are provided for informational purposes only and may vary depending on your specific use case.
 
