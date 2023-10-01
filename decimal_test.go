@@ -2034,6 +2034,8 @@ func TestDecimal_Pow(t *testing.T) {
 			"overflow 2": {"0.5", -64, 0},
 			"overflow 3": {"10", 19, 0},
 			"overflow 4": {"0.1", -19, 0},
+			"overflow 5": {"0.0000000000000000001", -3, 0},
+			"overflow 6": {"0.0000000000000000001", -3, 1},
 			"zero 1":     {"0", -1, 0},
 			"scale 1":    {"1", 1, MaxScale},
 			"scale 2":    {"1", 1, -1},
