@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.13] - 2023-10-10
+
+### Added
+
+- Implemented `NullDecimal` type.
+
 ## [0.1.12] - 2023-10-01
 
 ### Changed

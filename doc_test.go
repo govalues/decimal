@@ -138,39 +138,39 @@ func Example_piApproximation() {
 }
 
 func ExampleMustNew() {
-	fmt.Println(decimal.MustNew(-123, 3))
-	fmt.Println(decimal.MustNew(-123, 2))
-	fmt.Println(decimal.MustNew(-123, 1))
-	fmt.Println(decimal.MustNew(-123, 0))
+	fmt.Println(decimal.MustNew(123, 3))
+	fmt.Println(decimal.MustNew(123, 2))
+	fmt.Println(decimal.MustNew(123, 1))
+	fmt.Println(decimal.MustNew(123, 0))
 	// Output:
-	// -0.123
-	// -1.23
-	// -12.3
-	// -123
+	// 0.123
+	// 1.23
+	// 12.3
+	// 123
 }
 
 func ExampleNew() {
-	fmt.Println(decimal.New(-123, 3))
-	fmt.Println(decimal.New(-123, 2))
-	fmt.Println(decimal.New(-123, 1))
-	fmt.Println(decimal.New(-123, 0))
+	fmt.Println(decimal.New(123, 3))
+	fmt.Println(decimal.New(123, 2))
+	fmt.Println(decimal.New(123, 1))
+	fmt.Println(decimal.New(123, 0))
 	// Output:
-	// -0.123 <nil>
-	// -1.23 <nil>
-	// -12.3 <nil>
-	// -123 <nil>
+	// 0.123 <nil>
+	// 1.23 <nil>
+	// 12.3 <nil>
+	// 123 <nil>
 }
 
 func ExampleNewFromInt64() {
-	fmt.Println(decimal.NewFromInt64(-1, -23, 2))
-	fmt.Println(decimal.NewFromInt64(-1, -23, 3))
-	fmt.Println(decimal.NewFromInt64(-1, -23, 4))
-	fmt.Println(decimal.NewFromInt64(-1, -23, 5))
+	fmt.Println(decimal.NewFromInt64(1, 23, 5))
+	fmt.Println(decimal.NewFromInt64(1, 23, 4))
+	fmt.Println(decimal.NewFromInt64(1, 23, 3))
+	fmt.Println(decimal.NewFromInt64(1, 23, 2))
 	// Output:
-	// -1.23 <nil>
-	// -1.023 <nil>
-	// -1.0023 <nil>
-	// -1.00023 <nil>
+	// 1.00023 <nil>
+	// 1.0023 <nil>
+	// 1.023 <nil>
+	// 1.23 <nil>
 }
 
 func ExampleNewFromFloat64() {
@@ -316,23 +316,15 @@ func ExampleDecimal_MarshalText() {
 
 func ExampleDecimal_Scan() {
 	d := new(decimal.Decimal)
-	s := "-15.67"
-	err := d.Scan(s)
-	if err != nil {
-		panic(err)
-	}
+	_ = d.Scan("-15.67")
 	fmt.Println(d)
 	// Output: -15.67
 }
 
 func ExampleDecimal_Value() {
 	d := decimal.MustParse("-15.67")
-	s, err := d.Value()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(s)
-	// Output: -15.67
+	fmt.Println(d.Value())
+	// Output: -15.67 <nil>
 }
 
 func ExampleDecimal_Format() {
@@ -826,4 +818,32 @@ func ExampleDecimal_WithinOne() {
 	// true
 	// true
 	// false
+}
+
+func ExampleNullDecimal_Scan() {
+	n := new(decimal.NullDecimal)
+	_ = n.Scan("-15.67")
+	m := new(decimal.NullDecimal)
+	_ = m.Scan(nil)
+	fmt.Println(n)
+	fmt.Println(m)
+	// Output:
+	// &{-15.67 true}
+	// &{0 false}
+}
+
+func ExampleNullDecimal_Value() {
+	n := decimal.NullDecimal{
+		Decimal: decimal.MustParse("-15.67"),
+		Valid:   true,
+	}
+	m := decimal.NullDecimal{
+		Decimal: decimal.MustParse("0"),
+		Valid:   false,
+	}
+	fmt.Println(n.Value())
+	fmt.Println(m.Value())
+	// Output:
+	// -15.67 <nil>
+	// <nil> <nil>
 }
