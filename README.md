@@ -23,7 +23,7 @@ This package is designed specifically for use in transactional financial systems
   such as overflow or division by zero.
 - **Simple String Representation** - Decimals are represented without the complexities
   of scientific or engineering notation.
-- **Testing** - Fuzz testing is used to cross-validate arithmetic operations
+- **Correctness** - Fuzz testing is used to cross-validate arithmetic operations
   against both the [cockroachdb] and [shopspring] decimal packages.
 
 ## Getting Started
