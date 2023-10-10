@@ -23,11 +23,8 @@ This package is designed specifically for use in transactional financial systems
   such as overflow or division by zero.
 - **Simple String Representation** - Decimals are represented without the complexities
   of scientific or engineering notation.
-- **Correctly Rounded** - All arithmetic operations are correctly rounded to the
-  precision of the result.
-- **Testing** - Fuzz testing is used to ensure correctness.
-  Arithmetic operations are cross-validated against both the [cockroachdb] and
-  [shopspring] decimal packages.
+- **Correctness** - Fuzz testing is used to cross-validate arithmetic operations
+  against both the [cockroachdb] and [shopspring] decimal packages.
 
 ## Getting Started
 
@@ -61,7 +58,7 @@ func main() {
     fmt.Println(d.Quo(e))          // 8 / 12.5
     fmt.Println(d.QuoRem(e))       // 8 // 12.5 and 8 mod 12.5
     fmt.Println(d.FMA(e, e))       // 8 * 12.5 + 12.5
-    fmt.Println(d.Pow(2))          // 8^2
+    fmt.Println(d.Pow(2))          // 8 ^ 2
     fmt.Println(d.Inv())           // 1 / 8
 }
 ```
@@ -99,21 +96,21 @@ pkg: github.com/govalues/benchmarks
 cpu: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx 
 ```
 
-| Test Case   | Expression           | govalues | [cockroachdb] v3.2.0 | cockroachdb vs govalues | [shopspring] v1.3.1 | shopspring vs govalues |
-| ----------- | -------------------- | -------: | -------------------: | ----------------------: | ------------------: | ---------------------: |
-| Add         | 2 + 3                |   15.79n |               47.95n |                +203.64% |             141.95n |               +798.99% |
-| Mul         | 2 * 3                |   16.61n |               54.66n |                +229.18% |             144.95n |               +772.93% |
-| QuoFinite   | 2 / 4                |   64.74n |              381.15n |                +488.74% |             645.35n |               +896.83% |
-| QuoInfinite | 2 / 3                |  595.30n |             1001.50n |                 +68.23% |            2810.50n |               +372.11% |
-| Pow         | 1.1^60               |    1.31µ |                3.17µ |                +142.42% |              20.50µ |              +1469.53% |
-| Pow         | 1.01^600             |    4.36µ |               13.86µ |                +217.93% |              44.39µ |               +918.44% |
-| Pow         | 1.001^6000           |    7.39µ |               24.69µ |                +234.34% |             656.84µ |              +8793.66% |
-| Parse       | 1                    |   17.27n |               78.25n |                +353.23% |             128.80n |               +646.02% |
-| Parse       | 123.456              |   39.80n |              211.85n |                +432.22% |             237.60n |               +496.91% |
-| Parse       | 123456789.1234567890 |  106.20n |              233.10n |                +119.59% |             510.90n |               +381.30% |
-| String      | 1                    |    5.45n |               19.91n |                +265.49% |             197.85n |              +3531.94% |
-| String      | 123.456              |   42.38n |               74.83n |                 +76.57% |             229.50n |               +441.53% |
-| String      | 123456789.1234567890 |   77.90n |              210.40n |                +170.11% |             328.90n |               +322.24% |
+| Test Case   | Expression           | govalues | [cockroachdb] v3.2.0 | [shopspring] v1.3.1 | govalues vs cockroachdb | govalues vs shopspring |
+| ----------- | -------------------- | -------: | -------------------: | ------------------: | ----------------------: | ---------------------: |
+| Add         | 2 + 3                |   15.79n |               47.95n |             141.95n |                +203.64% |               +798.99% |
+| Mul         | 2 * 3                |   16.61n |               54.66n |             144.95n |                +229.18% |               +772.93% |
+| QuoFinite   | 2 / 4                |   64.74n |              381.15n |             645.35n |                +488.74% |               +896.83% |
+| QuoInfinite | 2 / 3                |  595.30n |             1001.50n |            2810.50n |                 +68.23% |               +372.11% |
+| Pow         | 1.1^60               |    1.31µ |                3.17µ |              20.50µ |                +142.42% |              +1469.53% |
+| Pow         | 1.01^600             |    4.36µ |               13.86µ |              44.39µ |                +217.93% |               +918.44% |
+| Pow         | 1.001^6000           |    7.39µ |               24.69µ |             656.84µ |                +234.34% |              +8793.66% |
+| Parse       | 1                    |   17.27n |               78.25n |             128.80n |                +353.23% |               +646.02% |
+| Parse       | 123.456              |   39.80n |              211.85n |             237.60n |                +432.22% |               +496.91% |
+| Parse       | 123456789.1234567890 |  106.20n |              233.10n |             510.90n |                +119.59% |               +381.30% |
+| String      | 1                    |    5.45n |               19.91n |             197.85n |                +265.49% |              +3531.94% |
+| String      | 123.456              |   42.38n |               74.83n |             229.50n |                 +76.57% |               +441.53% |
+| String      | 123456789.1234567890 |   77.90n |              210.40n |             328.90n |                +170.11% |               +322.24% |
 
 The benchmark results shown in the table are provided for informational purposes only and may vary depending on your specific use case.
 

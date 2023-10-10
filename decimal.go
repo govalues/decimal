@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-// Decimal type represents a finite floating-point decimal number.
+// Decimal represents a finite floating-point decimal number.
 // Its zero value corresponds to the numeric value of 0.
 // It is designed to be safe for concurrent use by multiple goroutines.
 // Numeric value of a decimal is equal to:
@@ -155,9 +155,7 @@ func MustNew(coef int64, scale int) Decimal {
 }
 
 // NewFromFloat64 converts a pair of int64 values representing whole and
-// fractional parts to a (possibly rounded) decimal.
-// The relationship between the values and the returned decimal can be expressed
-// as d = whole + frac / 10^scale.
+// fractional parts to a (possibly rounded) decimal equal to whole + frac / 10^scale.
 // See also method [Decimal.Int64].
 //
 // NewFromInt64 returns an error:
@@ -547,17 +545,17 @@ func (d Decimal) MarshalText() ([]byte, error) {
 // See also method [Parse].
 //
 // [sql.Scanner]: https://pkg.go.dev/database/sql#Scanner
-func (d *Decimal) Scan(v any) error {
+func (d *Decimal) Scan(value any) error {
 	var err error
-	switch v := v.(type) {
+	switch value := value.(type) {
 	case string:
-		*d, err = Parse(v)
+		*d, err = Parse(value)
 	case int64:
-		*d, err = New(v, 0)
+		*d, err = New(value, 0)
 	case float64:
-		*d, err = NewFromFloat64(v)
+		*d, err = NewFromFloat64(value)
 	default:
-		err = fmt.Errorf("failed to convert from %T to %T", v, Decimal{})
+		err = fmt.Errorf("failed to convert from %T to %T", value, Decimal{})
 	}
 	return err
 }
@@ -842,7 +840,7 @@ func (d Decimal) Round(scale int) Decimal {
 // ([MaxPrec] - scale) digits.
 func (d Decimal) Pad(scale int) (Decimal, error) {
 	if scale > MaxScale {
-		return Decimal{}, fmt.Errorf("zero-padding %v: %w", d, errScaleRange)
+		return Decimal{}, fmt.Errorf("padding %v with zeros: %w", d, errScaleRange)
 	}
 	if scale <= d.Scale() {
 		return d, nil
@@ -850,7 +848,7 @@ func (d Decimal) Pad(scale int) (Decimal, error) {
 	coef := d.coef
 	coef, ok := coef.lsh(scale - d.Scale())
 	if !ok {
-		return Decimal{}, fmt.Errorf("zero-padding %v with %v digits: %w", d, scale-d.Scale(), overflowError(d.Prec(), d.Scale(), scale))
+		return Decimal{}, fmt.Errorf("padding %v with zeros: %w", d, overflowError(d.Prec(), d.Scale(), scale))
 	}
 	return newDecimalSafe(d.IsNeg(), coef, scale)
 }
@@ -1359,7 +1357,7 @@ func (d Decimal) SubExact(e Decimal, scale int) (Decimal, error) {
 func (d Decimal) SubAbs(e Decimal) (Decimal, error) {
 	f, err := d.Sub(e)
 	if err != nil {
-		return Decimal{}, fmt.Errorf("computing [abs(%v - %v)]: %w", d, e, errScaleRange)
+		return Decimal{}, fmt.Errorf("computing [abs(%v - %v)]: %w", d, e, err)
 	}
 	return f.Abs(), nil
 }
@@ -1783,4 +1781,35 @@ func (d Decimal) Clamp(min, max Decimal) (Decimal, error) {
 		return max, nil
 	}
 	return d, nil
+}
+
+// NullDecimal represents a decimal that may be null.
+type NullDecimal struct {
+	Decimal Decimal
+	Valid   bool
+}
+
+// Scan implements the [sql.Scanner] interface.
+// See also method [Parse].
+//
+// [sql.Scanner]: https://pkg.go.dev/database/sql#Scanner
+func (n *NullDecimal) Scan(value any) error {
+	if value == nil {
+		n.Decimal = Decimal{}
+		n.Valid = false
+		return nil
+	}
+	n.Valid = true
+	return n.Decimal.Scan(value)
+}
+
+// Value implements the [driver.Valuer] interface.
+// See also method [Decimal.String].
+//
+// [driver.Valuer]: https://pkg.go.dev/database/sql/driver#Valuer
+func (n NullDecimal) Value() (driver.Value, error) {
+	if !n.Valid {
+		return nil, nil
+	}
+	return n.Decimal.Value()
 }
