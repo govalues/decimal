@@ -11,7 +11,7 @@ import (
 // Decimal represents a finite floating-point decimal number.
 // Its zero value corresponds to the numeric value of 0.
 // It is designed to be safe for concurrent use by multiple goroutines.
-// Numeric value of a decimal is equal to:
+// The numeric value of a decimal is equal to:
 //
 //	 coef / 10^scale if neg = false
 //	-coef / 10^scale if neg = true
@@ -154,7 +154,7 @@ func MustNew(coef int64, scale int) Decimal {
 	return d
 }
 
-// NewFromFloat64 converts a pair of int64 values representing whole and
+// NewFromInt64 converts a pair of int64 values representing whole and
 // fractional parts to a (possibly rounded) decimal equal to whole + frac / 10^scale.
 // See also method [Decimal.Int64].
 //
@@ -1783,7 +1783,9 @@ func (d Decimal) Clamp(min, max Decimal) (Decimal, error) {
 	return d, nil
 }
 
-// NullDecimal represents a decimal that may be null.
+// NullDecimal represents a decimal that can be null.
+// Its zero value is null.
+// NullDecimal is not thread-safe.
 type NullDecimal struct {
 	Decimal Decimal
 	Valid   bool
