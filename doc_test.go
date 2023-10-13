@@ -9,85 +9,53 @@ import (
 )
 
 func evaluate(input string) (decimal.Decimal, error) {
-	tokens, err := parseTokens(input)
-	if err != nil {
-		return decimal.Decimal{}, fmt.Errorf("parsing tokens: %w", err)
+	tokens := strings.Fields(input)
+	if len(tokens) == 0 {
+		return decimal.Decimal{}, fmt.Errorf("no tokens")
 	}
-	stack, err := processTokens(tokens)
-	if err != nil {
-		return decimal.Decimal{}, fmt.Errorf("processing tokens: %w", err)
+	stack := make([]decimal.Decimal, 0, len(tokens))
+	for i, token := range tokens {
+		var err error
+		var result decimal.Decimal
+		if token == "+" || token == "-" || token == "*" || token == "/" {
+			if len(stack) < 2 {
+				return decimal.Decimal{}, fmt.Errorf("not enough operands")
+			}
+			left := stack[len(stack)-2]
+			right := stack[len(stack)-1]
+			stack = stack[:len(stack)-2]
+			switch token {
+			case "+":
+				result, err = left.Add(right)
+			case "-":
+				result, err = left.Sub(right)
+			case "*":
+				result, err = left.Mul(right)
+			case "/":
+				result, err = left.Quo(right)
+			}
+		} else {
+			result, err = decimal.Parse(token)
+		}
+		if err != nil {
+			return decimal.Decimal{}, fmt.Errorf("processing token %q at position %v: %w", token, i, err)
+		}
+		stack = append(stack, result)
 	}
 	if len(stack) != 1 {
-		return decimal.Decimal{}, fmt.Errorf("post-processed stack contains %v, expected exactly one item", stack)
+		return decimal.Decimal{}, fmt.Errorf("stack contains %v, expected exactly one item", stack)
 	}
 	return stack[0], nil
 }
 
-func parseTokens(input string) ([]string, error) {
-	tokens := strings.Fields(input)
-	if len(tokens) == 0 {
-		return nil, fmt.Errorf("no tokens")
-	}
-	return tokens, nil
-}
-
-func processTokens(tokens []string) ([]decimal.Decimal, error) {
-	stack := make([]decimal.Decimal, 0, len(tokens))
-	var err error
-	for i := len(tokens) - 1; i >= 0; i-- {
-		token := tokens[i]
-		switch token {
-		case "+", "-", "*", "/":
-			stack, err = processOperator(stack, token)
-		default:
-			stack, err = processOperand(stack, token)
-		}
-		if err != nil {
-			return nil, fmt.Errorf("processing token %q: %w", token, err)
-		}
-	}
-	return stack, nil
-}
-
-func processOperator(stack []decimal.Decimal, token string) ([]decimal.Decimal, error) {
-	if len(stack) < 2 {
-		return nil, fmt.Errorf("not enough operands")
-	}
-	right := stack[len(stack)-2]
-	left := stack[len(stack)-1]
-	stack = stack[:len(stack)-2]
-	var result decimal.Decimal
-	var err error
-	switch token {
-	case "+":
-		result, err = left.Add(right)
-	case "-":
-		result, err = left.Sub(right)
-	case "*":
-		result, err = left.Mul(right)
-	case "/":
-		result, err = left.Quo(right)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("evaluating \"%s %s %s\": %w", left, token, right, err)
-	}
-	return append(stack, result), nil
-}
-
-func processOperand(stack []decimal.Decimal, token string) ([]decimal.Decimal, error) {
-	d, err := decimal.Parse(token)
-	if err != nil {
-		return nil, err
-	}
-	return append(stack, d), nil
-}
-
 // This example implements a simple calculator that evaluates mathematical
-// expressions written in postfix (or reverse Polish) notation.
+// expressions written in [postfix notation].
 // The calculator can handle basic arithmetic operations such as addition,
 // subtraction, multiplication, and division.
+//
+// [postfix notation]: https://en.wikipedia.org/wiki/Reverse_Polish_notation
 func Example_postfixCalculator() {
-	d, err := evaluate("* 10 + 1.23 4.56")
+	d, err := evaluate("1.23 4.56 + 10 *")
 	if err != nil {
 		panic(err)
 	}
@@ -293,29 +261,21 @@ type Value struct {
 }
 
 func ExampleDecimal_UnmarshalText() {
-	b := []byte(`{"number": "-15.67"}`)
 	var v Value
-	err := json.Unmarshal(b, &v)
-	if err != nil {
-		panic(err)
-	}
+	_ = json.Unmarshal([]byte(`{"number": "-15.67"}`), &v)
 	fmt.Println(v)
 	// Output: {-15.67}
 }
 
 func ExampleDecimal_MarshalText() {
-	d := decimal.MustParse("-15.67")
-	v := Value{Number: d}
-	b, err := json.Marshal(v)
-	if err != nil {
-		panic(err)
-	}
+	v := Value{Number: decimal.MustParse("-15.67")}
+	b, _ := json.Marshal(v)
 	fmt.Println(string(b))
 	// Output: {"number":"-15.67"}
 }
 
 func ExampleDecimal_Scan() {
-	d := new(decimal.Decimal)
+	var d decimal.Decimal
 	_ = d.Scan("-15.67")
 	fmt.Println(d)
 	// Output: -15.67
@@ -374,8 +334,17 @@ func ExampleDecimal_Mul() {
 func ExampleDecimal_MulExact() {
 	d := decimal.MustParse("5.7")
 	e := decimal.MustParse("3")
+	fmt.Println(d.MulExact(e, 0))
+	fmt.Println(d.MulExact(e, 1))
 	fmt.Println(d.MulExact(e, 2))
-	// Output: 17.10 <nil>
+	fmt.Println(d.MulExact(e, 3))
+	fmt.Println(d.MulExact(e, 4))
+	// Output:
+	// 17.1 <nil>
+	// 17.1 <nil>
+	// 17.10 <nil>
+	// 17.100 <nil>
+	// 17.1000 <nil>
 }
 
 func ExampleDecimal_FMA() {
@@ -415,19 +384,17 @@ func ExampleDecimal_Pow() {
 
 func ExampleDecimal_PowExact() {
 	d := decimal.MustParse("2")
-	fmt.Println(d.PowExact(3, 5))
-	fmt.Println(d.PowExact(3, 4))
-	fmt.Println(d.PowExact(3, 3))
-	fmt.Println(d.PowExact(3, 2))
-	fmt.Println(d.PowExact(3, 1))
 	fmt.Println(d.PowExact(3, 0))
+	fmt.Println(d.PowExact(3, 1))
+	fmt.Println(d.PowExact(3, 2))
+	fmt.Println(d.PowExact(3, 3))
+	fmt.Println(d.PowExact(3, 4))
 	// Output:
-	// 8.00000 <nil>
-	// 8.0000 <nil>
-	// 8.000 <nil>
-	// 8.00 <nil>
-	// 8.0 <nil>
 	// 8 <nil>
+	// 8.0 <nil>
+	// 8.00 <nil>
+	// 8.000 <nil>
+	// 8.0000 <nil>
 }
 
 func ExampleDecimal_Add() {
@@ -440,8 +407,17 @@ func ExampleDecimal_Add() {
 func ExampleDecimal_AddExact() {
 	d := decimal.MustParse("15.6")
 	e := decimal.MustParse("8")
+	fmt.Println(d.AddExact(e, 0))
+	fmt.Println(d.AddExact(e, 1))
 	fmt.Println(d.AddExact(e, 2))
-	// Output: 23.60 <nil>
+	fmt.Println(d.AddExact(e, 3))
+	fmt.Println(d.AddExact(e, 4))
+	// Output:
+	// 23.6 <nil>
+	// 23.6 <nil>
+	// 23.60 <nil>
+	// 23.600 <nil>
+	// 23.6000 <nil>
 }
 
 func ExampleDecimal_Sub() {
@@ -461,8 +437,17 @@ func ExampleDecimal_SubAbs() {
 func ExampleDecimal_SubExact() {
 	d := decimal.MustParse("15.6")
 	e := decimal.MustParse("8")
+	fmt.Println(d.SubExact(e, 0))
+	fmt.Println(d.SubExact(e, 1))
 	fmt.Println(d.SubExact(e, 2))
-	// Output: 7.60 <nil>
+	fmt.Println(d.SubExact(e, 3))
+	fmt.Println(d.SubExact(e, 4))
+	// Output:
+	// 7.6 <nil>
+	// 7.6 <nil>
+	// 7.60 <nil>
+	// 7.600 <nil>
+	// 7.6000 <nil>
 }
 
 func ExampleDecimal_Quo() {
@@ -473,10 +458,21 @@ func ExampleDecimal_Quo() {
 }
 
 func ExampleDecimal_QuoExact() {
-	d := decimal.MustParse("-15.67")
-	e := decimal.MustParse("2")
-	fmt.Println(d.QuoExact(e, 6))
-	// Output: -7.835000 <nil>
+	d := decimal.MustParse("-15.66")
+	e := decimal.MustParse("3")
+	fmt.Println(d.QuoExact(e, 0))
+	fmt.Println(d.QuoExact(e, 1))
+	fmt.Println(d.QuoExact(e, 2))
+	fmt.Println(d.QuoExact(e, 3))
+	fmt.Println(d.QuoExact(e, 4))
+	fmt.Println(d.QuoExact(e, 5))
+	// Output:
+	// -5.22 <nil>
+	// -5.22 <nil>
+	// -5.22 <nil>
+	// -5.220 <nil>
+	// -5.2200 <nil>
+	// -5.22000 <nil>
 }
 
 func ExampleDecimal_QuoRem() {
@@ -543,11 +539,11 @@ func ExampleDecimal_Min() {
 }
 
 func ExampleDecimal_Clamp() {
+	min := decimal.MustParse("-20")
+	max := decimal.MustParse("20")
 	d := decimal.MustParse("-15.67")
 	e := decimal.MustParse("0")
 	f := decimal.MustParse("23")
-	min := decimal.MustParse("-20")
-	max := decimal.MustParse("20")
 	fmt.Println(d.Clamp(min, max))
 	fmt.Println(e.Clamp(min, max))
 	fmt.Println(f.Clamp(min, max))
@@ -821,15 +817,14 @@ func ExampleDecimal_WithinOne() {
 }
 
 func ExampleNullDecimal_Scan() {
-	n := new(decimal.NullDecimal)
+	var n, m decimal.NullDecimal
 	_ = n.Scan("-15.67")
-	m := new(decimal.NullDecimal)
 	_ = m.Scan(nil)
 	fmt.Println(n)
 	fmt.Println(m)
 	// Output:
-	// &{-15.67 true}
-	// &{0 false}
+	// {-15.67 true}
+	// {0 false}
 }
 
 func ExampleNullDecimal_Value() {

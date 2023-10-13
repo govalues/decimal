@@ -6,6 +6,7 @@
 [![godocb]][godoc]
 [![licenseb]][license]
 [![versionb]][version]
+[![awesomeb]][awesome]
 
 Package decimal implements immutable decimal floating-point numbers for Go.
 This package is designed specifically for use in transactional financial systems.
@@ -65,14 +66,14 @@ func main() {
 
 ## Documentation
 
-For detailed documentation and additional examples, visit the
-[package documentation](https://pkg.go.dev/github.com/govalues/decimal#pkg-examples).
-For examples related to financial calculations, see the
-[money package documentation](https://pkg.go.dev/github.com/govalues/money#pkg-examples).
+For detailed documentation and additional examples, visit the package
+[documentation](https://pkg.go.dev/github.com/govalues/decimal#pkg-examples).
+For examples related to financial calculations, see the `money` package
+[documentation](https://pkg.go.dev/github.com/govalues/money#pkg-examples).
 
 ## Comparison
 
-Comparison of decimal with other popular decimal packages:
+Comparison with other popular packages:
 
 | Feature          | govalues     | [cockroachdb] v3.2.0 | [shopspring] v1.3.1 |
 | ---------------- | ------------ | -------------------- | ------------------- |
@@ -92,7 +93,7 @@ too slow and cockroachdb's decimal was mutable.
 ```text
 goos: linux
 goarch: amd64
-pkg: github.com/govalues/benchmarks
+pkg: github.com/govalues/decimaltests
 cpu: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx 
 ```
 
@@ -141,5 +142,7 @@ This ensures alignment with the project's objectives and roadmap.
 [versionb]: https://img.shields.io/github/go-mod/go-version/govalues/decimal?label=go
 [license]: https://en.wikipedia.org/wiki/MIT_License
 [licenseb]: https://img.shields.io/github/license/govalues/decimal?color=blue
+[awesome]: https://github.com/avelino/awesome-go#financial
+[awesomeb]: https://awesome.re/mentioned-badge.svg
 [cockroachdb]: https://pkg.go.dev/github.com/cockroachdb/apd
 [shopspring]: https://pkg.go.dev/github.com/shopspring/decimal
