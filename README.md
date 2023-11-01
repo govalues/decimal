@@ -51,16 +51,32 @@ import (
 )
 
 func main() {
-    d := decimal.MustNew(8, 0)     // d = 8
-    e := decimal.MustParse("12.5") // e = 12.5
+    // Constructors
+    d, _ := decimal.New(8, 0)               // d = 8
+    e, _ := decimal.Parse("12.5")           // e = 12.5
+    f, _ := decimal.NewFromFloat64(2.567)   // f = 2.567
+    g, _ := decimal.NewFromInt64(7, 896, 3) // g = 7.896
+
+    // Conversions
+    fmt.Println(f.Int64(9))       // 2 567000000
+    fmt.Println(f.Float64())      // 2.567
+    fmt.Println(f.String())       // 2.567
+
+    // Operations
     fmt.Println(d.Add(e))          // 8 + 12.5
     fmt.Println(d.Sub(e))          // 8 - 12.5
     fmt.Println(d.Mul(e))          // 8 * 12.5
     fmt.Println(d.Quo(e))          // 8 / 12.5
-    fmt.Println(d.QuoRem(e))       // 8 // 12.5 and 8 mod 12.5
-    fmt.Println(d.FMA(e, e))       // 8 * 12.5 + 12.5
+    fmt.Println(d.QuoRem(e))       // 8 div 12.5, 8 mod 12.5
+    fmt.Println(d.FMA(e, f))       // 8 * 12.5 + 2.567
     fmt.Println(d.Pow(2))          // 8 ^ 2
     fmt.Println(d.Inv())           // 1 / 8
+
+    // Rounding to 2 decimal places
+    fmt.Println(g.Round(2))        // 7.90
+    fmt.Println(g.Ceil(2))         // 7.90
+    fmt.Println(g.Floor(2))        // 7.89
+    fmt.Println(g.Trunc(2))        // 7.89
 }
 ```
 
@@ -75,7 +91,7 @@ For examples related to financial calculations, see the `money` package
 
 Comparison with other popular packages:
 
-| Feature          | govalues     | [cockroachdb] v3.2.0 | [shopspring] v1.3.1 |
+| Feature          | govalues     | [cockroachdb] v3.2.1 | [shopspring] v1.3.1 |
 | ---------------- | ------------ | -------------------- | ------------------- |
 | Speed            | High         | Medium               | Low[^reason]        |
 | Mutability       | Immutable    | Mutable[^reason]     | Immutable           |
@@ -93,25 +109,26 @@ too slow and cockroachdb's decimal was mutable.
 ```text
 goos: linux
 goarch: amd64
-pkg: github.com/govalues/decimaltests
+pkg: github.com/govalues/decimal-tests
 cpu: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx 
 ```
 
-| Test Case   | Expression           | govalues | [cockroachdb] v3.2.0 | [shopspring] v1.3.1 | govalues vs cockroachdb | govalues vs shopspring |
+| Test Case   | Expression           | govalues | [cockroachdb] v3.2.1 | [shopspring] v1.3.1 | govalues vs cockroachdb | govalues vs shopspring |
 | ----------- | -------------------- | -------: | -------------------: | ------------------: | ----------------------: | ---------------------: |
-| Add         | 2 + 3                |   15.79n |               47.95n |             141.95n |                +203.64% |               +798.99% |
-| Mul         | 2 * 3                |   16.61n |               54.66n |             144.95n |                +229.18% |               +772.93% |
-| QuoFinite   | 2 / 4                |   64.74n |              381.15n |             645.35n |                +488.74% |               +896.83% |
-| QuoInfinite | 2 / 3                |  595.30n |             1001.50n |            2810.50n |                 +68.23% |               +372.11% |
-| Pow         | 1.1^60               |    1.31µ |                3.17µ |              20.50µ |                +142.42% |              +1469.53% |
-| Pow         | 1.01^600             |    4.36µ |               13.86µ |              44.39µ |                +217.93% |               +918.44% |
-| Pow         | 1.001^6000           |    7.39µ |               24.69µ |             656.84µ |                +234.34% |              +8793.66% |
-| Parse       | 1                    |   17.27n |               78.25n |             128.80n |                +353.23% |               +646.02% |
-| Parse       | 123.456              |   39.80n |              211.85n |             237.60n |                +432.22% |               +496.91% |
-| Parse       | 123456789.1234567890 |  106.20n |              233.10n |             510.90n |                +119.59% |               +381.30% |
-| String      | 1                    |    5.45n |               19.91n |             197.85n |                +265.49% |              +3531.94% |
-| String      | 123.456              |   42.38n |               74.83n |             229.50n |                 +76.57% |               +441.53% |
-| String      | 123456789.1234567890 |   77.90n |              210.40n |             328.90n |                +170.11% |               +322.24% |
+| Add         | 2 + 3                |   15.53n |               46.68n |             142.30n |                +200.45% |               +816.00% |
+| Mul         | 2 * 3                |   15.64n |               52.83n |             137.35n |                +237.76% |               +778.20% |
+| QuoFinite   | 2 / 4                |   51.65n |              179.60n |             619.40n |                +247.76% |              +1099.34% |
+| QuoInfinite | 2 / 3                |  568.80n |              935.20n |            2749.00n |                 +64.43% |               +383.30% |
+| Pow         | 1.1^60               |    1.28µ |                3.28µ |              16.03µ |                +156.99% |              +1156.09% |
+| Pow         | 1.01^600             |    4.31µ |               10.43µ |              37.00µ |                +142.15% |               +758.69% |
+| Pow         | 1.001^6000           |    7.54µ |               20.39µ |             651.51µ |                +170.58% |              +8544.78% |
+| Parse       | 1                    |   17.14n |               77.64n |             129.15n |                +353.00% |               +653.50% |
+| Parse       | 123.456              |   36.15n |              201.85n |             235.25n |                +458.37% |               +550.76% |
+| Parse       | 123456789.1234567890 |   98.90n |              210.95n |             475.05n |                +113.30% |               +380.33% |
+| String      | 1                    |    5.18n |               21.43n |             208.00n |                +313.99% |              +3918.16% |
+| String      | 123.456              |   42.31n |               67.55n |             226.55n |                 +59.66% |               +435.52% |
+| String      | 123456789.1234567890 |   76.04n |              209.50n |             329.95n |                +175.49% |               +333.89% |
+| Telco       | see [specification]  |  134.00n |              947.60n |            3945.50n |                +607.13% |              +2844.40% |
 
 The benchmark results shown in the table are provided for informational purposes only and may vary depending on your specific use case.
 
@@ -146,3 +163,4 @@ This ensures alignment with the project's objectives and roadmap.
 [awesomeb]: https://awesome.re/mentioned-badge.svg
 [cockroachdb]: https://pkg.go.dev/github.com/cockroachdb/apd
 [shopspring]: https://pkg.go.dev/github.com/shopspring/decimal
+[specification]: https://speleotrove.com/decimal/telcoSpec.html

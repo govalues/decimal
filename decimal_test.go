@@ -92,7 +92,7 @@ func TestNewFromInt64(t *testing.T) {
 		tests := []struct {
 			whole, frac int64
 			scale       int
-			d           string
+			want        string
 		}{
 			{0, 0, 0, "0"},
 			{0, 0, 1, "0.0"},
@@ -119,7 +119,7 @@ func TestNewFromInt64(t *testing.T) {
 				t.Errorf("NewFromInt64(%v, %v, %v) failed: %v", tt.whole, tt.frac, tt.scale, err)
 				continue
 			}
-			want := MustParse(tt.d)
+			want := MustParse(tt.want)
 			if got != want {
 				t.Errorf("NewFromInt64(%v, %v, %v) = %q, want %q", tt.whole, tt.frac, tt.scale, got, want)
 			}
@@ -400,7 +400,7 @@ func TestDecimal_String(t *testing.T) {
 			{false, maxCoef, 19, "0.9999999999999999999"},
 		}
 		for _, tt := range tests {
-			d, err := newDecimalSafe(tt.neg, tt.coef, tt.scale)
+			d, err := newSafe(tt.neg, tt.coef, tt.scale)
 			if err != nil {
 				t.Errorf("newDecimal(%v, %v, %v) failed: %v", tt.neg, tt.coef, tt.scale, err)
 				continue
@@ -2672,7 +2672,7 @@ var corpus = []struct {
 
 func FuzzParse(f *testing.F) {
 	for _, c := range corpus {
-		d, err := newDecimalSafe(c.neg, fint(c.coef), c.scale)
+		d, err := newSafe(c.neg, fint(c.coef), c.scale)
 		if err != nil {
 			continue
 		}
@@ -2698,7 +2698,7 @@ func FuzzDecimalString(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, neg bool, scale int, coef uint64) {
-			want, err := newDecimalSafe(neg, fint(coef), scale)
+			want, err := newSafe(neg, fint(coef), scale)
 			if err != nil {
 				t.Skip()
 				return
@@ -2727,7 +2727,7 @@ func FuzzDecimalInt64(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, dneg bool, dscale int, dcoef uint64, scale int) {
-			want, err := newDecimalSafe(dneg, fint(dcoef), dscale)
+			want, err := newSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
@@ -2761,7 +2761,7 @@ func FuzzDecimalFloat64(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, dneg bool, dscale int, dcoef uint64) {
-			want, err := newDecimalSafe(dneg, fint(dcoef), dscale)
+			want, err := newSafe(dneg, fint(dcoef), dscale)
 			if err != nil || want.Prec() > 17 {
 				t.Skip()
 				return
@@ -2803,12 +2803,12 @@ func FuzzDecimalMul(f *testing.F) {
 				t.Skip()
 				return
 			}
-			d, err := newDecimalSafe(dneg, fint(dcoef), dscale)
+			d, err := newSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
 			}
-			e, err := newDecimalSafe(eneg, fint(ecoef), escale)
+			e, err := newSafe(eneg, fint(ecoef), escale)
 			if err != nil {
 				t.Skip()
 				return
@@ -2853,17 +2853,17 @@ func FuzzDecimalFMA(f *testing.F) {
 				t.Skip()
 				return
 			}
-			d, err := newDecimalSafe(dneg, fint(dcoef), dscale)
+			d, err := newSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
 			}
-			e, err := newDecimalSafe(eneg, fint(ecoef), escale)
+			e, err := newSafe(eneg, fint(ecoef), escale)
 			if err != nil {
 				t.Skip()
 				return
 			}
-			g, err := newDecimalSafe(gneg, fint(gcoef), gscale)
+			g, err := newSafe(gneg, fint(gcoef), gscale)
 			if err != nil {
 				t.Skip()
 				return
@@ -2906,12 +2906,12 @@ func FuzzDecimalAdd(f *testing.F) {
 				t.Skip()
 				return
 			}
-			d, err := newDecimalSafe(dneg, fint(dcoef), dscale)
+			d, err := newSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
 			}
-			e, err := newDecimalSafe(eneg, fint(ecoef), escale)
+			e, err := newSafe(eneg, fint(ecoef), escale)
 			if err != nil {
 				t.Skip()
 				return
@@ -2958,12 +2958,12 @@ func FuzzDecimalQuo(f *testing.F) {
 				t.Skip()
 				return
 			}
-			d, err := newDecimalSafe(dneg, fint(dcoef), dscale)
+			d, err := newSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
 			}
-			e, err := newDecimalSafe(eneg, fint(ecoef), escale)
+			e, err := newSafe(eneg, fint(ecoef), escale)
 			if err != nil {
 				t.Skip()
 				return
@@ -3013,12 +3013,12 @@ func FuzzDecimalQuoRem(f *testing.F) {
 				t.Skip()
 				return
 			}
-			want, err := newDecimalSafe(dneg, fint(dcoef), dscale)
+			want, err := newSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
 			}
-			e, err := newDecimalSafe(eneg, fint(ecoef), escale)
+			e, err := newSafe(eneg, fint(ecoef), escale)
 			if err != nil {
 				t.Skip()
 				return
@@ -3061,13 +3061,13 @@ func FuzzDecimalCmp(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, dneg bool, dscale int, dcoef uint64, eneg bool, escale int, ecoef uint64) {
-			d, err := newDecimalSafe(dneg, fint(dcoef), dscale)
+			d, err := newSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
 			}
 
-			e, err := newDecimalSafe(eneg, fint(ecoef), escale)
+			e, err := newSafe(eneg, fint(ecoef), escale)
 			if err != nil {
 				t.Skip()
 				return
@@ -3101,13 +3101,13 @@ func FuzzDecimalCmpSub(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, dneg bool, dscale int, dcoef uint64, eneg bool, escale int, ecoef uint64) {
-			d, err := newDecimalSafe(dneg, fint(dcoef), dscale)
+			d, err := newSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
 			}
 
-			e, err := newDecimalSafe(eneg, fint(ecoef), escale)
+			e, err := newSafe(eneg, fint(ecoef), escale)
 			if err != nil {
 				t.Skip()
 				return
@@ -3139,12 +3139,12 @@ func FuzzDecimalNew(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, neg bool, scale int, coef uint64) {
-			got, err := newDecimalFromFint(neg, fint(coef), scale, 0)
+			got, err := newFromFint(neg, fint(coef), scale, 0)
 			if err != nil {
 				t.Skip()
 				return
 			}
-			want, err := newDecimalFromBint(neg, fint(coef).bint(), scale, 0)
+			want, err := newFromBint(neg, fint(coef).bint(), scale, 0)
 			if err != nil {
 				t.Errorf("newDecimalFromBint(%v, %v, %v, 0) failed: %v", neg, coef, scale, err)
 				return
