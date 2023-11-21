@@ -1,111 +1,165 @@
 /*
 Package decimal implements immutable decimal floating-point numbers.
+It is designed specifically for use in transactional financial systems.
+This package generally follows principles set by [ANSI X3.274-1996 (section 7.4)].
 
-This packages is designed specifically for use in transactional financial systems.
-The amounts involved in financial transactions typically do not exceed
-99,999,999,999,999,999.99, so uint64 is used to store decimal coefficients,
-which reduces heap allocations, lowers memory consumption, and improves performance.
+# Representation
 
-# Features
+A decimal value is a struct with three fields:
 
-  - Decimal values are immutable, making them safe to use in multiple goroutines.
-  - Methods are panic-free and pure, returning errors in cases such as uint64
-    overflow or division by zero.
-  - [Decimal.String] produces simple and straightforward representation without
-    scientific or engineering notation.
-  - Arithmetic operations use half-even rounding, also known as "banker's rounding".
-  - Special values such as NaN, Infinity, or signed zeros are not supported,
-    ensuring that arithmetic operations always produce well-defined results.
+  - Sign: a boolean indicating whether the decimal is negative.
+  - Coefficient: an unsigned integer that keeps numeric value of the decimal without
+    the decimal point.
+  - Scale: a non-negative integer indicating the position of the decimal point
+    within the coefficient.
+    For example, a decimal with a coefficient of 12345 and a scale of 2 represents
+    the value 123.45.
+    Conceptually the scale can be understood as the opposite of the exponent in
+    scientific notation.
+    For example, a scale of 2 (as in 0.01) corresponds to an exponent of -2.
+    The range of allowed values for the scale is from 0 to 19.
 
-# Supported Ranges
+The numerical value of a decimal is calculated as:
 
-The range of a decimal value depends on the size of its coefficient.
-Since the coefficient is stored as an uint64, a [Decimal] can have a maximum of
-19 digits.
-Additionally, the range of the [Decimal] depends on its scale, which determines
-the number of decimal places.
-Here are some examples of ranges supported for frequently used scales:
+  - -Coefficient / 10^Scale, if Sign is true
+  - Coefficient / 10^Scale, if Sign is false
 
-	| Scale | Minimum                              | Maximum                             | Example                    |
-	| ----- | ------------------------------------ | ----------------------------------- | -------------------------- |
-	|     0 | -9,999,999,999,999,999,999           | 9,999,999,999,999,999,999           | Japanese Yen               |
-	|     2 |    -99,999,999,999,999,999.99        |    99,999,999,999,999,999.99        | US Dollar                  |
-	|     3 |     -9,999,999,999,999,999.999       |     9,999,999,999,999,999.999       | Omani Rial                 |
-	|     8 |            -99,999,999,999.99999999  |            99,999,999,999.99999999  | Bitcoin                    |
-	|     9 |             -9,999,999,999.999999999 |             9,999,999,999.999999999 | US Dollar (high-precision) |
-	|       |                                      |                                     | or Etherium                |
+In such approach, the same numeric value can have multiple representations.
+For example, 1, 1.0, and 1.00 all have the same value, but they
+have different scales and coefficients.
+
+# Constraints
+
+The range of a decimal value is determined by its scale.
+Here are some examples of ranges for frequently used scales:
+
+	| Currency     | Scale | Minimum                              | Maximum                             |
+	| ------------ | ----- | ------------------------------------ | ----------------------------------- |
+	| Japanese Yen | 0     | -9,999,999,999,999,999,999           | 9,999,999,999,999,999,999           |
+	| US Dollar    | 2     |    -99,999,999,999,999,999.99        |    99,999,999,999,999,999.99        |
+	| Omani Rial   | 3     |     -9,999,999,999,999,999.999       |     9,999,999,999,999,999.999       |
+	| Bitcoin      | 8     |            -99,999,999,999.99999999  |            99,999,999,999.99999999  |
+	| Etherium     | 9     |             -9,999,999,999.999999999 |             9,999,999,999.999999999 |
+
+Subnormal numbers are not supported to ensure peak performance.
+Consequently, decimals between -0.00000000000000000005 and 0.00000000000000000005
+(inclusive) are rounded to 0.
+
+Special values such as NaN, Infinity, or negative zeros are not supported.
+This ensures that arithmetic operations always produce either valid decimal values
+or errors.
+
+# Conversions
+
+The package provides methods for converting decimals:
+
+  - [Parse], [Decimal.String]:
+    from and to string.
+  - [NewFromFloat64], [Decimal.Float64]:
+    from and to float.
+  - [New], [NewFromInt64], [Decimal.Int64]:
+    from and to int.
+
+See the documentation for each method for more details.
 
 # Operations
 
-Arithmetic operations in this package are based on [General Decimal Arithmetic]
-and usually involve two steps:
+Each operation is carried out in two steps:
 
- 1. The operation is first performed using only uint64 variables.
-    If no overflow occurs, the result is returned.
+ 1. The operation is initially performed using uint64 arithmetic.
+    If no overflow occurs, the exact result is immediately returned.
     If an overflow occurs, the operation proceeds to step 2.
 
- 2. The operation is performed again using [big.Int] variables.
-    The result is rounded to fit into 19 digits.
-    If no significant digits are lost during rounding, the result is returned.
-    If significant digits are lost, an error is returned.
+ 2. The operation is repeated with increased precision using [big.Int] arithmetic.
+    The result is then rounded to 19 digits.
+    If no significant digits are lost during rounding, the inexact result is returned.
+    If any significant digit is lost, an overflow error is returned.
 
-The purpose of the first step is to optimize the performance of arithmetic
-operations and reduce memory consumption.
-Since the coefficient is stored as an uint64, arithmetic operations using only
-uint64 variables can be performed quickly and efficiently.
-It is expected that most of the arithmetic operations will be successfully
-completed during the first step.
+The step 1 was introduced to improve performance by avoiding heap allocation
+of [big.Int] and the complexities associated with [big.Int] arithmetic.
+It is expected that in transactional financial systems, majority of the arithmetic
+operations will be successfully completed during the step 1.
 
-The following rules are used to determine the significance of digits:
+The following rules are used to determine the significance of digits during step 2:
 
   - [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.FMA], [Decimal.Pow],
     [Decimal.Quo], [Decimal.QuoRem]:
-    All digits in the integer part are significant, while the digits in the
+    all digits in the integer part are significant, while the digits in the
     fractional part are insignificant.
   - [Decimal.AddExact], [Decimal.SubExact], [Decimal.MulExact], [Decimal.FMAExact],
     [Decimal.PowExact], [Decimal.QuoExact]:
-    All digits in the integer part are significant. The significance of digits
+    all digits in the integer part are significant. The significance of digits
     in the fractional part is determined by the scale argument, which is typically
     equal to the scale of the currency.
 
+# Context
+
+Unlike many other decimal libraries, this package does not provide
+an explicit context.
+Instead, the context is implicit and can be approximately equated to
+the following settings:
+
+	| Attribute               | Value                                           |
+	| ----------------------- | ----------------------------------------------- |
+	| Precision               | 19                                              |
+	| Maximum Exponent (Emax) | 18                                              |
+	| Minimum Exponent (Emin) | -19                                             |
+	| Tiny Exponent (Etiny)   | -19                                             |
+	| Rounding Method         | Half To Even                                    |
+	| Enabled Traps           | Division by Zero, Invalid Operation, Overflow   |
+	| Disabled Traps          | Inexact, Clamped, Rounded, Subnormal, Underflow |
+
+Equality of Etiny and Emin implies that this package does not support subnormal numbers.
+
 # Rounding
 
-To fit the results of arithmetic operations into 19 digits, the package
-uses half-to-even rounding, which ensures that rounding errors are
-evenly distributed between rounding up and rounding down.
+Implicit rounding is applied when a result coefficient has more than 19 digits,
+in this case the coefficient is rounded to 19 digits using half-to-even rounding,
+which ensures that rounding errors are evenly distributed between rounding up
+and rounding down.
 
-In addition to implicit half-to-even rounding, the Decimal package provides
-several methods for explicit rounding:
+For all operations, excluding [Decimal.Pow] and [Decimal.PowExact], the result is
+the one that would be obtained by computing the exact mathematical result with
+infinite precision and then rounding it to 19 digits.
 
-  - [Decimal.Ceil]: rounds towards positive infinity.
-  - [Decimal.Floor]: rounds towards negative infinity.
-  - [Decimal.Trunc]: rounds towards zero.
-  - [Decimal.Round], [Decimal.Quantize], [Decimal.Rescale]: use half-to-even rounding.
+[Decimal.Pow] and [Decimal.PowExact] operations may occasionally produce a result that is
+off by one unit in the last place.
+
+In addition to implicit rounding, the package provides several
+methods for explicit rounding:
+
+  - [Decimal.Round], [Decimal.Quantize], [Decimal.Rescale]:
+    round using half-to-even rounding.
+  - [Decimal.Ceil]:
+    rounds towards positive infinity.
+  - [Decimal.Floor]:
+    rounds towards negative infinity.
+  - [Decimal.Trunc]:
+    rounds towards zero.
 
 # Errors
 
-Arithmetic operations return errors in the following cases:
+All methods are panic-free and pure, returning errors in cases such as
+overflow, invalid operation or division by zero.
 
- 1. Decimal overflow.
-    This error occurs when significant digits are lost during rounding to fit
-    19 digits.
-    This typically happens when dealing with large numbers or when you requested
-    large number of digits after the decimal point to be considered signigicant.
-    Refer to the supported ranges section, if your application needs to handle
-    numbers that are close to the minimum or maximum values, this package may
-    not be suitable.
-    Consider using packages that store coefficients using [big.Int] type,
-    such as [ShopSpring Decimal] or [CockroachDB Decimal].
+  - Division by Zero.
+    Unlike the standard library, arithmetic operations do not panic when
+    dividing by zero.  Instead, an error is returned.
 
- 2. Division by zero.
-    Unlike the standard library, this package does not panic when dividing by zero.
-    Instead, it returns an error.
+  - Invalid Operation.
+    [Decimal.Pow] may return invalid operation error if zero is raised to
+    a negative power.
 
-Arithmetic operations do not return error in case of decimal underflow.
+  - Overflow Error.
+    Unlike standard integers, there is no "wrap around" for decimals at certain
+    sizes, for out-of-range values operations return an overflow error.
 
-[General Decimal Arithmetic]: https://speleotrove.com/decimal/daops.html
-[ShopSpring Decimal]: https://pkg.go.dev/github.com/shopspring/decimal
-[CockroachDB Decimal]: https://pkg.go.dev/github.com/cockroachdb/apd
+  - Underflow Error.
+    Operations do not return an error in case of decimal underflow.  If result
+    of an operation is a decimal between -0.00000000000000000005 and
+    0.00000000000000000005 inclusive it will be rounded to 0.
+
+[ANSI X3.274-1996 (section 7.4)]: https://speleotrove.com/decimal/dax3274.html
 [big.Int]: https://pkg.go.dev/math/big#Int
 */
 package decimal

@@ -87,6 +87,17 @@ func TestNew(t *testing.T) {
 	})
 }
 
+func TestMustNew(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("MustNew(0, -1) did not panic")
+			}
+		}()
+		MustNew(0, -1)
+	})
+}
+
 func TestNewFromInt64(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
@@ -95,9 +106,9 @@ func TestNewFromInt64(t *testing.T) {
 			want        string
 		}{
 			{0, 0, 0, "0"},
-			{0, 0, 1, "0.0"},
-			{0, 0, 2, "0.00"},
-			{0, 0, 19, "0.0000000000000000000"},
+			{0, 0, 1, "0"},
+			{0, 0, 2, "0"},
+			{0, 0, 19, "0"},
 
 			{-1, -1, 1, "-1.1"},
 			{-1, -1, 2, "-1.01"},
@@ -107,6 +118,7 @@ func TestNewFromInt64(t *testing.T) {
 			{1, 1, 1, "1.1"},
 			{1, 1, 2, "1.01"},
 			{1, 1, 3, "1.001"},
+			{1, 100000000, 9, "1.1"},
 			{1, 1, 18, "1.000000000000000001"},
 			{100000000000000000, 100000000000000000, 18, "100000000000000000.1"},
 			{1, 1, 19, "1.000000000000000000"},
@@ -365,6 +377,17 @@ func TestParse(t *testing.T) {
 				}
 			})
 		}
+	})
+}
+
+func TestMustParse(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("MustParse(\".\") did not panic")
+			}
+		}()
+		MustParse(".")
 	})
 }
 
@@ -2636,6 +2659,19 @@ func TestDecimal_Clamp(t *testing.T) {
 			_, err := d.Clamp(min, max)
 			if err == nil {
 				t.Errorf("%q.Clamp(%q, %q) did not fail", d, min, max)
+			}
+		}
+	})
+}
+
+func TestNullDecimal_Scan(t *testing.T) {
+	t.Run("[]byte", func(t *testing.T) {
+		tests := []string{"."}
+		for _, tt := range tests {
+			got := NullDecimal{}
+			err := got.Scan([]byte(tt))
+			if err == nil {
+				t.Errorf("Scan(%q) did not fail", tt)
 			}
 		}
 	})

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.16] - 2023-11-21
+
+### Changed
+
+- Improved examples and documentation.
+- Improved test coverage.
+
 ## [0.1.15] - 2023-10-31
 
 ### Changed

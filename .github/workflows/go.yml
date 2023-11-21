@@ -25,7 +25,7 @@ jobs:
       run: gofmt -s -w . && git diff --exit-code
 
     - name: Verify dependency consistency
-      run: go mod tidy && git diff --exit-code
+      run: go get -u -t . && go mod tidy && git diff --exit-code
 
     - name: Verify generated code
       run: go generate ./... && git diff --exit-code
