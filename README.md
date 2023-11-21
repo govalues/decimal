@@ -24,7 +24,7 @@ This package is designed specifically for use in transactional financial systems
   such as overflow or division by zero.
 - **Simple String Representation** - Decimals are represented without the complexities
   of scientific or engineering notation.
-- **Correctness** - Fuzz testing is used to cross-validate arithmetic operations
+- **Correctness** - Fuzz testing is used to [cross-validate] arithmetic operations
   against both the [cockroachdb] and [shopspring] decimal packages.
 
 ## Getting Started
@@ -39,8 +39,8 @@ go get github.com/govalues/decimal
 
 ### Usage
 
-Create decimal values using constructors such as `MustNew` or `MustParse`.
-After creating a decimal value, various arithmetic operations can be performed:
+Create decimal values using one of the constructors.
+After creating a decimal value, various operations can be performed:
 
 ```go
 package main
@@ -57,11 +57,6 @@ func main() {
     f, _ := decimal.NewFromFloat64(2.567)   // f = 2.567
     g, _ := decimal.NewFromInt64(7, 896, 3) // g = 7.896
 
-    // Conversions
-    fmt.Println(f.Int64(9))       // 2 567000000
-    fmt.Println(f.Float64())      // 2.567
-    fmt.Println(f.String())       // 2.567
-
     // Operations
     fmt.Println(d.Add(e))          // 8 + 12.5
     fmt.Println(d.Sub(e))          // 8 - 12.5
@@ -77,6 +72,15 @@ func main() {
     fmt.Println(g.Ceil(2))         // 7.90
     fmt.Println(g.Floor(2))        // 7.89
     fmt.Println(g.Trunc(2))        // 7.89
+
+    // Conversions
+    fmt.Println(f.Int64(9))        // 2 567000000
+    fmt.Println(f.Float64())       // 2.567
+    fmt.Println(f.String())        // 2.567
+
+    // Formatting
+    fmt.Printf("%.2f\n", f)        // 2.57
+    fmt.Printf("%.2k\n", f)        // 256.70%
 }
 ```
 
@@ -164,3 +168,4 @@ This ensures alignment with the project's objectives and roadmap.
 [cockroachdb]: https://pkg.go.dev/github.com/cockroachdb/apd
 [shopspring]: https://pkg.go.dev/github.com/shopspring/decimal
 [specification]: https://speleotrove.com/decimal/telcoSpec.html
+[cross-validate]: https://github.com/govalues/decimal-tests/blob/main/decimal_fuzz_test.go

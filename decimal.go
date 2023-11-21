@@ -11,10 +11,6 @@ import (
 // Decimal represents a finite floating-point decimal number.
 // Its zero value corresponds to the numeric value of 0.
 // It is designed to be safe for concurrent use by multiple goroutines.
-// The numeric value of a decimal is equal to:
-//
-//	 coef / 10^scale if !neg
-//	-coef / 10^scale if neg
 type Decimal struct {
 	neg   bool // indicates whether the decimal is negative
 	scale int8 // position of the floating decimal point
@@ -46,7 +42,7 @@ var (
 	errDivisionByZero   = errors.New("division by zero")
 )
 
-// newUnsafe creates a new decimal without checking for overflow.
+// newUnsafe creates a new decimal without checking scale and coefficient.
 func newUnsafe(neg bool, coef fint, scale int) Decimal {
 	if coef == 0 {
 		neg = false
@@ -54,7 +50,7 @@ func newUnsafe(neg bool, coef fint, scale int) Decimal {
 	return Decimal{neg: neg, coef: coef, scale: int8(scale)}
 }
 
-// newSafe creates a new decimal and checks for overflow.
+// newSafe creates a new decimal and checks scale and coefficient.
 func newSafe(neg bool, coef fint, scale int) (Decimal, error) {
 	switch {
 	case scale < MinScale || scale > MaxScale:
@@ -158,6 +154,7 @@ func MustNew(coef int64, scale int) Decimal {
 
 // NewFromInt64 converts a pair of int64 values representing whole and
 // fractional parts to a (possibly rounded) decimal equal to whole + frac / 10^scale.
+// NewFromInt64 removes all trailing zeros from the fractional part.
 // See also method [Decimal.Int64].
 //
 // NewFromInt64 returns an error:
@@ -165,11 +162,8 @@ func MustNew(coef int64, scale int) Decimal {
 //   - if scale is negative or greater than [MaxScale];
 //   - if frac / 10^scale is not within the range (-1, 1).
 func NewFromInt64(whole, frac int64, scale int) (Decimal, error) {
-	if whole > 0 && frac < 0 || whole < 0 && frac > 0 {
-		return Decimal{}, fmt.Errorf("converting integers: inconsistent signs")
-	}
 	// Whole
-	w, err := New(whole, 0)
+	d, err := New(whole, 0)
 	if err != nil {
 		return Decimal{}, fmt.Errorf("converting integers: %w", err)
 	}
@@ -178,13 +172,18 @@ func NewFromInt64(whole, frac int64, scale int) (Decimal, error) {
 	if err != nil {
 		return Decimal{}, fmt.Errorf("converting integers: %w", err)
 	}
-	if !f.WithinOne() {
-		return Decimal{}, fmt.Errorf("converting integers: inconsistent fraction")
-	}
-	// Decimal
-	d, err := w.Add(f)
-	if err != nil {
-		return Decimal{}, fmt.Errorf("converting integers: %w", err)
+	if !f.IsZero() {
+		if !d.IsZero() && d.Sign() != f.Sign() {
+			return Decimal{}, fmt.Errorf("converting integers: inconsistent signs")
+		}
+		if !f.WithinOne() {
+			return Decimal{}, fmt.Errorf("converting integers: inconsistent fraction")
+		}
+		f = f.Trim(0)
+		d, err = d.Add(f)
+		if err != nil {
+			return Decimal{}, fmt.Errorf("converting integers: %w", err)
+		}
 	}
 	return d, nil
 }
@@ -193,8 +192,8 @@ func NewFromInt64(whole, frac int64, scale int) (Decimal, error) {
 // See also method [Decimal.Float64].
 //
 // NewFromFloat64 returns an error:
-//   - if the integer part of the result has more than [MaxPrec] digits;
-//   - if the float is a special value (NaN or Inf).
+//   - if the float is a special value (NaN or Inf);
+//   - if the integer part of the result has more than [MaxPrec] digits.
 func NewFromFloat64(f float64) (Decimal, error) {
 	if math.IsNaN(f) || math.IsInf(f, 0) {
 		return Decimal{}, fmt.Errorf("converting float: special value %v", f)
@@ -247,6 +246,7 @@ func (d Decimal) ULP() Decimal {
 //
 // Parse returns an error:
 //   - if the integer part of the result has more than [MaxPrec] digits;
+//   - if the string contains any whitespaces;
 //   - if the string does not represent a valid decimal number;
 //   - if the string is longer than 330 bytes;
 //   - if the exponent is less than -330 or greater than 330.
@@ -478,10 +478,13 @@ func (d Decimal) String() string {
 	return string(buf[pos+1:])
 }
 
-// Float64 returns a float64 representation of the decimal.
-// This conversion may lose data, as float64 has a limited precision
-// compared to the decimal type.
+// Float64 returns the nearest binary floating-point number rounded
+// using [rounding half to even] (banker's rounding).
+// This conversion may lose data, as float64 has a smaller precision
+// than the decimal type.
 // See also method [NewFromFloat64].
+//
+// [rounding half to even]: https://en.wikipedia.org/wiki/Rounding#Rounding_half_to_even
 func (d Decimal) Float64() (f float64, ok bool) {
 	f, err := strconv.ParseFloat(d.String(), 64)
 	if err != nil {
@@ -490,14 +493,20 @@ func (d Decimal) Float64() (f float64, ok bool) {
 	return f, true
 }
 
-// Int64 returns a pair of int64 values representing the whole part w and the
-// fractional part f of the decimal.
+// Int64 returns a pair of int64 values representing the whole and the
+// fractional parts of the decimal.
 // The relationship between the decimal and the returned values can be expressed
-// as d = w + f / 10^scale.
-// If the result cannot be accurately represented as a pair of int64 values,
-// the method returns false.
+// as d = whole + frac / 10^scale.
+// If given scale is greater than the scale of the decimal, then the fractional part
+// is zero-padded to the right.
+// If given scale is smaller than the scale of the decimal, then the fractional part
+// is rounded using [rounding half to even] (banker's rounding).
+// If the result cannot be represented as a pair of int64 values,
+// then false is returned.
 // See also method [NewFromInt64].
-func (d Decimal) Int64(scale int) (w, f int64, ok bool) {
+//
+// [rounding half to even]: https://en.wikipedia.org/wiki/Rounding#Rounding_half_to_even
+func (d Decimal) Int64(scale int) (whole, frac int64, ok bool) {
 	if scale < MinScale || scale > MaxScale {
 		return 0, 0, false
 	}
@@ -877,7 +886,7 @@ func (d Decimal) Rescale(scale int) (Decimal, error) {
 	return d, nil
 }
 
-// Quantize returns a decimal rounded to the same scale as decimal e.
+// Quantize returns a decimal rescaled to the same scale as decimal e.
 // The sign and coefficient of decimal e are ignored.
 // See also method [Decimal.Rescale].
 //
@@ -1052,6 +1061,7 @@ func (d Decimal) MulExact(e Decimal, scale int) (Decimal, error) {
 	return f, nil
 }
 
+// mulFint computes the product of two decimals using uint64 arithmetic.
 func (d Decimal) mulFint(e Decimal, minScale int) (Decimal, error) {
 	dcoef, ecoef := d.coef, e.coef
 
@@ -1070,6 +1080,7 @@ func (d Decimal) mulFint(e Decimal, minScale int) (Decimal, error) {
 	return newFromFint(neg, dcoef, scale, minScale)
 }
 
+// mulBint computes the product of two decimals using *big.Int arithmetic.
 func (d Decimal) mulBint(e Decimal, minScale int) (Decimal, error) {
 	dcoef := d.coef.bint()
 	ecoef := e.coef.bint()
@@ -1128,6 +1139,8 @@ func (d Decimal) PowExact(power, scale int) (Decimal, error) {
 	return e, nil
 }
 
+// powFint computes the power of a decimal using uint64 arithmetic.
+// powFint does not support negative powers.
 func (d Decimal) powFint(power, minScale int) (Decimal, error) {
 	if power < 0 {
 		return Decimal{}, errInvalidOperation
@@ -1173,6 +1186,8 @@ func (d Decimal) powFint(power, minScale int) (Decimal, error) {
 	return newFromFint(eneg, ecoef, escale, minScale)
 }
 
+// powBint computes the power of a decimal using *big.Int arithmetic.
+// powBint supports negative powers.
 func (d Decimal) powBint(power, minScale int) (Decimal, error) {
 	inv := false
 	if power < 0 {
@@ -1265,6 +1280,7 @@ func (d Decimal) AddExact(e Decimal, scale int) (Decimal, error) {
 	return f, nil
 }
 
+// addFint computes the sum of two decimals using uint64 arithmetic.
 func (d Decimal) addFint(e Decimal, minScale int) (Decimal, error) {
 	dcoef, ecoef := d.coef, e.coef
 
@@ -1309,6 +1325,7 @@ func (d Decimal) addFint(e Decimal, minScale int) (Decimal, error) {
 	return newFromFint(neg, dcoef, scale, minScale)
 }
 
+// addBint computes the sum of two decimals using *big.Int arithmetic.
 func (d Decimal) addBint(e Decimal, minScale int) (Decimal, error) {
 	dcoef := d.coef.bint()
 	ecoef := e.coef.bint()
@@ -1402,6 +1419,7 @@ func (d Decimal) FMAExact(e, f Decimal, scale int) (Decimal, error) {
 	return g, nil
 }
 
+// fmaFint computes the fused multiply-addition of three decimals using uint64 arithmetic.
 func (d Decimal) fmaFint(e, f Decimal, minScale int) (Decimal, error) {
 	dcoef, ecoef, fcoef := d.coef, e.coef, f.coef
 
@@ -1449,6 +1467,7 @@ func (d Decimal) fmaFint(e, f Decimal, minScale int) (Decimal, error) {
 	return newFromFint(neg, dcoef, scale, minScale)
 }
 
+// fmaBint computes the fused multiply-addition of three decimals using *big.Int arithmetic.
 func (d Decimal) fmaBint(e, f Decimal, minScale int) (Decimal, error) {
 	dcoef := d.coef.bint()
 	ecoef := e.coef.bint()
@@ -1535,6 +1554,7 @@ func (d Decimal) QuoExact(e Decimal, scale int) (Decimal, error) {
 	return f, nil
 }
 
+// quoFint computes the quotient of two decimals using uint64 arithmetic.
 func (d Decimal) quoFint(e Decimal, minScale int) (Decimal, error) {
 	dcoef, ecoef := d.coef, e.coef
 
@@ -1569,6 +1589,7 @@ func (d Decimal) quoFint(e Decimal, minScale int) (Decimal, error) {
 	return newFromFint(neg, dcoef, scale, minScale)
 }
 
+// quoBint computes the quotient of two decimals using *big.Int arithmetic.
 func (d Decimal) quoBint(e Decimal, minScale int) (Decimal, error) {
 	dcoef := d.coef.bint()
 	ecoef := e.coef.bint()
@@ -1609,7 +1630,9 @@ func (d Decimal) quoRem(e Decimal) (q, r Decimal, err error) {
 	if err != nil {
 		return Decimal{}, Decimal{}, err
 	}
-	q = q.Trunc(0) // T-Division
+
+	// T-Division
+	q = q.Trunc(0)
 
 	// Reminder
 	r, err = e.Mul(q)
@@ -1661,6 +1684,7 @@ func (d Decimal) Cmp(e Decimal) int {
 	return r
 }
 
+// cmpFint compares decimals using uint64 arithmetic.
 func (d Decimal) cmpFint(e Decimal) (int, error) {
 	dcoef, ecoef := d.coef, e.coef
 
@@ -1689,6 +1713,7 @@ func (d Decimal) cmpFint(e Decimal) (int, error) {
 	return 0, nil
 }
 
+// cmpBint compares decimals using *big.Int arithmetic.
 func (d Decimal) cmpBint(e Decimal) int {
 	dcoef := d.coef.bint()
 	ecoef := e.coef.bint()

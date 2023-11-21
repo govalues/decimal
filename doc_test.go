@@ -107,20 +107,19 @@ func Example_piApproximation() {
 	// 3.141592653589793238
 }
 
-// This example demonstrates the advantage of decimal types for financial calculations.
-// It calculates sum 0.1 + 0.1 + 0.1 + 0.1 + 0.1 + 0.1 + 0.1 + 0.1 + 0.1 + 0.1.
+// This example demonstrates the advantage of decimals for financial calculations.
+// It computes the sum 0.1 + 0.1 + 0.1 + 0.1 + 0.1 + 0.1 + 0.1 + 0.1 + 0.1 + 0.1.
 // In decimal arithmetic, the result is exactly 1.0.
-// In float64 arithmetic, due to binary floating-point representation,
-// the sum slightly deviates from 1.0.
-func Example_float64Inaccuracy() {
-	// Decimal arithmetic
+// In float64 arithmetic, the result slightly deviates from 1.0 due to binary
+// floating-point representation.
+func Example_floatInaccuracy() {
 	d := decimal.MustParse("0.0")
 	e := decimal.MustParse("0.1")
 	for i := 0; i < 10; i++ {
 		d, _ = d.Add(e)
 	}
 	fmt.Println(d)
-	// float64 arithmetic
+
 	f := 0.0
 	for i := 0; i < 10; i++ {
 		f += 0.1
