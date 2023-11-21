@@ -1393,7 +1393,7 @@ func (d Decimal) SubAbs(e Decimal) (Decimal, error) {
 // This method is useful for improving the accuracy and performance of algorithms
 // that involve the accumulation of products, such as daily interest accrual.
 //
-// FMA returns an error if the integer part of the result has more than [MaxPrec] digits.
+// FMA returns an overflow error if the integer part of the result has more than [MaxPrec] digits.
 //
 // [fused multiply-addition]: https://en.wikipedia.org/wiki/Multiply%E2%80%93accumulate_operation#Fused_multiply%E2%80%93add
 func (d Decimal) FMA(e, f Decimal) (Decimal, error) {
