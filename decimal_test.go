@@ -146,7 +146,9 @@ func TestNewFromInt64(t *testing.T) {
 			"different signs 1": {-1, 1, 0},
 			"fraction range 1":  {1, 1, 0},
 			"scale range 1":     {1, 1, -1},
-			"scale range 2":     {1, 0, 20},
+			"scale range 2":     {1, 0, -1},
+			"scale range 3":     {1, 1, 20},
+			"scale range 4":     {1, 0, 20},
 		}
 		for name, tt := range tests {
 			t.Run(name, func(t *testing.T) {

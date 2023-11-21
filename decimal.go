@@ -162,6 +162,9 @@ func MustNew(coef int64, scale int) Decimal {
 //   - if scale is negative or greater than [MaxScale];
 //   - if frac / 10^scale is not within the range (-1, 1).
 func NewFromInt64(whole, frac int64, scale int) (Decimal, error) {
+	if scale < MinScale || scale > MaxScale {
+		return Decimal{}, fmt.Errorf("converting integers: %w", errScaleRange)
+	}
 	// Whole
 	d, err := New(whole, 0)
 	if err != nil {
