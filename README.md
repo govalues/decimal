@@ -60,11 +60,13 @@ func main() {
     // Operations
     fmt.Println(d.Add(e))          // 8 + 12.5
     fmt.Println(d.Sub(e))          // 8 - 12.5
+
     fmt.Println(d.Mul(e))          // 8 * 12.5
-    fmt.Println(d.Quo(e))          // 8 / 12.5
-    fmt.Println(d.QuoRem(e))       // 8 div 12.5, 8 mod 12.5
     fmt.Println(d.FMA(e, f))       // 8 * 12.5 + 2.567
     fmt.Println(d.Pow(2))          // 8 ^ 2
+
+    fmt.Println(d.Quo(e))          // 8 / 12.5
+    fmt.Println(d.QuoRem(e))       // 8 div 12.5, 8 mod 12.5
     fmt.Println(d.Inv())           // 1 / 8
 
     // Rounding to 2 decimal places
@@ -87,9 +89,9 @@ func main() {
 ## Documentation
 
 For detailed documentation and additional examples, visit the package
-[documentation](https://pkg.go.dev/github.com/govalues/decimal#pkg-examples).
+[documentation](https://pkg.go.dev/github.com/govalues/decimal#section-documentation).
 For examples related to financial calculations, see the `money` package
-[documentation](https://pkg.go.dev/github.com/govalues/money#pkg-examples).
+[documentation](https://pkg.go.dev/github.com/govalues/money#section-documentation).
 
 ## Comparison
 

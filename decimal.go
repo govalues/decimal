@@ -10,7 +10,7 @@ import (
 
 // Decimal represents a finite floating-point decimal number.
 // Its zero value corresponds to the numeric value of 0.
-// It is designed to be safe for concurrent use by multiple goroutines.
+// Decimal is designed to be safe for concurrent use by multiple goroutines.
 type Decimal struct {
 	neg   bool // indicates whether the decimal is negative
 	scale int8 // position of the floating decimal point
@@ -43,6 +43,7 @@ var (
 )
 
 // newUnsafe creates a new decimal without checking scale and coefficient.
+// Use it only if you are absolutely sure that the arguments are valid.
 func newUnsafe(neg bool, coef fint, scale int) Decimal {
 	if coef == 0 {
 		neg = false
@@ -81,27 +82,6 @@ func newFromFint(neg bool, coef fint, scale, minScale int) (Decimal, error) {
 	return newSafe(neg, coef, scale)
 }
 
-func overflowError(gotPrec, gotScale, wantScale int) error {
-	maxDigits := MaxPrec - wantScale
-	gotDigits := gotPrec - gotScale
-	switch wantScale {
-	case 0:
-		return fmt.Errorf("the integer part of a %T can have at most %v digits, but it has %v digits: %w", Decimal{}, maxDigits, gotDigits, errDecimalOverflow)
-	default:
-		return fmt.Errorf("with %v significant digits after the decimal point, the integer part of a %T can have at most %v digits, but it has %v digits: %w", wantScale, Decimal{}, maxDigits, gotDigits, errDecimalOverflow)
-	}
-}
-
-func unknownOverflowError(wantScale int) error {
-	maxDigits := MaxPrec - wantScale
-	switch wantScale {
-	case 0:
-		return fmt.Errorf("the integer part of a %T can have at most %v digits, but it has significantly more digits: %w", Decimal{}, maxDigits, errDecimalOverflow)
-	default:
-		return fmt.Errorf("with %v significant digits after the decimal point, the integer part of a %T can have at most %v digits, but it has significantly more digits: %w", wantScale, Decimal{}, maxDigits, errDecimalOverflow)
-	}
-}
-
 // newFromBint creates a new decimal from *big.Int coefficient.
 // This method uses overflowError to return descriptive errors.
 func newFromBint(neg bool, coef *bint, scale, minScale int) (Decimal, error) {
@@ -130,7 +110,29 @@ func newFromBint(neg bool, coef *bint, scale, minScale int) (Decimal, error) {
 	return newSafe(neg, coef.fint(), scale)
 }
 
+func overflowError(gotPrec, gotScale, wantScale int) error {
+	maxDigits := MaxPrec - wantScale
+	gotDigits := gotPrec - gotScale
+	switch wantScale {
+	case 0:
+		return fmt.Errorf("the integer part of a %T can have at most %v digits, but it has %v digits: %w", Decimal{}, maxDigits, gotDigits, errDecimalOverflow)
+	default:
+		return fmt.Errorf("with %v significant digits after the decimal point, the integer part of a %T can have at most %v digits, but it has %v digits: %w", wantScale, Decimal{}, maxDigits, gotDigits, errDecimalOverflow)
+	}
+}
+
+func unknownOverflowError(wantScale int) error {
+	maxDigits := MaxPrec - wantScale
+	switch wantScale {
+	case 0:
+		return fmt.Errorf("the integer part of a %T can have at most %v digits, but it has significantly more digits: %w", Decimal{}, maxDigits, errDecimalOverflow)
+	default:
+		return fmt.Errorf("with %v significant digits after the decimal point, the integer part of a %T can have at most %v digits, but it has significantly more digits: %w", wantScale, Decimal{}, maxDigits, errDecimalOverflow)
+	}
+}
+
 // New returns a decimal equal to coef / 10^scale.
+// New keeps trailing zeros in the fractional part to preserve scale.
 //
 // New returns an error if scale is negative or greater than [MaxScale].
 func New(coef int64, scale int) (Decimal, error) {
@@ -152,15 +154,18 @@ func MustNew(coef int64, scale int) Decimal {
 	return d
 }
 
-// NewFromInt64 converts a pair of int64 values representing whole and
-// fractional parts to a (possibly rounded) decimal equal to whole + frac / 10^scale.
+// NewFromInt64 converts a pair of integers, representing the whole and
+// fractional parts, to a (possibly rounded) decimal equal to whole + frac / 10^scale.
 // NewFromInt64 removes all trailing zeros from the fractional part.
+// This method is useful for converting amounts from [protobuf] format.
 // See also method [Decimal.Int64].
 //
-// NewFromInt64 returns an error:
-//   - if whole and fractional parts have different signs;
-//   - if scale is negative or greater than [MaxScale];
-//   - if frac / 10^scale is not within the range (-1, 1).
+// NewFromInt64 returns an error if:
+//   - the whole and fractional parts have different signs;
+//   - the scale is negative or greater than [MaxScale];
+//   - frac / 10^scale is not within the range (-1, 1).
+//
+// [protobuf]: https://github.com/googleapis/googleapis/blob/master/google/type/money.proto
 func NewFromInt64(whole, frac int64, scale int) (Decimal, error) {
 	// Whole
 	d, err := New(whole, 0)
@@ -191,14 +196,16 @@ func NewFromInt64(whole, frac int64, scale int) (Decimal, error) {
 // NewFromFloat64 converts a float to a (possibly rounded) decimal.
 // See also method [Decimal.Float64].
 //
-// NewFromFloat64 returns an error:
-//   - if the float is a special value (NaN or Inf);
-//   - if the integer part of the result has more than [MaxPrec] digits.
+// NewFromFloat64 returns an error if:
+//   - the float is a special value (NaN or Inf);
+//   - the integer part of the result has more than [MaxPrec] digits.
 func NewFromFloat64(f float64) (Decimal, error) {
+	// Float
 	if math.IsNaN(f) || math.IsInf(f, 0) {
 		return Decimal{}, fmt.Errorf("converting float: special value %v", f)
 	}
 	s := strconv.FormatFloat(f, 'f', -1, 64)
+	// Decimal
 	d, err := Parse(s)
 	if err != nil {
 		return Decimal{}, fmt.Errorf("converting float: %w", err)
@@ -207,11 +214,13 @@ func NewFromFloat64(f float64) (Decimal, error) {
 }
 
 // Zero returns a decimal with a value of 0, having the same scale as decimal d.
+// See also methods [Decimal.One], [Decimal.ULP].
 func (d Decimal) Zero() Decimal {
 	return newUnsafe(false, 0, d.Scale())
 }
 
 // One returns a decimal with a value of 1, having the same scale as decimal d.
+// See also methods [Decimal.Zero], [Decimal.ULP].
 func (d Decimal) One() Decimal {
 	return newUnsafe(false, pow10[d.Scale()], d.Scale())
 }
@@ -219,7 +228,7 @@ func (d Decimal) One() Decimal {
 // ULP (Unit in the Last Place) returns the smallest representable positive
 // difference between two decimals with the same scale as decimal d.
 // It can be useful for implementing rounding and comparison algorithms.
-// See also method [Decimal.One].
+// See also methods [Decimal.Zero], [Decimal.One].
 func (d Decimal) ULP() Decimal {
 	return newUnsafe(false, 1, d.Scale())
 }
@@ -244,12 +253,12 @@ func (d Decimal) ULP() Decimal {
 // Parse removes leading zeros from the integer part of the input string,
 // but tries to maintain trailing zeros in the fractional part to preserve scale.
 //
-// Parse returns an error:
-//   - if the integer part of the result has more than [MaxPrec] digits;
-//   - if the string contains any whitespaces;
-//   - if the string does not represent a valid decimal number;
-//   - if the string is longer than 330 bytes;
-//   - if the exponent is less than -330 or greater than 330.
+// Parse returns an error if:
+//   - the string contains any whitespaces;
+//   - the string is longer than 330 bytes;
+//   - the exponent is less than -330 or greater than 330;
+//   - the string does not represent a valid decimal number;
+//   - the integer part of the result has more than [MaxPrec] digits.
 func Parse(s string) (Decimal, error) {
 	return ParseExact(s, 0)
 }
@@ -439,6 +448,8 @@ func MustParse(s string) Decimal {
 //	significand    ::= digits '.' digits | digits
 //	numeric-string ::= [sign] significand
 //
+// See also method [Decimal.Format].
+//
 // [fmt.Stringer]: https://pkg.go.dev/fmt#Stringer
 func (d Decimal) String() string {
 	var buf [24]byte
@@ -480,32 +491,37 @@ func (d Decimal) String() string {
 
 // Float64 returns the nearest binary floating-point number rounded
 // using [rounding half to even] (banker's rounding).
+// See also method [NewFromFloat64].
+//
 // This conversion may lose data, as float64 has a smaller precision
 // than the decimal type.
-// See also method [NewFromFloat64].
 //
 // [rounding half to even]: https://en.wikipedia.org/wiki/Rounding#Rounding_half_to_even
 func (d Decimal) Float64() (f float64, ok bool) {
-	f, err := strconv.ParseFloat(d.String(), 64)
+	s := d.String()
+	f, err := strconv.ParseFloat(s, 64)
 	if err != nil {
 		return 0, false
 	}
 	return f, true
 }
 
-// Int64 returns a pair of int64 values representing the whole and the
-// fractional parts of the decimal.
-// The relationship between the decimal and the returned values can be expressed
-// as d = whole + frac / 10^scale.
+// Int64 returns a pair of integers representing the whole and
+// (possibly rounded) fractional parts of the decimal.
 // If given scale is greater than the scale of the decimal, then the fractional part
 // is zero-padded to the right.
 // If given scale is smaller than the scale of the decimal, then the fractional part
 // is rounded using [rounding half to even] (banker's rounding).
-// If the result cannot be represented as a pair of int64 values,
-// then false is returned.
+// The relationship between the decimal and the returned values can be expressed
+// as d = whole + frac / 10^scale.
+// This method is useful for converting amounts to [protobuf] format.
 // See also method [NewFromInt64].
 //
+// If the result cannot be represented as a pair of int64 values,
+// then false is returned.
+//
 // [rounding half to even]: https://en.wikipedia.org/wiki/Rounding#Rounding_half_to_even
+// [protobuf]: https://github.com/googleapis/googleapis/blob/master/google/type/money.proto
 func (d Decimal) Int64(scale int) (whole, frac int64, ok bool) {
 	if scale < MinScale || scale > MaxScale {
 		return 0, 0, false
@@ -582,11 +598,13 @@ func (d Decimal) Value() (driver.Value, error) {
 }
 
 // Format implements the [fmt.Formatter] interface.
-// The following [verbs] are available:
+// The following [format verbs] are available:
 //
-//	%f, %s, %v: -123.456
-//	%q:        "-123.456"
-//	%k:         -12345.6%
+//	| Verb       | Example | Description    |
+//	| ---------- | ------- | -------------- |
+//	| %f, %s, %v | 5.67    | Decimal        |
+//	| %q         | "5.67"  | Quoted decimal |
+//	| %k         | 567%    | Percentage     |
 //
 // The following format flags can be used with all verbs: '+', ' ', '0', '-'.
 //
@@ -594,7 +612,7 @@ func (d Decimal) Value() (driver.Value, error) {
 // For %f verb, the default precision is equal to the actual scale of the decimal,
 // whereas, for verb %k the default precision is the actual scale of the decimal minus 2.
 //
-// [verbs]: https://pkg.go.dev/fmt#hdr-Printing
+// [format verbs]: https://pkg.go.dev/fmt#hdr-Printing
 // [fmt.Formatter]: https://pkg.go.dev/fmt#Formatter
 //
 //gocyclo:ignore
@@ -784,7 +802,7 @@ func (d Decimal) Coef() uint64 {
 }
 
 // Scale returns the number of digits after the decimal point.
-// See also method [Decimal.Prec].
+// See also methods [Decimal.Prec] and [Decimal.MinScale].
 func (d Decimal) Scale() int {
 	return int(d.scale)
 }
@@ -870,6 +888,7 @@ func (d Decimal) Pad(scale int) (Decimal, error) {
 // after the decimal point.
 // For financial calculations, the scale should be equal to or greater than
 // the scale of the currency.
+// See also methods [Decimal.Round], [Decimal.Pad].
 //
 // Rescale returns an overflow error if the integer part of the result has more
 // than ([MaxPrec] - scale) digits.
@@ -887,13 +906,19 @@ func (d Decimal) Rescale(scale int) (Decimal, error) {
 }
 
 // Quantize returns a decimal rescaled to the same scale as decimal e.
-// The sign and coefficient of decimal e are ignored.
-// See also method [Decimal.Rescale].
+// The sign and the coefficient of decimal e are ignored.
+// See also methods [Decimal.Scale], [Decimal.SameScale], [Decimal.Rescale].
 //
 // Qunatize returns an overflow error if the integer part of result has more
 // than ([MaxPrec] - e.Scale()) digits.
 func (d Decimal) Quantize(e Decimal) (Decimal, error) {
 	return d.Rescale(e.Scale())
+}
+
+// SameScale returns true if decimals have the same scale.
+// See also methods [Decimal.Scale], [Decimal.Quantize].
+func (d Decimal) SameScale(e Decimal) bool {
+	return d.Scale() == e.Scale()
 }
 
 // Trunc returns a decimal truncated to the specified number of digits
@@ -915,8 +940,8 @@ func (d Decimal) Trunc(scale int) Decimal {
 	return newUnsafe(d.IsNeg(), coef, scale)
 }
 
-// Trim returns a decimal with trailing zeros removed
-// up to the given number of digits after the decimal point.
+// Trim returns a decimal with trailing zeros removed up to the given number of
+// digits after the decimal point.
 // If the given scale is negative, it is redefined to zero.
 // See also method [Decimal.Pad].
 func (d Decimal) Trim(scale int) Decimal {
@@ -987,6 +1012,7 @@ func (d Decimal) Abs() Decimal {
 
 // CopySign returns a decimal with the same sign as decimal e.
 // CopySign treates zero as positive.
+// See also method [Decimal.Sign].
 func (d Decimal) CopySign(e Decimal) Decimal {
 	if d.IsNeg() == e.IsNeg() {
 		return d
@@ -1507,8 +1533,8 @@ func (d Decimal) fmaBint(e, f Decimal, minScale int) (Decimal, error) {
 // Quo returns the (possibly rounded) quotient of decimals d and e.
 //
 // Quo returns an error if:
-//   - the integer part of the result has more than [MaxPrec] digits;
-//   - the divisor is zero.
+//   - the divisor is zero;
+//   - the integer part of the result has more than [MaxPrec] digits.
 func (d Decimal) Quo(e Decimal) (Decimal, error) {
 	return d.QuoExact(e, 0)
 }
@@ -1614,8 +1640,8 @@ func (d Decimal) quoBint(e Decimal, minScale int) (Decimal, error) {
 // reminder r is the same as the sign of the dividend d.
 //
 // QuoRem returns an error if:
-//   - the integer part of the quotient has more than [MaxPrec] digits;
-//   - the divisor is zero.
+//   - the divisor is zero;
+//   - the integer part of the quotient has more than [MaxPrec] digits.
 func (d Decimal) QuoRem(e Decimal) (q, r Decimal, err error) {
 	q, r, err = d.quoRem(e)
 	if err != nil {
@@ -1655,7 +1681,7 @@ func (d Decimal) quoRem(e Decimal) (q, r Decimal, err error) {
 func (d Decimal) Inv() (Decimal, error) {
 	f, err := One.Quo(d)
 	if err != nil {
-		return Decimal{}, fmt.Errorf("inverse of %v: %w", d, err)
+		return Decimal{}, fmt.Errorf("inverting %v: %w", d, err)
 	}
 	return f, nil
 }
@@ -1799,7 +1825,7 @@ func (d Decimal) Min(e Decimal) Decimal {
 //
 // See also method [Decimal.CmpTotal].
 //
-// Clamp returns an error if min is greater than max.
+// Clamp returns an error if min is greater than max numerically.
 func (d Decimal) Clamp(min, max Decimal) (Decimal, error) {
 	if min.Cmp(max) > 0 {
 		return Decimal{}, fmt.Errorf("clamping %v: invalid range", d)
