@@ -68,15 +68,14 @@ func TestNew(t *testing.T) {
 			coef  int64
 			scale int
 		}{
-			"overflow 1": {math.MinInt64, -1},
-			"overflow 2": {math.MaxInt64, -1},
-			"scale 3":    {0, -1},
-			"scale 4":    {1, -2},
-			"scale 5":    {1, -1},
-			"scale 6":    {math.MinInt64, 20},
-			"scale 7":    {math.MinInt64, 39},
-			"scale 8":    {math.MaxInt64, 20},
-			"scale 9":    {math.MaxInt64, 39},
+			"scale range 1": {math.MinInt64, -1},
+			"scale range 2": {math.MaxInt64, -1},
+			"scale range 3": {0, -1},
+			"scale range 4": {1, -1},
+			"scale range 5": {math.MinInt64, 20},
+			"scale range 6": {math.MinInt64, 39},
+			"scale range 7": {math.MaxInt64, 20},
+			"scale range 8": {math.MaxInt64, 39},
 		}
 		for _, tt := range tests {
 			_, err := New(tt.coef, tt.scale)
@@ -105,16 +104,15 @@ func TestNewFromInt64(t *testing.T) {
 			scale       int
 			want        string
 		}{
+			// Zeroes
 			{0, 0, 0, "0"},
-			{0, 0, 1, "0"},
-			{0, 0, 2, "0"},
 			{0, 0, 19, "0"},
-
+			// Negatives
 			{-1, -1, 1, "-1.1"},
 			{-1, -1, 2, "-1.01"},
 			{-1, -1, 3, "-1.001"},
 			{-1, -1, 18, "-1.000000000000000001"},
-
+			// Positives
 			{1, 1, 1, "1.1"},
 			{1, 1, 2, "1.01"},
 			{1, 1, 3, "1.001"},
@@ -124,6 +122,8 @@ func TestNewFromInt64(t *testing.T) {
 			{1, 1, 19, "1.000000000000000000"},
 			{999999999999999999, 9, 1, "999999999999999999.9"},
 			{999999999999999999, 99, 2, "1000000000000000000"},
+			{math.MaxInt64, math.MaxInt32, 10, "9223372036854775807"},
+			{math.MaxInt64, math.MaxInt64, 19, "9223372036854775808"},
 		}
 		for _, tt := range tests {
 			got, err := NewFromInt64(tt.whole, tt.frac, tt.scale)

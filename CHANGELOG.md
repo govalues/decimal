@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.17] - 2023-12-01
+
+### Added
+
+- Implemented `Decimal.SameScale` method.
+
+### Changed
+
+- Improved examples and documentation.
+
 ## [0.1.16] - 2023-11-21
 
 ### Changed
