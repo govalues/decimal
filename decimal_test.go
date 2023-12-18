@@ -174,8 +174,10 @@ func TestNewFromFloat64(t *testing.T) {
 			{0.00, "0"},
 			{0.0000000000000000000, "0"},
 
-			// Powers of 10
+			// Smallest non-zero
 			{math.SmallestNonzeroFloat64, "0.0000000000000000000"},
+
+			// Powers of 10
 			{1e-20, "0.0000000000000000000"},
 			{1e-19, "0.0000000000000000001"},
 			{1e-5, "0.00001"},
@@ -206,15 +208,15 @@ func TestNewFromFloat64(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		tests := map[string]float64{
-			"overflow 1": 1e19,
-			"overflow 2": 1e20,
-			"overflow 3": math.MaxFloat64,
-			"overflow 4": -1e19,
-			"overflow 5": -1e20,
-			"overflow 6": -math.MaxFloat64,
-			"nan":        math.NaN(),
-			"inf":        math.Inf(1),
-			"-inf":       math.Inf(-1),
+			"overflow 1":      1e19,
+			"overflow 2":      1e20,
+			"overflow 3":      math.MaxFloat64,
+			"overflow 4":      -1e19,
+			"overflow 5":      -1e20,
+			"overflow 6":      -math.MaxFloat64,
+			"special value 1": math.NaN(),
+			"special value 2": math.Inf(1),
+			"special value 3": math.Inf(-1),
 		}
 		for name, tt := range tests {
 			t.Run(name, func(t *testing.T) {
@@ -2606,27 +2608,22 @@ func TestDecimal_Clamp(t *testing.T) {
 			{"0", "-2", "-1", "-1"},
 			{"0", "-1", "1", "0"},
 			{"0", "1", "2", "1"},
-
 			{"0.000", "0.0", "0.000", "0.000"},
 			{"0.000", "0.000", "0.0", "0.000"},
 			{"0.0", "0.0", "0.000", "0.0"},
 			{"0.0", "0.000", "0.0", "0.0"},
-
 			{"0.000", "0.000", "1", "0.000"},
 			{"0.000", "0.0", "1", "0.0"},
 			{"0.0", "0.000", "1", "0.0"},
 			{"0.0", "0.0", "1", "0.0"},
-
 			{"0.000", "-1", "0.000", "0.000"},
 			{"0.000", "-1", "0.0", "0.000"},
 			{"0.0", "-1", "0.000", "0.000"},
 			{"0.0", "-1", "0.0", "0.0"},
-
 			{"1.2300", "1.2300", "2", "1.2300"},
 			{"1.2300", "1.23", "2", "1.23"},
 			{"1.23", "1.2300", "2", "1.23"},
 			{"1.23", "1.23", "2", "1.23"},
-
 			{"1.2300", "1", "1.2300", "1.2300"},
 			{"1.2300", "1", "1.23", "1.2300"},
 			{"1.23", "1", "1.2300", "1.2300"},

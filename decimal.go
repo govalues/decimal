@@ -491,7 +491,7 @@ func (d Decimal) String() string {
 
 // Float64 returns the nearest binary floating-point number rounded
 // using [rounding half to even] (banker's rounding).
-// See also method [NewFromFloat64].
+// See also constructor [NewFromFloat64].
 //
 // This conversion may lose data, as float64 has a smaller precision
 // than the decimal type.
@@ -515,7 +515,7 @@ func (d Decimal) Float64() (f float64, ok bool) {
 // The relationship between the decimal and the returned values can be expressed
 // as d = whole + frac / 10^scale.
 // This method is useful for converting amounts to [protobuf] format.
-// See also method [NewFromInt64].
+// See also constructor [NewFromInt64].
 //
 // If the result cannot be represented as a pair of int64 values,
 // then false is returned.
@@ -553,7 +553,7 @@ func (d Decimal) Int64(scale int) (whole, frac int64, ok bool) {
 }
 
 // UnmarshalText implements the [encoding.TextUnmarshaler] interface.
-// See also method [Parse].
+// See also constructor [Parse].
 //
 // [encoding.TextUnmarshaler]: https://pkg.go.dev/encoding#TextUnmarshaler
 func (d *Decimal) UnmarshalText(text []byte) error {
@@ -571,7 +571,7 @@ func (d Decimal) MarshalText() ([]byte, error) {
 }
 
 // Scan implements the [sql.Scanner] interface.
-// See also method [Parse].
+// See also constructor [Parse].
 //
 // [sql.Scanner]: https://pkg.go.dev/database/sql#Scanner
 func (d *Decimal) Scan(value any) error {
@@ -802,7 +802,7 @@ func (d Decimal) Coef() uint64 {
 }
 
 // Scale returns the number of digits after the decimal point.
-// See also methods [Decimal.Prec] and [Decimal.MinScale].
+// See also methods [Decimal.Prec], [Decimal.MinScale].
 func (d Decimal) Scale() int {
 	return int(d.scale)
 }
@@ -1011,7 +1011,7 @@ func (d Decimal) Abs() Decimal {
 }
 
 // CopySign returns a decimal with the same sign as decimal e.
-// CopySign treates zero as positive.
+// CopySign treates 0 as positive.
 // See also method [Decimal.Sign].
 func (d Decimal) CopySign(e Decimal) Decimal {
 	if d.IsNeg() == e.IsNeg() {
@@ -1533,7 +1533,7 @@ func (d Decimal) fmaBint(e, f Decimal, minScale int) (Decimal, error) {
 // Quo returns the (possibly rounded) quotient of decimals d and e.
 //
 // Quo returns an error if:
-//   - the divisor is zero;
+//   - the divisor is 0;
 //   - the integer part of the result has more than [MaxPrec] digits.
 func (d Decimal) Quo(e Decimal) (Decimal, error) {
 	return d.QuoExact(e, 0)
@@ -1640,7 +1640,7 @@ func (d Decimal) quoBint(e Decimal, minScale int) (Decimal, error) {
 // reminder r is the same as the sign of the dividend d.
 //
 // QuoRem returns an error if:
-//   - the divisor is zero;
+//   - the divisor is 0;
 //   - the integer part of the quotient has more than [MaxPrec] digits.
 func (d Decimal) QuoRem(e Decimal) (q, r Decimal, err error) {
 	q, r, err = d.quoRem(e)
@@ -1677,7 +1677,7 @@ func (d Decimal) quoRem(e Decimal) (q, r Decimal, err error) {
 //
 // Inv returns an error if:
 //   - the integer part of the result has more than [MaxPrec] digits;
-//   - the decimal is zero.
+//   - the decimal is 0.
 func (d Decimal) Inv() (Decimal, error) {
 	f, err := One.Quo(d)
 	if err != nil {
@@ -1692,7 +1692,7 @@ func (d Decimal) Inv() (Decimal, error) {
 //	 0 if d = e
 //	+1 if d > e
 //
-// See also methods [Decimal.CmpAbs] and [Decimal.CmpTotal].
+// See also methods [Decimal.CmpAbs], [Decimal.CmpTotal].
 func (d Decimal) Cmp(e Decimal) int {
 	// Special case: different signs
 	switch {
@@ -1853,7 +1853,7 @@ type NullDecimal struct {
 }
 
 // Scan implements the [sql.Scanner] interface.
-// See also method [Parse].
+// See also constructor [Parse].
 //
 // [sql.Scanner]: https://pkg.go.dev/database/sql#Scanner
 func (n *NullDecimal) Scan(value any) error {
