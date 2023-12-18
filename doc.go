@@ -33,13 +33,13 @@ scales and coefficients.
 The range of a decimal is determined by its scale.
 Here are the ranges for frequently used scales:
 
-| Example      | Scale | Minimum                              | Maximum                             |
-| ------------ | ----- | ------------------------------------ | ----------------------------------- |
-| Japanese Yen | 0     | -9,999,999,999,999,999,999           | 9,999,999,999,999,999,999           |
-| US Dollar    | 2     |    -99,999,999,999,999,999.99        |    99,999,999,999,999,999.99        |
-| Omani Rial   | 3     |     -9,999,999,999,999,999.999       |     9,999,999,999,999,999.999       |
-| Bitcoin      | 8     |            -99,999,999,999.99999999  |            99,999,999,999.99999999  |
-| Etherium     | 9     |             -9,999,999,999.999999999 |             9,999,999,999.999999999 |
+	| Example      | Scale | Minimum                              | Maximum                             |
+	| ------------ | ----- | ------------------------------------ | ----------------------------------- |
+	| Japanese Yen | 0     | -9,999,999,999,999,999,999           | 9,999,999,999,999,999,999           |
+	| US Dollar    | 2     |    -99,999,999,999,999,999.99        |    99,999,999,999,999,999.99        |
+	| Omani Rial   | 3     |     -9,999,999,999,999,999.999       |     9,999,999,999,999,999.999       |
+	| Bitcoin      | 8     |            -99,999,999,999.99999999  |            99,999,999,999.99999999  |
+	| Etherium     | 9     |             -9,999,999,999.999999999 |             9,999,999,999.999999999 |
 
 Subnormal numbers are not supported to ensure peak performance.
 Consequently, decimals between -0.00000000000000000005 and 0.00000000000000000005
@@ -99,15 +99,15 @@ an explicit context.
 Instead, the context is implicit and can be approximately equated to
 the following settings:
 
-| Attribute               | Value                                           |
-| ----------------------- | ----------------------------------------------- |
-| Precision               | 19                                              |
-| Maximum Exponent (Emax) | 18                                              |
-| Minimum Exponent (Emin) | -19                                             |
-| Tiny Exponent (Etiny)   | -19                                             |
-| Rounding Method         | Half To Even                                    |
-| Enabled Traps           | Division by Zero, Invalid Operation, Overflow   |
-| Disabled Traps          | Inexact, Clamped, Rounded, Subnormal, Underflow |
+	| Attribute               | Value                                           |
+	| ----------------------- | ----------------------------------------------- |
+	| Precision               | 19                                              |
+	| Maximum Exponent (Emax) | 18                                              |
+	| Minimum Exponent (Emin) | -19                                             |
+	| Tiny Exponent (Etiny)   | -19                                             |
+	| Rounding Method         | Half To Even                                    |
+	| Enabled Traps           | Division by Zero, Invalid Operation, Overflow   |
+	| Disabled Traps          | Inexact, Clamped, Rounded, Subnormal, Underflow |
 
 The equality of Etiny and Emin implies that this package does not support
 subnormal numbers.
