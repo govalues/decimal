@@ -13,11 +13,11 @@ This package is designed specifically for use in transactional financial systems
 
 ## Features
 
-- **Optimized Performance** - Utilizes uint64 for coefficients, reducing heap
+- **Optimized Performance** - Utilizes `uint64` for coefficients, reducing heap
   allocations and memory consumption.
 - **Immutability** - Once a decimal is set, it remains unchanged.
   This immutability ensures safe concurrent access across goroutines.
-- **Banker's Rounding** - Methods use half even rounding, also known as "banker's rounding",
+- **Banker's Rounding** - Methods use half-to-even rounding, also known as "banker's rounding",
   which minimizes cumulative rounding errors commonly seen in financial calculations.
 - **No Panics** - All methods are designed to be panic-free.
   Instead of potentially crashing your application, they return errors for issues
@@ -25,7 +25,8 @@ This package is designed specifically for use in transactional financial systems
 - **Simple String Representation** - Decimals are represented without the complexities
   of scientific or engineering notation.
 - **Correctness** - Fuzz testing is used to [cross-validate] arithmetic operations
-  against both the [cockroachdb] and [shopspring] decimal packages.
+  against the [cockroachdb] and [shopspring] decimal packages.
+
 
 ## Getting Started
 
@@ -102,13 +103,15 @@ Comparison with other popular packages:
 | Speed            | High         | Medium               | Low[^reason]        |
 | Mutability       | Immutable    | Mutable[^reason]     | Immutable           |
 | Memory Footprint | Low          | Medium               | High                |
-| Panic Free       | Yes          | Yes                  | No                  |
+| Panic Free       | Yes          | Yes                  | No[^divzero]        |
 | Precision        | 19 digits    | Arbitrary            | Arbitrary           |
 | Default Rounding | Half to even | Half up              | Half away from 0    |
 | Context          | Implicit     | Explicit             | Implicit            |
 
 [^reason]: decimal package was created simply because shopspring's decimal was
 too slow and cockroachdb's decimal was mutable.
+
+[^divzero]: [shopspring]'s decimal panics on division by zero.
 
 ### Benchmarks
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.18] - 2023-12-18
+
+### Changed
+
+- Improved examples and documentation.
+
 ## [0.1.17] - 2023-12-01
 
 ### Added
