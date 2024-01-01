@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.20] - 2024-01-01
+
+### Changed
+
+- Eliminated heap allocations in big.Int arithmetic.
+- Improved documentation.
+
 ## [0.1.19] - 2023-12-18
 
 ### Changed
