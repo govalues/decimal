@@ -105,7 +105,7 @@ func TestNewFromInt64(t *testing.T) {
 			scale       int
 			want        string
 		}{
-			// Zeroes
+			// Zeros
 			{0, 0, 0, "0"},
 			{0, 0, 19, "0"},
 			// Negatives
@@ -168,7 +168,7 @@ func TestNewFromFloat64(t *testing.T) {
 			f    float64
 			want string
 		}{
-			// Zeroes
+			// Zeros
 			{-0, "0"},
 			{0, "0"},
 			{0.0, "0"},
@@ -486,7 +486,7 @@ func TestDecimal_Int64(t *testing.T) {
 		wantWhole, wantFrac int64
 		wantOk              bool
 	}{
-		// Zeroes
+		// Zeros
 		{"0", 0, 0, 0, true},
 		{"0.0", 1, 0, 0, true},
 		{"00.0", 1, 0, 0, true},
@@ -837,7 +837,7 @@ func TestDecimal_Rescale(t *testing.T) {
 			scale int
 			want  string
 		}{
-			// Zeroes
+			// Zeros
 			{"0", 0, "0"},
 			{"0", 1, "0.0"},
 			{"0", 2, "0.00"},
@@ -993,7 +993,7 @@ func TestDecimal_Pad(t *testing.T) {
 			scale int
 			want  string
 		}{
-			// Zeroes
+			// Zeros
 			{"0", 0, "0"},
 			{"0", 1, "0.0"},
 			{"0", 2, "0.00"},
@@ -1062,7 +1062,7 @@ func TestDecimal_Round(t *testing.T) {
 		scale int
 		want  string
 	}{
-		// Zeroes
+		// Zeros
 		{"0", -1, "0"},
 		{"0", 0, "0"},
 		{"0", 1, "0"},
@@ -1148,7 +1148,7 @@ func TestDecimal_Trunc(t *testing.T) {
 		scale int
 		want  string
 	}{
-		// Zeroes
+		// Zeros
 		{"0", -1, "0"},
 		{"0", 0, "0"},
 		{"0", 1, "0"},
@@ -1233,7 +1233,7 @@ func TestDecimal_Ceil(t *testing.T) {
 		scale int
 		want  string
 	}{
-		// Zeroes
+		// Zeros
 		{"0", -1, "0"},
 		{"0", 0, "0"},
 		{"0", 1, "0"},
@@ -1329,7 +1329,7 @@ func TestDecimal_Floor(t *testing.T) {
 		scale int
 		want  string
 	}{
-		// Zeroes
+		// Zeros
 		{"0", -1, "0"},
 		{"0", 0, "0"},
 		{"0", 1, "0"},
@@ -1875,7 +1875,7 @@ func TestDecimal_Pow(t *testing.T) {
 			power int
 			want  string
 		}{
-			// Zeroes
+			// Zeros
 			{"0", 0, "1"},
 			{"0", 1, "0"},
 			{"0", 2, "0"},

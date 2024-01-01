@@ -630,7 +630,7 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 	}
 
 	// Rescaling
-	var tzeroes int
+	var tzeros int
 	if verb == 'f' || verb == 'F' || verb == 'k' || verb == 'K' {
 		var scale int
 		switch p, ok := state.Precision(); {
@@ -648,7 +648,7 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 		case scale < d.Scale():
 			d = d.Round(scale)
 		case scale > d.Scale():
-			tzeroes = scale - d.Scale()
+			tzeros = scale - d.Scale()
 		}
 	}
 
@@ -664,7 +664,7 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 
 	// Decimal point
 	var dpoint int
-	if fracdigs > 0 || tzeroes > 0 {
+	if fracdigs > 0 || tzeros > 0 {
 		dpoint = 1
 	}
 
@@ -687,14 +687,14 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 	}
 
 	// Calculating padding
-	width := lquote + rsign + intdigs + dpoint + fracdigs + tzeroes + psign + tquote
-	var lspaces, tspaces, lzeroes int
+	width := lquote + rsign + intdigs + dpoint + fracdigs + tzeros + psign + tquote
+	var lspaces, tspaces, lzeros int
 	if w, ok := state.Width(); ok && w > width {
 		switch {
 		case state.Flag('-'):
 			tspaces = w - width
 		case state.Flag('0'):
-			lzeroes = w - width
+			lzeros = w - width
 		default:
 			lspaces = w - width
 		}
@@ -722,8 +722,8 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 		pos--
 	}
 
-	// Trailing zeroes
-	for i := 0; i < tzeroes; i++ {
+	// Trailing zeros
+	for i := 0; i < tzeros; i++ {
 		buf[pos] = '0'
 		pos--
 	}
@@ -749,8 +749,8 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 		dcoef /= 10
 	}
 
-	// Leading zeroes
-	for i := 0; i < lzeroes; i++ {
+	// Leading zeros
+	for i := 0; i < lzeros; i++ {
 		buf[pos] = '0'
 		pos--
 	}
