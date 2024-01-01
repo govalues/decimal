@@ -32,8 +32,8 @@ var (
 	Ten                 = MustNew(10, 0)                         // Ten represents the decimal value of 10.
 	Hundred             = MustNew(100, 0)                        // Hundred represents the decimal value of 100.
 	Thousand            = MustNew(1_000, 0)                      // Thousand represents the decimal value of 1,000.
-	E                   = MustNew(2_718_281_828_459_045_235, 18) // E represents Euler’s number rounded to 18 decimals.
-	Pi                  = MustNew(3_141_592_653_589_793_238, 18) // Pi represents the value of π rounded to 18 decimals.
+	E                   = MustNew(2_718_281_828_459_045_235, 18) // E represents Euler’s number rounded to 18 digits.
+	Pi                  = MustNew(3_141_592_653_589_793_238, 18) // Pi represents the value of π rounded to 18 digits.
 	errDecimalOverflow  = errors.New("decimal overflow")
 	errInvalidDecimal   = errors.New("invalid decimal")
 	errScaleRange       = errors.New("scale out of range")
@@ -628,9 +628,9 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 	}
 
 	// Rescaling
-	tzeroes := 0
+	var tzeroes int
 	if verb == 'f' || verb == 'F' || verb == 'k' || verb == 'K' {
-		scale := 0
+		var scale int
 		switch p, ok := state.Precision(); {
 		case ok:
 			scale = p
@@ -651,7 +651,8 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 	}
 
 	// Integer and fractional digits
-	intdigs, fracdigs := 0, d.Scale()
+	var intdigs int
+	fracdigs := d.Scale()
 	if dprec := d.Prec(); dprec > fracdigs {
 		intdigs = dprec - fracdigs
 	}
@@ -660,32 +661,32 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 	}
 
 	// Decimal point
-	dpoint := 0
+	var dpoint int
 	if fracdigs > 0 || tzeroes > 0 {
 		dpoint = 1
 	}
 
 	// Arithmetic sign
-	rsign := 0
+	var rsign int
 	if d.IsNeg() || state.Flag('+') || state.Flag(' ') {
 		rsign = 1
 	}
 
 	// Percentage sign
-	psign := 0
+	var psign int
 	if verb == 'k' || verb == 'K' {
 		psign = 1
 	}
 
 	// Openning and closing quotes
-	lquote, tquote := 0, 0
+	var lquote, tquote int
 	if verb == 'q' || verb == 'Q' {
 		lquote, tquote = 1, 1
 	}
 
 	// Calculating padding
 	width := lquote + rsign + intdigs + dpoint + fracdigs + tzeroes + psign + tquote
-	lspaces, tspaces, lzeroes := 0, 0, 0
+	var lspaces, tspaces, lzeroes int
 	if w, ok := state.Width(); ok && w > width {
 		switch {
 		case state.Flag('-'):

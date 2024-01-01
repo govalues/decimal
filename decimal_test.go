@@ -425,6 +425,17 @@ func TestDecimal_String(t *testing.T) {
 			{false, maxCoef, 2, "99999999999999999.99"},
 			{false, maxCoef, 3, "9999999999999999.999"},
 			{false, maxCoef, 19, "0.9999999999999999999"},
+
+			// Exported Constants
+			{NegOne.neg, NegOne.coef, int(NegOne.scale), "-1"},
+			{Zero.neg, Zero.coef, int(Zero.scale), "0"},
+			{One.neg, One.coef, int(One.scale), "1"},
+			{Two.neg, Two.coef, int(Two.scale), "2"},
+			{Ten.neg, Ten.coef, int(Ten.scale), "10"},
+			{Hundred.neg, Hundred.coef, int(Hundred.scale), "100"},
+			{Thousand.neg, Thousand.coef, int(Thousand.scale), "1000"},
+			{E.neg, E.coef, int(E.scale), "2.718281828459045235"},
+			{Pi.neg, Pi.coef, int(Pi.scale), "3.141592653589793238"},
 		}
 		for _, tt := range tests {
 			d, err := newSafe(tt.neg, tt.coef, tt.scale)
