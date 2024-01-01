@@ -366,7 +366,7 @@ func TestFint_prec(t *testing.T) {
 	}
 }
 
-func TestFint_tzeros(t *testing.T) {
+func TestFint_ntz(t *testing.T) {
 	cases := []struct {
 		x    fint
 		want int
@@ -415,9 +415,9 @@ func TestFint_tzeros(t *testing.T) {
 		{math.MaxUint64, 0},
 	}
 	for _, tt := range cases {
-		got := tt.x.tzeros()
+		got := tt.x.ntz()
 		if got != tt.want {
-			t.Errorf("%v.tzeros() = %v, want %v", tt.x, got, tt.want)
+			t.Errorf("%v.ntz() = %v, want %v", tt.x, got, tt.want)
 		}
 	}
 }

@@ -25,8 +25,7 @@ This package is designed specifically for use in transactional financial systems
 - **Simple String Representation** - Decimals are represented without the complexities
   of scientific or engineering notation.
 - **Correctness** - Fuzz testing is used to [cross-validate] arithmetic operations
-  against the [cockroachdb] and [shopspring] decimal packages.
-
+  against the [cockroachdb/apd] and [shopspring/decimal] packages.
 
 ## Getting Started
 
@@ -66,9 +65,9 @@ func main() {
     fmt.Println(d.FMA(e, f))       // 8 * 12.5 + 2.567
     fmt.Println(d.Pow(2))          // 8 ^ 2
 
-    fmt.Println(d.Quo(e))          // 8 / 12.5
+    fmt.Println(d.Quo(e))          // 8 ÷ 12.5
     fmt.Println(d.QuoRem(e))       // 8 div 12.5, 8 mod 12.5
-    fmt.Println(d.Inv())           // 1 / 8
+    fmt.Println(d.Inv())           // 1 ÷ 8
 
     // Rounding to 2 decimal places
     fmt.Println(g.Round(2))        // 7.90
@@ -98,20 +97,20 @@ For examples related to financial calculations, see the `money` package
 
 Comparison with other popular packages:
 
-| Feature          | govalues     | [cockroachdb] v3.2.1 | [shopspring] v1.3.1 |
-| ---------------- | ------------ | -------------------- | ------------------- |
-| Speed            | High         | Medium               | Low[^reason]        |
-| Mutability       | Immutable    | Mutable[^reason]     | Immutable           |
-| Memory Footprint | Low          | Medium               | High                |
-| Panic Free       | Yes          | Yes                  | No[^divzero]        |
-| Precision        | 19 digits    | Arbitrary            | Arbitrary           |
-| Default Rounding | Half to even | Half up              | Half away from 0    |
-| Context          | Implicit     | Explicit             | Implicit            |
+| Feature          | govalues     | [cockroachdb/apd] v3.2.1 | [shopspring/decimal] v1.3.1 |
+| ---------------- | ------------ | ------------------------ | --------------------------- |
+| Speed            | High         | Medium                   | Low[^reason]                |
+| Mutability       | Immutable    | Mutable[^reason]         | Immutable                   |
+| Memory Footprint | Low          | Medium                   | High                        |
+| Panic Free       | Yes          | Yes                      | No[^divzero]                |
+| Precision        | 19 digits    | Arbitrary                | Arbitrary                   |
+| Default Rounding | Half to even | Half up                  | Half away from 0            |
+| Context          | Implicit     | Explicit                 | Implicit                    |
 
-[^reason]: decimal package was created simply because shopspring's decimal was
-too slow and cockroachdb's decimal was mutable.
+[^reason]: decimal package was created simply because [shopspring/decimal] was
+too slow and [cockroachdb/apd] was mutable.
 
-[^divzero]: [shopspring]'s decimal panics on division by zero.
+[^divzero]: [shopspring/decimal] panics on division by zero.
 
 ### Benchmarks
 
@@ -122,22 +121,22 @@ pkg: github.com/govalues/decimal-tests
 cpu: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx 
 ```
 
-| Test Case   | Expression           | govalues | [cockroachdb] v3.2.1 | [shopspring] v1.3.1 | govalues vs cockroachdb | govalues vs shopspring |
-| ----------- | -------------------- | -------: | -------------------: | ------------------: | ----------------------: | ---------------------: |
-| Add         | 2 + 3                |   15.53n |               46.68n |             142.30n |                +200.45% |               +816.00% |
-| Mul         | 2 * 3                |   15.64n |               52.83n |             137.35n |                +237.76% |               +778.20% |
-| QuoFinite   | 2 / 4                |   51.65n |              179.60n |             619.40n |                +247.76% |              +1099.34% |
-| QuoInfinite | 2 / 3                |  568.80n |              935.20n |            2749.00n |                 +64.43% |               +383.30% |
-| Pow         | 1.1^60               |    1.28µ |                3.28µ |              16.03µ |                +156.99% |              +1156.09% |
-| Pow         | 1.01^600             |    4.31µ |               10.43µ |              37.00µ |                +142.15% |               +758.69% |
-| Pow         | 1.001^6000           |    7.54µ |               20.39µ |             651.51µ |                +170.58% |              +8544.78% |
-| Parse       | 1                    |   17.14n |               77.64n |             129.15n |                +353.00% |               +653.50% |
-| Parse       | 123.456              |   36.15n |              201.85n |             235.25n |                +458.37% |               +550.76% |
-| Parse       | 123456789.1234567890 |   98.90n |              210.95n |             475.05n |                +113.30% |               +380.33% |
-| String      | 1                    |    5.18n |               21.43n |             208.00n |                +313.99% |              +3918.16% |
-| String      | 123.456              |   42.31n |               67.55n |             226.55n |                 +59.66% |               +435.52% |
-| String      | 123456789.1234567890 |   76.04n |              209.50n |             329.95n |                +175.49% |               +333.89% |
-| Telco       | see [specification]  |  134.00n |              947.60n |            3945.50n |                +607.13% |              +2844.40% |
+| Test Case   | Expression           | govalues | [cockroachdb/apd] v3.2.1 | [shopspring/decimal] v1.3.1 | govalues vs cockroachdb | govalues vs shopspring |
+| ----------- | -------------------- | -------: | -----------------------: | --------------------------: | ----------------------: | ---------------------: |
+| Add         | 5 + 6                |   16.89n |                   80.96n |                     140.50n |                +379.48% |               +732.10% |
+| Mul         | 2 * 3                |   16.85n |                   58.14n |                     145.30n |                +245.15% |               +762.57% |
+| QuoExact    | 2 ÷ 4                |   66.00n |                  193.25n |                     619.15n |                +192.78% |               +838.03% |
+| QuoInfinite | 2 ÷ 3                |  453.30n |                  961.00n |                    2767.00n |                +112.01% |               +510.41% |
+| Pow         | 1.1^60               |    1.04µ |                    3.42µ |                      15.76µ |                +227.72% |              +1408.43% |
+| Pow         | 1.01^600             |    3.57µ |                   10.70µ |                      35.70µ |                +200.11% |               +901.23% |
+| Pow         | 1.001^6000           |    6.19µ |                   20.72µ |                     634.41µ |                +234.65% |             +10148.95% |
+| Parse       | 1                    |   18.10n |                   85.66n |                     136.75n |                +373.23% |               +655.52% |
+| Parse       | 123.456              |   54.16n |                  197.25n |                     238.45n |                +264.20% |               +340.27% |
+| Parse       | 123456789.1234567890 |  111.00n |                  238.20n |                     498.00n |                +114.59% |               +348.65% |
+| String      | 1                    |    5.70n |                   20.89n |                     203.25n |                +266.24% |              +3464.23% |
+| String      | 123.456              |   42.74n |                   75.71n |                     235.65n |                 +77.14% |               +451.36% |
+| String      | 123456789.1234567890 |   72.34n |                  215.90n |                     331.20n |                +198.47% |               +357.87% |
+| Telco       | see [specification]  |  148.00n |                 1075.00n |                    4010.50n |                +626.35% |              +2609.80% |
 
 The benchmark results shown in the table are provided for informational purposes only and may vary depending on your specific use case.
 
@@ -170,7 +169,7 @@ This ensures alignment with the project's objectives and roadmap.
 [licenseb]: https://img.shields.io/github/license/govalues/decimal?color=blue
 [awesome]: https://github.com/avelino/awesome-go#financial
 [awesomeb]: https://awesome.re/mentioned-badge.svg
-[cockroachdb]: https://pkg.go.dev/github.com/cockroachdb/apd
-[shopspring]: https://pkg.go.dev/github.com/shopspring/decimal
+[cockroachdb/apd]: https://pkg.go.dev/github.com/cockroachdb/apd
+[shopspring/decimal]: https://pkg.go.dev/github.com/shopspring/decimal
 [specification]: https://speleotrove.com/decimal/telcoSpec.html
 [cross-validate]: https://github.com/govalues/decimal-tests/blob/main/decimal_fuzz_test.go

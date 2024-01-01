@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/big"
 	"testing"
 	"unsafe"
 )
@@ -104,7 +105,7 @@ func TestNewFromInt64(t *testing.T) {
 			scale       int
 			want        string
 		}{
-			// Zeroes
+			// Zeros
 			{0, 0, 0, "0"},
 			{0, 0, 19, "0"},
 			// Negatives
@@ -167,7 +168,7 @@ func TestNewFromFloat64(t *testing.T) {
 			f    float64
 			want string
 		}{
-			// Zeroes
+			// Zeros
 			{-0, "0"},
 			{0, "0"},
 			{0.0, "0"},
@@ -425,6 +426,17 @@ func TestDecimal_String(t *testing.T) {
 			{false, maxCoef, 2, "99999999999999999.99"},
 			{false, maxCoef, 3, "9999999999999999.999"},
 			{false, maxCoef, 19, "0.9999999999999999999"},
+
+			// Exported Constants
+			{NegOne.neg, NegOne.coef, int(NegOne.scale), "-1"},
+			{Zero.neg, Zero.coef, int(Zero.scale), "0"},
+			{One.neg, One.coef, int(One.scale), "1"},
+			{Two.neg, Two.coef, int(Two.scale), "2"},
+			{Ten.neg, Ten.coef, int(Ten.scale), "10"},
+			{Hundred.neg, Hundred.coef, int(Hundred.scale), "100"},
+			{Thousand.neg, Thousand.coef, int(Thousand.scale), "1000"},
+			{E.neg, E.coef, int(E.scale), "2.718281828459045235"},
+			{Pi.neg, Pi.coef, int(Pi.scale), "3.141592653589793238"},
 		}
 		for _, tt := range tests {
 			d, err := newSafe(tt.neg, tt.coef, tt.scale)
@@ -474,7 +486,7 @@ func TestDecimal_Int64(t *testing.T) {
 		wantWhole, wantFrac int64
 		wantOk              bool
 	}{
-		// Zeroes
+		// Zeros
 		{"0", 0, 0, 0, true},
 		{"0.0", 1, 0, 0, true},
 		{"00.0", 1, 0, 0, true},
@@ -825,7 +837,7 @@ func TestDecimal_Rescale(t *testing.T) {
 			scale int
 			want  string
 		}{
-			// Zeroes
+			// Zeros
 			{"0", 0, "0"},
 			{"0", 1, "0.0"},
 			{"0", 2, "0.00"},
@@ -981,7 +993,7 @@ func TestDecimal_Pad(t *testing.T) {
 			scale int
 			want  string
 		}{
-			// Zeroes
+			// Zeros
 			{"0", 0, "0"},
 			{"0", 1, "0.0"},
 			{"0", 2, "0.00"},
@@ -1050,7 +1062,7 @@ func TestDecimal_Round(t *testing.T) {
 		scale int
 		want  string
 	}{
-		// Zeroes
+		// Zeros
 		{"0", -1, "0"},
 		{"0", 0, "0"},
 		{"0", 1, "0"},
@@ -1136,7 +1148,7 @@ func TestDecimal_Trunc(t *testing.T) {
 		scale int
 		want  string
 	}{
-		// Zeroes
+		// Zeros
 		{"0", -1, "0"},
 		{"0", 0, "0"},
 		{"0", 1, "0"},
@@ -1221,7 +1233,7 @@ func TestDecimal_Ceil(t *testing.T) {
 		scale int
 		want  string
 	}{
-		// Zeroes
+		// Zeros
 		{"0", -1, "0"},
 		{"0", 0, "0"},
 		{"0", 1, "0"},
@@ -1317,7 +1329,7 @@ func TestDecimal_Floor(t *testing.T) {
 		scale int
 		want  string
 	}{
-		// Zeroes
+		// Zeros
 		{"0", -1, "0"},
 		{"0", 0, "0"},
 		{"0", 1, "0"},
@@ -1863,7 +1875,7 @@ func TestDecimal_Pow(t *testing.T) {
 			power int
 			want  string
 		}{
-			// Zeroes
+			// Zeros
 			{"0", 0, "1"},
 			{"0", 1, "0"},
 			{"0", 2, "0"},
@@ -2707,21 +2719,30 @@ var corpus = []struct {
 
 func FuzzParse(f *testing.F) {
 	for _, c := range corpus {
-		d, err := newSafe(c.neg, fint(c.coef), c.scale)
-		if err != nil {
-			continue
+		for s := 0; s <= MaxScale; s++ {
+			d, err := newSafe(c.neg, fint(c.coef), c.scale)
+			if err != nil {
+				continue
+			}
+			f.Add(d.String(), s)
 		}
-		f.Add(d.String())
 	}
 
 	f.Fuzz(
-		func(t *testing.T, num string) {
-			d, err := Parse(num)
+		func(t *testing.T, num string, scale int) {
+			got, err := parseFint(num, scale)
 			if err != nil {
 				t.Skip()
 				return
 			}
-			_ = d.String()
+			want, err := parseBint(num, scale)
+			if err != nil {
+				t.Errorf("parseBint(%q) failed: %v", num, err)
+				return
+			}
+			if got.CmpTotal(want) != 0 {
+				t.Errorf("parseBint(%q) = %q, whereas parseFint(%q) = %q", num, want, num, got)
+			}
 		},
 	)
 }
@@ -3179,7 +3200,7 @@ func FuzzDecimalNew(f *testing.F) {
 				t.Skip()
 				return
 			}
-			want, err := newFromBint(neg, fint(coef).bint(), scale, 0)
+			want, err := newFromBint(neg, newBintFromFint(fint(coef)), scale, 0)
 			if err != nil {
 				t.Errorf("newDecimalFromBint(%v, %v, %v, 0) failed: %v", neg, coef, scale, err)
 				return
@@ -3189,4 +3210,11 @@ func FuzzDecimalNew(f *testing.F) {
 			}
 		},
 	)
+}
+
+// newBintFromFint converts uint64 to *big.Int.
+func newBintFromFint(f fint) *bint {
+	z := new(big.Int)
+	z.SetUint64(uint64(f))
+	return (*bint)(z)
 }

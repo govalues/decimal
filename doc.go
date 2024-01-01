@@ -41,11 +41,11 @@ Here are the ranges for frequently used scales:
 	| Bitcoin      | 8     |            -99,999,999,999.99999999  |            99,999,999,999.99999999  |
 	| Etherium     | 9     |             -9,999,999,999.999999999 |             9,999,999,999.999999999 |
 
-Subnormal numbers are not supported to ensure peak performance.
+[Subnormal numbers] are not supported to ensure peak performance.
 Consequently, decimals between -0.00000000000000000005 and 0.00000000000000000005
 inclusive are rounded to 0.
 
-Special values such as NaN, Infinity, or negative zeros are not supported.
+Special values such as [NaN], [Infinity], or [negative zeros] are not supported.
 This ensures that arithmetic operations always produce either valid decimals
 or errors.
 
@@ -164,7 +164,11 @@ Errors are not returned in the following cases:
     If the result is a decimal between -0.00000000000000000005 and
     0.00000000000000000005 inclusive, it will be rounded to 0.
 
+[Infinity]: https://en.wikipedia.org/wiki/Infinity#Computing
+[Subnormal numbers]: https://en.wikipedia.org/wiki/Subnormal_number
+[NaN]: https://en.wikipedia.org/wiki/NaN
 [ANSI X3.274-1996 (section 7.4)]: https://speleotrove.com/decimal/dax3274.html
 [big.Int]: https://pkg.go.dev/math/big#Int
+[negative zeros]: https://en.wikipedia.org/wiki/Signed_zero
 */
 package decimal

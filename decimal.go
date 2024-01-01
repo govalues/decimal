@@ -32,8 +32,8 @@ var (
 	Ten                 = MustNew(10, 0)                         // Ten represents the decimal value of 10.
 	Hundred             = MustNew(100, 0)                        // Hundred represents the decimal value of 100.
 	Thousand            = MustNew(1_000, 0)                      // Thousand represents the decimal value of 1,000.
-	E                   = MustNew(2_718_281_828_459_045_235, 18) // E represents Euler’s number rounded to 18 decimals.
-	Pi                  = MustNew(3_141_592_653_589_793_238, 18) // Pi represents the value of π rounded to 18 decimals.
+	E                   = MustNew(2_718_281_828_459_045_235, 18) // E represents Euler’s number rounded to 18 digits.
+	Pi                  = MustNew(3_141_592_653_589_793_238, 18) // Pi represents the value of π rounded to 18 digits.
 	errDecimalOverflow  = errors.New("decimal overflow")
 	errInvalidDecimal   = errors.New("invalid decimal")
 	errScaleRange       = errors.New("scale out of range")
@@ -362,10 +362,12 @@ func parseBint(s string, minScale int) (Decimal, error) {
 	}
 
 	// Integer
-	coef := new(bint)
+	coef := getBint()
+	defer putBint(coef)
+	coef.setFint(0)
 	hascoef := false
 	for pos < width && s[pos] >= '0' && s[pos] <= '9' {
-		coef.fsa(1, s[pos]-'0')
+		coef.fsa(coef, 1, fint(s[pos]-'0'))
 		hascoef = true
 		pos++
 	}
@@ -375,7 +377,7 @@ func parseBint(s string, minScale int) (Decimal, error) {
 	if pos < width && s[pos] == '.' {
 		pos++
 		for pos < width && s[pos] >= '0' && s[pos] <= '9' {
-			coef.fsa(1, s[pos]-'0')
+			coef.fsa(coef, 1, fint(s[pos]-'0'))
 			hascoef = true
 			scale++
 			pos++
@@ -628,9 +630,9 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 	}
 
 	// Rescaling
-	tzeroes := 0
+	var tzeros int
 	if verb == 'f' || verb == 'F' || verb == 'k' || verb == 'K' {
-		scale := 0
+		var scale int
 		switch p, ok := state.Precision(); {
 		case ok:
 			scale = p
@@ -646,12 +648,13 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 		case scale < d.Scale():
 			d = d.Round(scale)
 		case scale > d.Scale():
-			tzeroes = scale - d.Scale()
+			tzeros = scale - d.Scale()
 		}
 	}
 
 	// Integer and fractional digits
-	intdigs, fracdigs := 0, d.Scale()
+	var intdigs int
+	fracdigs := d.Scale()
 	if dprec := d.Prec(); dprec > fracdigs {
 		intdigs = dprec - fracdigs
 	}
@@ -660,38 +663,38 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 	}
 
 	// Decimal point
-	dpoint := 0
-	if fracdigs > 0 || tzeroes > 0 {
+	var dpoint int
+	if fracdigs > 0 || tzeros > 0 {
 		dpoint = 1
 	}
 
 	// Arithmetic sign
-	rsign := 0
+	var rsign int
 	if d.IsNeg() || state.Flag('+') || state.Flag(' ') {
 		rsign = 1
 	}
 
 	// Percentage sign
-	psign := 0
+	var psign int
 	if verb == 'k' || verb == 'K' {
 		psign = 1
 	}
 
 	// Openning and closing quotes
-	lquote, tquote := 0, 0
+	var lquote, tquote int
 	if verb == 'q' || verb == 'Q' {
 		lquote, tquote = 1, 1
 	}
 
 	// Calculating padding
-	width := lquote + rsign + intdigs + dpoint + fracdigs + tzeroes + psign + tquote
-	lspaces, tspaces, lzeroes := 0, 0, 0
+	width := lquote + rsign + intdigs + dpoint + fracdigs + tzeros + psign + tquote
+	var lspaces, tspaces, lzeros int
 	if w, ok := state.Width(); ok && w > width {
 		switch {
 		case state.Flag('-'):
 			tspaces = w - width
 		case state.Flag('0'):
-			lzeroes = w - width
+			lzeros = w - width
 		default:
 			lspaces = w - width
 		}
@@ -719,8 +722,8 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 		pos--
 	}
 
-	// Trailing zeroes
-	for i := 0; i < tzeroes; i++ {
+	// Trailing zeros
+	for i := 0; i < tzeros; i++ {
 		buf[pos] = '0'
 		pos--
 	}
@@ -746,8 +749,8 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 		dcoef /= 10
 	}
 
-	// Leading zeroes
-	for i := 0; i < lzeroes; i++ {
+	// Leading zeros
+	for i := 0; i < lzeros; i++ {
 		buf[pos] = '0'
 		pos--
 	}
@@ -815,7 +818,7 @@ func (d Decimal) MinScale() int {
 		return MinScale
 	}
 	// General case
-	z := d.coef.tzeros()
+	z := d.coef.ntz()
 	if d.Scale() <= z {
 		return MinScale
 	}
@@ -1108,8 +1111,12 @@ func (d Decimal) mulFint(e Decimal, minScale int) (Decimal, error) {
 
 // mulBint computes the product of two decimals using *big.Int arithmetic.
 func (d Decimal) mulBint(e Decimal, minScale int) (Decimal, error) {
-	dcoef := d.coef.bint()
-	ecoef := e.coef.bint()
+	dcoef := getBint()
+	defer putBint(dcoef)
+	dcoef.setFint(d.coef)
+	ecoef := getBint()
+	defer putBint(ecoef)
+	ecoef.setFint(e.coef)
 
 	// Coefficient
 	dcoef.mul(dcoef, ecoef)
@@ -1168,12 +1175,17 @@ func (d Decimal) PowExact(power, scale int) (Decimal, error) {
 // powFint computes the power of a decimal using uint64 arithmetic.
 // powFint does not support negative powers.
 func (d Decimal) powFint(power, minScale int) (Decimal, error) {
+	dcoef := d.coef
+	dneg := d.IsNeg()
+	dscale := d.Scale()
+
+	ecoef := One.coef
+	eneg := One.IsNeg()
+	escale := One.Scale()
+
 	if power < 0 {
 		return Decimal{}, errInvalidOperation
 	}
-
-	dneg, dcoef, dscale := d.IsNeg(), d.coef, d.Scale()
-	eneg, ecoef, escale := One.IsNeg(), One.coef, One.Scale()
 
 	for power > 0 {
 		if power%2 == 1 {
@@ -1209,20 +1221,30 @@ func (d Decimal) powFint(power, minScale int) (Decimal, error) {
 			dscale = dscale * 2
 		}
 	}
+
 	return newFromFint(eneg, ecoef, escale, minScale)
 }
 
 // powBint computes the power of a decimal using *big.Int arithmetic.
 // powBint supports negative powers.
 func (d Decimal) powBint(power, minScale int) (Decimal, error) {
+	dcoef := getBint()
+	defer putBint(dcoef)
+	dcoef.setFint(d.coef)
+	dneg := d.IsNeg()
+	dscale := d.Scale()
+
+	ecoef := getBint()
+	defer putBint(ecoef)
+	ecoef.setFint(One.coef)
+	eneg := One.IsNeg()
+	escale := One.Scale()
+
 	inv := false
 	if power < 0 {
 		power = -power
 		inv = true
 	}
-
-	dneg, dcoef, dscale := d.IsNeg(), d.coef.bint(), d.Scale()
-	eneg, ecoef, escale := One.IsNeg(), One.coef.bint(), One.Scale()
 
 	for power > 0 {
 		if power%2 == 1 {
@@ -1353,8 +1375,13 @@ func (d Decimal) addFint(e Decimal, minScale int) (Decimal, error) {
 
 // addBint computes the sum of two decimals using *big.Int arithmetic.
 func (d Decimal) addBint(e Decimal, minScale int) (Decimal, error) {
-	dcoef := d.coef.bint()
-	ecoef := e.coef.bint()
+	dcoef := getBint()
+	defer putBint(dcoef)
+	dcoef.setFint(d.coef)
+
+	ecoef := getBint()
+	defer putBint(ecoef)
+	ecoef.setFint(e.coef)
 
 	// Alignment and scale
 	var scale int
@@ -1495,9 +1522,17 @@ func (d Decimal) fmaFint(e, f Decimal, minScale int) (Decimal, error) {
 
 // fmaBint computes the fused multiply-addition of three decimals using *big.Int arithmetic.
 func (d Decimal) fmaBint(e, f Decimal, minScale int) (Decimal, error) {
-	dcoef := d.coef.bint()
-	ecoef := e.coef.bint()
-	fcoef := f.coef.bint()
+	dcoef := getBint()
+	defer putBint(dcoef)
+	dcoef.setFint(d.coef)
+
+	ecoef := getBint()
+	defer putBint(ecoef)
+	ecoef.setFint(e.coef)
+
+	fcoef := getBint()
+	defer putBint(fcoef)
+	fcoef.setFint(f.coef)
 
 	// Coefficient (Multiplication)
 	dcoef.mul(dcoef, ecoef)
@@ -1598,7 +1633,7 @@ func (d Decimal) quoFint(e Decimal, minScale int) (Decimal, error) {
 	}
 
 	// Divisor alignment
-	if t := ecoef.tzeros(); t > 0 {
+	if t := ecoef.ntz(); t > 0 {
 		ecoef = ecoef.rshDown(t)
 		scale = scale + t
 	}
@@ -1617,8 +1652,13 @@ func (d Decimal) quoFint(e Decimal, minScale int) (Decimal, error) {
 
 // quoBint computes the quotient of two decimals using *big.Int arithmetic.
 func (d Decimal) quoBint(e Decimal, minScale int) (Decimal, error) {
-	dcoef := d.coef.bint()
-	ecoef := e.coef.bint()
+	dcoef := getBint()
+	defer putBint(dcoef)
+	dcoef.setFint(d.coef)
+
+	ecoef := getBint()
+	defer putBint(ecoef)
+	ecoef.setFint(e.coef)
 
 	// Scale
 	scale := 2 * MaxScale
@@ -1741,8 +1781,13 @@ func (d Decimal) cmpFint(e Decimal) (int, error) {
 
 // cmpBint compares decimals using *big.Int arithmetic.
 func (d Decimal) cmpBint(e Decimal) int {
-	dcoef := d.coef.bint()
-	ecoef := e.coef.bint()
+	dcoef := getBint()
+	defer putBint(dcoef)
+	dcoef.setFint(d.coef)
+
+	ecoef := getBint()
+	defer putBint(ecoef)
+	ecoef.setFint(e.coef)
 
 	// Alignment
 	switch {
