@@ -2,6 +2,7 @@ package decimal
 
 import (
 	"math/big"
+	"sync"
 )
 
 // fint (Fast INTeger) is a wrapper around uint64.
@@ -174,7 +175,7 @@ func (x fint) rshDown(shift int) fint {
 }
 
 // prec returns length of x in decimal digits.
-// prec assumes that 0 has zero digits.
+// prec assumes that 0 has no digits.
 func (x fint) prec() int {
 	left, right := 0, len(pow10)
 	for left < right {
@@ -188,8 +189,9 @@ func (x fint) prec() int {
 	return left
 }
 
-// tzeroes returns number of trailing zeros in x.
-func (x fint) tzeros() int {
+// ntz returns number of trailing zeros in x.
+// ntz assumes that 0 has no trailing zeros.
+func (x fint) ntz() int {
 	left, right := 1, x.prec()
 	for left < right {
 		mid := (left + right) / 2
@@ -213,12 +215,6 @@ func (x fint) hasPrec(prec int) bool {
 		return false
 	}
 	return x >= pow10[prec-1]
-}
-
-// bint converts uint64 to *big.Int.
-func (x fint) bint() *bint {
-	z := new(big.Int).SetUint64(uint64(x))
-	return (*bint)(z)
 }
 
 // bint (Big INTeger) is a wrapper around big.Int.
@@ -328,10 +324,11 @@ var bpow10 = [...]*bint{
 	newBintFromPow10(99),
 }
 
-// newBintFromPow10 returns 10^exp as *big.Int.
-func newBintFromPow10(exp int) *bint {
-	z := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(exp)), nil)
-	return (*bint)(z)
+// newBintFromPow10 creates a *big.Int equal to 10^power.
+func newBintFromPow10(power int) *bint {
+	z := (*bint)(new(big.Int))
+	z.pow10(power)
+	return z
 }
 
 func (z *bint) sign() int {
@@ -350,6 +347,10 @@ func (z *bint) setBint(x *bint) {
 	(*big.Int)(z).Set((*big.Int)(x))
 }
 
+func (z *bint) setInt64(x int64) {
+	(*big.Int)(z).SetInt64(x)
+}
+
 func (z *bint) setFint(x fint) {
 	(*big.Int)(z).SetUint64(uint64(x))
 }
@@ -357,8 +358,8 @@ func (z *bint) setFint(x fint) {
 // fint converts *big.Int to uint64.
 // If z cannot be represented as uint64, the result is undefined.
 func (z *bint) fint() fint {
-	i := (*big.Int)(z).Uint64()
-	return fint(i)
+	f := (*big.Int)(z).Uint64()
+	return fint(f)
 }
 
 // add calculates z = x + y.
@@ -397,50 +398,78 @@ func (z *bint) mul(x, y *bint) {
 	(*big.Int)(z).Mul((*big.Int)(x), (*big.Int)(y))
 }
 
+// exp calculates z = x^y.
+// If y is negative, the result is unpredictable.
+func (z *bint) exp(x, y *bint) {
+	(*big.Int)(z).Exp((*big.Int)(x), (*big.Int)(y), nil)
+}
+
+// pow10 calculates z = 10^power.
+// If power is negative, the result is unpredictable.
+func (z *bint) pow10(power int) {
+	x := getBint()
+	defer putBint(x)
+	x.setInt64(10)
+	y := getBint()
+	defer putBint(y)
+	y.setInt64(int64(power))
+	z.exp(x, y)
+}
+
 // quo calculates z = x / y.
 func (z *bint) quo(x, y *bint) {
-	(*big.Int)(z).Quo((*big.Int)(x), (*big.Int)(y))
+	r := getBint()
+	defer putBint(r)
+	// Passing r to prevent heap allocations.
+	z.quoRem(x, y, r)
 }
 
 // quoRem calculates z and r such that x = z * y + r.
-func (z *bint) quoRem(x, y *bint) *bint {
-	_, r := (*big.Int)(z).QuoRem((*big.Int)(x), (*big.Int)(y), new(big.Int))
-	return (*bint)(r)
+func (z *bint) quoRem(x, y, r *bint) {
+	(*big.Int)(z).QuoRem((*big.Int)(x), (*big.Int)(y), (*big.Int)(r))
 }
 
 func (z *bint) isOdd() bool {
 	return (*big.Int)(z).Bit(0) != 0
 }
 
-// lsh (Left Shift) calculates x * 10^shift.
+// lsh (Left Shift) calculates z = x * 10^shift.
 func (z *bint) lsh(x *bint, shift int) {
 	var y *bint
 	if shift < len(bpow10) {
 		y = bpow10[shift]
 	} else {
-		y = newBintFromPow10(shift)
+		y = getBint()
+		defer putBint(y)
+		y.pow10(shift)
 	}
 	z.mul(x, y)
 }
 
-// fsa (Fused Shift and Addition) calculates x * 10^shift + y.
-func (z *bint) fsa(shift int, y byte) {
-	z.lsh(z, shift)
-	z.add(z, fint(y).bint())
+// fsa (Fused Shift and Addition) calculates z = x * 10^shift + f.
+func (z *bint) fsa(x *bint, shift int, f fint) {
+	y := getBint()
+	defer putBint(y)
+	y.setFint(f)
+	z.lsh(x, shift)
+	z.add(z, y)
 }
 
-// rshDown (Right Shift) calculates x / 10^shift and rounds result towards zero.
+// rshDown (Right Shift) calculates z = x / 10^shift and rounds
+// result towards zero.
 func (z *bint) rshDown(x *bint, shift int) {
 	var y *bint
 	if shift < len(bpow10) {
 		y = bpow10[shift]
 	} else {
-		y = newBintFromPow10(shift)
+		y = getBint()
+		defer putBint(y)
+		y.pow10(shift)
 	}
 	z.quo(x, y)
 }
 
-// rshHalfEven (Right Shift) calculates x / 10^shift and
+// rshHalfEven (Right Shift) calculates z = x / 10^shift and
 // rounds result using "half to even" rule.
 func (z *bint) rshHalfEven(x *bint, shift int) {
 	// Special cases
@@ -453,13 +482,17 @@ func (z *bint) rshHalfEven(x *bint, shift int) {
 		return
 	}
 	// General case
-	var y *bint
+	var y, r *bint
 	if shift < len(bpow10) {
 		y = bpow10[shift]
 	} else {
-		y = newBintFromPow10(shift)
+		y = getBint()
+		defer putBint(y)
+		y.pow10(shift)
 	}
-	r := z.quoRem(x, y)
+	r = getBint()
+	defer putBint(r)
+	z.quoRem(x, y, r)
 	r.dbl(r) // r = r * 2
 	switch y.cmp(r) {
 	case -1:
@@ -473,8 +506,8 @@ func (z *bint) rshHalfEven(x *bint, shift int) {
 }
 
 // prec returns length of *big.Int in decimal digits.
-// It considers 0 to have zero digits.
-// If *big.Int is negative, the result is unpredictable.
+// prec assumes that 0 has no digits.
+// If z is negative, the result is unpredictable.
 //
 // z.prec() provides a more efficient approach than len(z.string())
 // when dealing with decimals having less than len(bpow10) digits.
@@ -497,7 +530,7 @@ func (z *bint) prec() int {
 }
 
 // hasPrec checks if *big.Int has a given number of digits or more.
-// It considers 0 to have zero digits.
+// hasPrec assumes that 0 has no digits.
 // If *big.Int is negative, the result is unpredictable.
 //
 // z.hasPrec() provides a more efficient approach than (z.prec() >= prec)
@@ -512,4 +545,21 @@ func (z *bint) hasPrec(prec int) bool {
 	}
 	// General case
 	return z.cmp(bpow10[prec-1]) >= 0
+}
+
+// pool is a cache of reusable *big.Int instances.
+var pool = sync.Pool{
+	New: func() any {
+		return (*bint)(new(big.Int))
+	},
+}
+
+// getBint obtains a *big.Int from the pool.
+func getBint() *bint {
+	return pool.Get().(*bint)
+}
+
+// putBint returns the *big.Int into the pool.
+func putBint(b *bint) {
+	pool.Put(b)
 }

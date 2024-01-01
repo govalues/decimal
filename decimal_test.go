@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/big"
 	"testing"
 	"unsafe"
 )
@@ -2718,21 +2719,30 @@ var corpus = []struct {
 
 func FuzzParse(f *testing.F) {
 	for _, c := range corpus {
-		d, err := newSafe(c.neg, fint(c.coef), c.scale)
-		if err != nil {
-			continue
+		for s := 0; s <= MaxScale; s++ {
+			d, err := newSafe(c.neg, fint(c.coef), c.scale)
+			if err != nil {
+				continue
+			}
+			f.Add(d.String(), s)
 		}
-		f.Add(d.String())
 	}
 
 	f.Fuzz(
-		func(t *testing.T, num string) {
-			d, err := Parse(num)
+		func(t *testing.T, num string, scale int) {
+			got, err := parseFint(num, scale)
 			if err != nil {
 				t.Skip()
 				return
 			}
-			_ = d.String()
+			want, err := parseBint(num, scale)
+			if err != nil {
+				t.Errorf("parseBint(%q) failed: %v", num, err)
+				return
+			}
+			if got.CmpTotal(want) != 0 {
+				t.Errorf("parseBint(%q) = %q, whereas parseFint(%q) = %q", num, want, num, got)
+			}
 		},
 	)
 }
@@ -3190,7 +3200,7 @@ func FuzzDecimalNew(f *testing.F) {
 				t.Skip()
 				return
 			}
-			want, err := newFromBint(neg, fint(coef).bint(), scale, 0)
+			want, err := newFromBint(neg, newBintFromFint(fint(coef)), scale, 0)
 			if err != nil {
 				t.Errorf("newDecimalFromBint(%v, %v, %v, 0) failed: %v", neg, coef, scale, err)
 				return
@@ -3200,4 +3210,11 @@ func FuzzDecimalNew(f *testing.F) {
 			}
 		},
 	)
+}
+
+// newBintFromFint converts uint64 to *big.Int.
+func newBintFromFint(f fint) *bint {
+	z := new(big.Int)
+	z.SetUint64(uint64(f))
+	return (*bint)(z)
 }
