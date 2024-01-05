@@ -290,7 +290,7 @@ func ParseExact(s string, scale int) (Decimal, error) {
 //
 //gocyclo:ignore
 func parseFint(s string, minScale int) (Decimal, error) {
-	pos := 0
+	var pos int
 	width := len(s)
 
 	// Sign
@@ -305,20 +305,22 @@ func parseFint(s string, minScale int) (Decimal, error) {
 		pos++
 	}
 
+	// Coefficient
+	var coef fint
+	var scale int
+	var hasCoef, ok bool
+
 	// Integer
-	coef := fint(0)
-	hascoef, ok := false, false
 	for pos < width && s[pos] >= '0' && s[pos] <= '9' {
 		coef, ok = coef.fsa(1, s[pos]-'0')
 		if !ok {
 			return Decimal{}, errDecimalOverflow
 		}
-		hascoef = true
 		pos++
+		hasCoef = true
 	}
 
 	// Fraction
-	scale := 0
 	if pos < width && s[pos] == '.' {
 		pos++
 		for pos < width && s[pos] >= '0' && s[pos] <= '9' {
@@ -326,16 +328,16 @@ func parseFint(s string, minScale int) (Decimal, error) {
 			if !ok {
 				return Decimal{}, errDecimalOverflow
 			}
-			hascoef = true
-			scale++
 			pos++
+			scale++
+			hasCoef = true
 		}
 	}
 
 	if pos != width {
 		return Decimal{}, fmt.Errorf("invalid character %q: %w", s[pos], errInvalidDecimal)
 	}
-	if !hascoef {
+	if !hasCoef {
 		return Decimal{}, fmt.Errorf("no coefficient: %w", errInvalidDecimal)
 	}
 	return newFromFint(neg, coef, scale, minScale)
@@ -346,7 +348,7 @@ func parseFint(s string, minScale int) (Decimal, error) {
 //
 //gocyclo:ignore
 func parseBint(s string, minScale int) (Decimal, error) {
-	pos := 0
+	var pos int
 	width := len(s)
 
 	// Sign
@@ -361,35 +363,63 @@ func parseBint(s string, minScale int) (Decimal, error) {
 		pos++
 	}
 
-	// Integer
-	coef := getBint()
-	defer putBint(coef)
-	coef.setFint(0)
-	hascoef := false
-	for pos < width && s[pos] >= '0' && s[pos] <= '9' {
-		coef.fsa(coef, 1, fint(s[pos]-'0'))
-		hascoef = true
-		pos++
-	}
+	// Coefficient
+	bcoef := getBint()
+	defer putBint(bcoef)
+	bcoef.setFint(0)
+	var fcoef fint
+	var shift, scale int
+	var hasCoef, ok bool
 
-	// Fraction
-	scale := 0
-	if pos < width && s[pos] == '.' {
+	// Algorithm:
+	// 	1. Add as many digits as possible to the uint64 coefficient (fast).
+	// 	2. Once the uint64 coefficient has reached its maximum value,
+	//     add it to the big.Int coefficient (slow).
+	// 	3. Repeat until all digits are processed.
+
+	// Integer
+	for pos < width && s[pos] >= '0' && s[pos] <= '9' {
+		fcoef, ok = fcoef.fsa(1, s[pos]-'0')
+		if !ok {
+			return Decimal{}, errDecimalOverflow // Should never happen
+		}
 		pos++
-		for pos < width && s[pos] >= '0' && s[pos] <= '9' {
-			coef.fsa(coef, 1, fint(s[pos]-'0'))
-			hascoef = true
-			scale++
-			pos++
+		shift++
+		hasCoef = true
+		if fcoef.hasPrec(MaxPrec) {
+			bcoef.fsa(bcoef, shift, fcoef)
+			fcoef, shift = 0, 0
 		}
 	}
 
-	// Exponent
-	exp := 0
-	eneg, hasexp, hasesym := false, false, false
-	if pos < width && (s[pos] == 'e' || s[pos] == 'E') {
-		hasesym = true
+	// Fraction
+	if pos < width && s[pos] == '.' {
 		pos++
+		for pos < width && s[pos] >= '0' && s[pos] <= '9' {
+			fcoef, ok = fcoef.fsa(1, s[pos]-'0')
+			if !ok {
+				return Decimal{}, errDecimalOverflow // Should never happen
+			}
+			pos++
+			scale++
+			shift++
+			hasCoef = true
+			if fcoef.hasPrec(MaxPrec) {
+				bcoef.fsa(bcoef, shift, fcoef)
+				fcoef, shift = 0, 0
+			}
+		}
+	}
+	if shift > 0 {
+		bcoef.fsa(bcoef, shift, fcoef)
+	}
+
+	// Exponent
+	var exp int
+	var eneg, hasExp, hasE bool
+	if pos < width && (s[pos] == 'e' || s[pos] == 'E') {
+		pos++
+		hasE = true
 		// Sign
 		switch {
 		case pos == width:
@@ -406,18 +436,18 @@ func parseBint(s string, minScale int) (Decimal, error) {
 			if exp > 330 {
 				return Decimal{}, errInvalidDecimal
 			}
-			hasexp = true
 			pos++
+			hasExp = true
 		}
 	}
 
 	if pos != width {
 		return Decimal{}, fmt.Errorf("invalid character %q: %w", s[pos], errInvalidDecimal)
 	}
-	if !hascoef {
+	if !hasCoef {
 		return Decimal{}, fmt.Errorf("no coefficient: %w", errInvalidDecimal)
 	}
-	if hasesym && !hasexp {
+	if hasE && !hasExp {
 		return Decimal{}, fmt.Errorf("no exponent: %w", errInvalidDecimal)
 	}
 
@@ -427,7 +457,7 @@ func parseBint(s string, minScale int) (Decimal, error) {
 		scale = scale - exp
 	}
 
-	return newFromBint(neg, coef, scale, minScale)
+	return newFromBint(neg, bcoef, scale, minScale)
 }
 
 // MustParse is like [Parse] but panics if the string cannot be parsed.
@@ -1114,6 +1144,7 @@ func (d Decimal) mulBint(e Decimal, minScale int) (Decimal, error) {
 	dcoef := getBint()
 	defer putBint(dcoef)
 	dcoef.setFint(d.coef)
+
 	ecoef := getBint()
 	defer putBint(ecoef)
 	ecoef.setFint(e.coef)
