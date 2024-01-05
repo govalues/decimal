@@ -9,9 +9,9 @@ import (
 type fint uint64
 
 // maxFint is a maximum value of fint.
-const maxFint = fint(9_999_999_999_999_999_999)
+const maxFint = 9_999_999_999_999_999_999
 
-// pow10 is a cache of powers of 10.
+// pow10 is a cache of powers of 10, where pow10[x] = 10^x.
 var pow10 = [...]fint{
 	1,                          // 10^0
 	10,                         // 10^1
@@ -83,8 +83,6 @@ func (x fint) dist(y fint) fint {
 func (x fint) lsh(shift int) (z fint, ok bool) {
 	// Special cases
 	switch {
-	case x == 0:
-		return 0, true
 	case shift <= 0:
 		return x, true
 	case shift == 1 && x < maxFint/10: // to speed up common case
@@ -97,13 +95,13 @@ func (x fint) lsh(shift int) (z fint, ok bool) {
 	return x.mul(y)
 }
 
-// fsa (Fused Shift and Addition) calculates x * 10^shift + y and checks overflow.
-func (x fint) fsa(shift int, y byte) (z fint, ok bool) {
+// fsa (Fused Shift and Addition) calculates x * 10^shift + b and checks overflow.
+func (x fint) fsa(shift int, b byte) (z fint, ok bool) {
 	z, ok = x.lsh(shift)
 	if !ok {
 		return 0, false
 	}
-	z, ok = z.add(fint(y))
+	z, ok = z.add(fint(b))
 	if !ok {
 		return 0, false
 	}
@@ -205,22 +203,25 @@ func (x fint) ntz() int {
 }
 
 // hasPrec returns true if x has given number of digits or more.
-// hasPrec assumes that 0 has zero digits.
-// x.hasPrec() is significantly faster than (x.prec() >= prec).
+// hasPrec assumes that 0 has no digits.
+//
+// x.hasPrec(p) is significantly faster than x.prec() >= p.
 func (x fint) hasPrec(prec int) bool {
+	// Special cases
 	switch {
 	case prec < 1:
 		return true
 	case prec > len(pow10):
 		return false
 	}
+	// General case
 	return x >= pow10[prec-1]
 }
 
 // bint (Big INTeger) is a wrapper around big.Int.
 type bint big.Int
 
-// bpow10 is a cache of powers of 10.
+// bpow10 is a cache of powers of 10, where bpow10[x] = 10^x.
 var bpow10 = [...]*bint{
 	newBintFromPow10(0),
 	newBintFromPow10(1),
@@ -458,6 +459,16 @@ func (z *bint) fsa(x *bint, shift int, f fint) {
 // rshDown (Right Shift) calculates z = x / 10^shift and rounds
 // result towards zero.
 func (z *bint) rshDown(x *bint, shift int) {
+	// Special cases
+	switch {
+	case x.sign() == 0:
+		z.setFint(0)
+		return
+	case shift <= 0:
+		z.setBint(x)
+		return
+	}
+	// General case
 	var y *bint
 	if shift < len(bpow10) {
 		y = bpow10[shift]
@@ -483,6 +494,8 @@ func (z *bint) rshHalfEven(x *bint, shift int) {
 	}
 	// General case
 	var y, r *bint
+	r = getBint()
+	defer putBint(r)
 	if shift < len(bpow10) {
 		y = bpow10[shift]
 	} else {
@@ -490,8 +503,6 @@ func (z *bint) rshHalfEven(x *bint, shift int) {
 		defer putBint(y)
 		y.pow10(shift)
 	}
-	r = getBint()
-	defer putBint(r)
 	z.quoRem(x, y, r)
 	r.dbl(r) // r = r * 2
 	switch y.cmp(r) {
@@ -509,8 +520,8 @@ func (z *bint) rshHalfEven(x *bint, shift int) {
 // prec assumes that 0 has no digits.
 // If z is negative, the result is unpredictable.
 //
-// z.prec() provides a more efficient approach than len(z.string())
-// when dealing with decimals having less than len(bpow10) digits.
+// z.prec() is significantly faster than len(z.string()),
+// if z has less than len(bpow10) digits.
 func (z *bint) prec() int {
 	// Special case
 	if z.cmp(bpow10[len(bpow10)-1]) > 0 {
@@ -533,8 +544,8 @@ func (z *bint) prec() int {
 // hasPrec assumes that 0 has no digits.
 // If *big.Int is negative, the result is unpredictable.
 //
-// z.hasPrec() provides a more efficient approach than (z.prec() >= prec)
-// when dealing with decimals having less than len(bpow10) digits.
+// z.hasPrec(p) is significantly faster than z.prec() >= p,
+// if z has no more than len(bpow10) digits.
 func (z *bint) hasPrec(prec int) bool {
 	// Special cases
 	switch {

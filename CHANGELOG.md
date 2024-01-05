@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.21] - 2024-01-05
+
+### Changed
+
+- Optimized parsing performance for long strings.
+- Improved documentation.
+
 ## [0.1.20] - 2024-01-01
 
 ### Changed

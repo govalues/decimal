@@ -283,6 +283,8 @@ func TestParse(t *testing.T) {
 			{"0.123456789012345678901234567890", false, 1234567890123456789, 19},
 			{"0.12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678", false, 1234567890123456789, 19},
 			// exponential notation
+			{"0e9", false, 0, 0},
+			{"0e-9", false, 0, 9},
 			{"1.23e-12", false, 123, 14},
 			{"1.23e-5", false, 123, 7},
 			{"1.23e-4", false, 123, 6},
@@ -342,36 +344,68 @@ func TestParse(t *testing.T) {
 			s     string
 			scale int
 		}{
-			"missing digits 1": {"", 0},
-			"missing digits 2": {"+", 0},
-			"missing digits 3": {"-", 0},
-			"missing digits 4": {".", 0},
-			"invalid char 1":   {"+e", 0},
-			"invalid char 2":   {"-e", 0},
-			"invalid char 3":   {"e+", 0},
-			"invalid char 4":   {"e-", 0},
-			"invalid char 5":   {"e.0", 0},
-			"missing exp 1":    {"0.e", 0},
-			"missing exp 2":    {"1e", 0},
-			"exp range 1":      {"1e-331", 0},
-			"exp range 2":      {"1e331", 0},
-			"double sign 1":    {"++1", 0},
-			"double sign 2":    {"--1", 0},
-			"double sign 3":    {"+-1", 0},
-			"double sign 4":    {"-+1", 0},
-			"double dot 1":     {"1.00.00", 0},
-			"special value 1":  {"Inf", 0},
-			"special value 2":  {"-infinity", 0},
-			"special value 3":  {"NaN", 0},
-			"overflow 1":       {"-10000000000000000000", 0},
-			"overflow 2":       {"-99999999999999999990", 0},
-			"overflow 3":       {"10000000000000000000", 0},
-			"overflow 4":       {"99999999999999999990", 0},
-			"overflow 5":       {"123456789012345678901234567890123456789", 0},
-			"many digits":      {"0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", 0},
-			"scale 1":          {"0", MaxScale + 1},
-			"scale 2":          {"10", MaxScale},
-			"scale 3":          {"100", MaxScale - 1},
+			"missing digits 1":  {"", 0},
+			"missing digits 2":  {"+", 0},
+			"missing digits 3":  {"-", 0},
+			"missing digits 4":  {".", 0},
+			"missing digits 5":  {"..", 0},
+			"missing digits 6":  {".e", 0},
+			"missing digits 7":  {"e1", 0},
+			"missing digits 8":  {"+e", 0},
+			"missing digits 9":  {"-e", 0},
+			"missing digits 10": {"e+", 0},
+			"missing digits 11": {"e-", 0},
+			"missing digits 12": {"e.0", 0},
+			"missing digits 13": {"e+1", 0},
+			"missing digits 14": {"e-1", 0},
+			"invalid char 1":    {"a", 0},
+			"invalid char 2":    {"1a", 0},
+			"invalid char 3":    {"1.a", 0},
+			"invalid char 4":    {" 1", 0},
+			"invalid char 5":    {" +1", 0},
+			"invalid char 6":    {" -1", 0},
+			"invalid char 7":    {"1 ", 0},
+			"invalid char 8":    {"+1 ", 0},
+			"invalid char 9":    {"-1 ", 0},
+			"invalid char 10":   {" 1 ", 0},
+			"invalid char 11":   {" + 1", 0},
+			"invalid char 12":   {" - 1", 0},
+			"invalid char 13":   {"1,1", 0},
+			"missing exp 1":     {"0.e", 0},
+			"missing exp 2":     {"1e", 0},
+			"missing exp 3":     {"1ee", 0},
+			"exp range 1":       {"1e-331", 0},
+			"exp range 2":       {"1e331", 0},
+			"double sign 1":     {"++1", 0},
+			"double sign 2":     {"--1", 0},
+			"double sign 3":     {"+-1", 0},
+			"double sign 4":     {"-+1", 0},
+			"double sign 5":     {"-1.-1", 0},
+			"double sign 6":     {"1.1-", 0},
+			"double sign 7":     {"1e--1", 0},
+			"double sign 8":     {"1e-+1", 0},
+			"double sign 9":     {"1e+-1", 0},
+			"double sign 10":    {"1e++1", 0},
+			"double sign 11":    {"1e-1-", 0},
+			"double sign 12":    {"-1-", 0},
+			"double dot 1":      {"1.1.1", 0},
+			"double dot 2":      {"..1", 0},
+			"double dot 3":      {"1..1", 0},
+			"double dot 4":      {".1.1", 0},
+			"double dot 5":      {"1.1.", 0},
+			"double dot 6":      {".1.", 0},
+			"special value 1":   {"Inf", 0},
+			"special value 2":   {"-infinity", 0},
+			"special value 3":   {"NaN", 0},
+			"overflow 1":        {"-10000000000000000000", 0},
+			"overflow 2":        {"-99999999999999999990", 0},
+			"overflow 3":        {"10000000000000000000", 0},
+			"overflow 4":        {"99999999999999999990", 0},
+			"overflow 5":        {"123456789012345678901234567890123456789", 0},
+			"many digits":       {"0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", 0},
+			"scale 1":           {"0", MaxScale + 1},
+			"scale 2":           {"10", MaxScale},
+			"scale 3":           {"100", MaxScale - 1},
 		}
 		for name, tt := range tests {
 			t.Run(name, func(t *testing.T) {
@@ -2747,7 +2781,7 @@ func FuzzParse(f *testing.F) {
 	)
 }
 
-func FuzzDecimalString(f *testing.F) {
+func FuzzDecimal_String(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -2774,7 +2808,7 @@ func FuzzDecimalString(f *testing.F) {
 	)
 }
 
-func FuzzDecimalInt64(f *testing.F) {
+func FuzzDecimal_Int64(f *testing.F) {
 	for _, d := range corpus {
 		for s := 0; s <= MaxScale; s++ {
 			f.Add(d.neg, d.scale, d.coef, s)
@@ -2810,7 +2844,7 @@ func FuzzDecimalInt64(f *testing.F) {
 	)
 }
 
-func FuzzDecimalFloat64(f *testing.F) {
+func FuzzDecimal_Float64(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -2844,7 +2878,7 @@ func FuzzDecimalFloat64(f *testing.F) {
 	)
 }
 
-func FuzzDecimalMul(f *testing.F) {
+func FuzzDecimal_Mul(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -2892,7 +2926,7 @@ func FuzzDecimalMul(f *testing.F) {
 	)
 }
 
-func FuzzDecimalFMA(f *testing.F) {
+func FuzzDecimal_FMA(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for _, g := range corpus {
@@ -2947,7 +2981,7 @@ func FuzzDecimalFMA(f *testing.F) {
 	)
 }
 
-func FuzzDecimalAdd(f *testing.F) {
+func FuzzDecimal_Add(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -2995,7 +3029,7 @@ func FuzzDecimalAdd(f *testing.F) {
 	)
 }
 
-func FuzzDecimalQuo(f *testing.F) {
+func FuzzDecimal_Quo(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -3050,7 +3084,7 @@ func FuzzDecimalQuo(f *testing.F) {
 	)
 }
 
-func FuzzDecimalQuoRem(f *testing.F) {
+func FuzzDecimal_QuoRem(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -3108,7 +3142,7 @@ func FuzzDecimalQuoRem(f *testing.F) {
 	)
 }
 
-func FuzzDecimalCmp(f *testing.F) {
+func FuzzDecimal_Cmp(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef)
@@ -3148,7 +3182,7 @@ func FuzzDecimalCmp(f *testing.F) {
 	)
 }
 
-func FuzzDecimalCmpSub(f *testing.F) {
+func FuzzDecimal_CmpSub(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef)
@@ -3188,7 +3222,7 @@ func FuzzDecimalCmpSub(f *testing.F) {
 	)
 }
 
-func FuzzDecimalNew(f *testing.F) {
+func FuzzDecimal_New(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
