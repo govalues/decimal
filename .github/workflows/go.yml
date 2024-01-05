@@ -57,32 +57,32 @@ jobs:
       run: go test -fuzztime 20s -fuzz ^FuzzParse$ github.com/govalues/decimal
 
     - name: Run fuzzing for string conversion
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimalString$ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_String$ github.com/govalues/decimal
 
     - name: Run fuzzing for float64 conversion
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimalFloat64$ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Float64$ github.com/govalues/decimal
 
     - name: Run fuzzing for int64 conversion
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimalInt64$ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Int64$ github.com/govalues/decimal
 
     - name: Run fuzzing for addition
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimalAdd$ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Add$ github.com/govalues/decimal
 
     - name: Run fuzzing for multiplication
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimalMul$ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Mul$ github.com/govalues/decimal
 
     - name: Run fuzzing for fused multiply-addition
-      run: go test -fuzztime 60s -fuzz ^FuzzDecimalFMA$ github.com/govalues/decimal
+      run: go test -fuzztime 60s -fuzz ^FuzzDecimal_FMA$ github.com/govalues/decimal
 
     - name: Run fuzzing for division
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimalQuo$ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Quo$ github.com/govalues/decimal
 
     - name: Run fuzzing for integer division and remainder
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimalQuoRem$ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_QuoRem$ github.com/govalues/decimal
 
     - name: Run fuzzing for comparison
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimalCmp$ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Cmp$ github.com/govalues/decimal
 
     - name: Run fuzzing for comparison and subtraction
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimalCmpSub$ github.com/govalues/decimal
+      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_CmpSub$ github.com/govalues/decimal
  

@@ -2747,7 +2747,7 @@ func FuzzParse(f *testing.F) {
 	)
 }
 
-func FuzzDecimalString(f *testing.F) {
+func FuzzDecimal_String(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -2774,7 +2774,7 @@ func FuzzDecimalString(f *testing.F) {
 	)
 }
 
-func FuzzDecimalInt64(f *testing.F) {
+func FuzzDecimal_Int64(f *testing.F) {
 	for _, d := range corpus {
 		for s := 0; s <= MaxScale; s++ {
 			f.Add(d.neg, d.scale, d.coef, s)
@@ -2810,7 +2810,7 @@ func FuzzDecimalInt64(f *testing.F) {
 	)
 }
 
-func FuzzDecimalFloat64(f *testing.F) {
+func FuzzDecimal_Float64(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -2844,7 +2844,7 @@ func FuzzDecimalFloat64(f *testing.F) {
 	)
 }
 
-func FuzzDecimalMul(f *testing.F) {
+func FuzzDecimal_Mul(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -2892,7 +2892,7 @@ func FuzzDecimalMul(f *testing.F) {
 	)
 }
 
-func FuzzDecimalFMA(f *testing.F) {
+func FuzzDecimal_FMA(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for _, g := range corpus {
@@ -2947,7 +2947,7 @@ func FuzzDecimalFMA(f *testing.F) {
 	)
 }
 
-func FuzzDecimalAdd(f *testing.F) {
+func FuzzDecimal_Add(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -2995,7 +2995,7 @@ func FuzzDecimalAdd(f *testing.F) {
 	)
 }
 
-func FuzzDecimalQuo(f *testing.F) {
+func FuzzDecimal_Quo(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -3050,7 +3050,7 @@ func FuzzDecimalQuo(f *testing.F) {
 	)
 }
 
-func FuzzDecimalQuoRem(f *testing.F) {
+func FuzzDecimal_QuoRem(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			for s := 0; s <= MaxScale; s++ {
@@ -3108,7 +3108,7 @@ func FuzzDecimalQuoRem(f *testing.F) {
 	)
 }
 
-func FuzzDecimalCmp(f *testing.F) {
+func FuzzDecimal_Cmp(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef)
@@ -3148,7 +3148,7 @@ func FuzzDecimalCmp(f *testing.F) {
 	)
 }
 
-func FuzzDecimalCmpSub(f *testing.F) {
+func FuzzDecimal_CmpSub(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef)
@@ -3188,7 +3188,7 @@ func FuzzDecimalCmpSub(f *testing.F) {
 	)
 }
 
-func FuzzDecimalNew(f *testing.F) {
+func FuzzDecimal_New(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
