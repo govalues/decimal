@@ -13,17 +13,18 @@ This package is designed specifically for use in transactional financial systems
 
 ## Features
 
-- **Optimized Performance** - Utilizes `uint64` for coefficients, reducing heap
-  allocations and memory consumption.
 - **Immutability** - Once a decimal is set, it remains unchanged.
   This immutability ensures safe concurrent access across goroutines.
-- **Banker's Rounding** - Methods use half-to-even rounding, also known as "banker's rounding",
-  which minimizes cumulative rounding errors commonly seen in financial calculations.
+- **Banker's Rounding** - Methods use half-to-even rounding, also known as
+  "banker's rounding", which minimizes cumulative rounding errors commonly seen
+  in financial calculations.
 - **No Panics** - All methods are designed to be panic-free.
   Instead of potentially crashing your application, they return errors for issues
   such as overflow or division by zero.
-- **Simple String Representation** - Decimals are represented without the complexities
-  of scientific or engineering notation.
+- **Zero Heap Allocation** - Methods are optimized to avoid heap allocations,
+  reducing the impact on the garbage collector during arithmetic operations.
+- **Simple String Representation** - Decimals are represented in a strightforward
+  format avoiding the complexities of scientific or engineering notations.
 - **Correctness** - Fuzz testing is used to [cross-validate] arithmetic operations
   against the [cockroachdb/apd] and [shopspring/decimal] packages.
 
@@ -130,9 +131,9 @@ cpu: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx
 | Pow         | 1.1^60               |    1.04µ |                    3.42µ |                      15.76µ |                +227.72% |              +1408.43% |
 | Pow         | 1.01^600             |    3.57µ |                   10.70µ |                      35.70µ |                +200.11% |               +901.23% |
 | Pow         | 1.001^6000           |    6.19µ |                   20.72µ |                     634.41µ |                +234.65% |             +10148.95% |
-| Parse       | 1                    |   18.10n |                   85.66n |                     136.75n |                +373.23% |               +655.52% |
-| Parse       | 123.456              |   54.16n |                  197.25n |                     238.45n |                +264.20% |               +340.27% |
-| Parse       | 123456789.1234567890 |  111.00n |                  238.20n |                     498.00n |                +114.59% |               +348.65% |
+| Parse       | 1                    |   16.98n |                   80.98n |                     132.40n |                +376.91% |               +679.74% |
+| Parse       | 123.456              |   50.80n |                  195.05n |                     246.10n |                +283.92% |               +384.40% |
+| Parse       | 123456789.1234567890 |   96.36n |                  239.60n |                     516.20n |                +148.64% |               +435.67% |
 | String      | 1                    |    5.70n |                   20.89n |                     203.25n |                +266.24% |              +3464.23% |
 | String      | 123.456              |   42.74n |                   75.71n |                     235.65n |                 +77.14% |               +451.36% |
 | String      | 123456789.1234567890 |   72.34n |                  215.90n |                     331.20n |                +198.47% |               +357.87% |

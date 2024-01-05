@@ -374,7 +374,7 @@ func parseBint(s string, minScale int) (Decimal, error) {
 	// Algorithm:
 	// 	1. Add as many digits as possible to the uint64 coefficient (fast).
 	// 	2. Once the uint64 coefficient has reached its maximum value,
-	//     add it to the big.Int coefficient (slow).
+	//     add it to the *big.Int coefficient (slow).
 	// 	3. Repeat until all digits are processed.
 
 	// Integer
@@ -655,7 +655,8 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 	if verb == 'k' || verb == 'K' {
 		d, err = d.Mul(Hundred)
 		if err != nil {
-			panic(fmt.Errorf("formatting percent: %w", err)) // this panic is handled inside the fmt package
+			// This panic is handled inside the fmt package.
+			panic(fmt.Errorf("formatting percent: %w", err))
 		}
 	}
 

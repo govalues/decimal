@@ -9,9 +9,9 @@ import (
 type fint uint64
 
 // maxFint is a maximum value of fint.
-const maxFint = fint(9_999_999_999_999_999_999)
+const maxFint = 9_999_999_999_999_999_999
 
-// pow10 is a cache of powers of 10.
+// pow10 is a cache of powers of 10, where pow10[x] = 10^x.
 var pow10 = [...]fint{
 	1,                          // 10^0
 	10,                         // 10^1
@@ -83,8 +83,6 @@ func (x fint) dist(y fint) fint {
 func (x fint) lsh(shift int) (z fint, ok bool) {
 	// Special cases
 	switch {
-	case x == 0:
-		return 0, true
 	case shift <= 0:
 		return x, true
 	case shift == 1 && x < maxFint/10: // to speed up common case
@@ -207,21 +205,23 @@ func (x fint) ntz() int {
 // hasPrec returns true if x has given number of digits or more.
 // hasPrec assumes that 0 has no digits.
 //
-// x.hasPrec(p) is significantly faster than (x.prec() >= p).
+// x.hasPrec(p) is significantly faster than x.prec() >= p.
 func (x fint) hasPrec(prec int) bool {
+	// Special cases
 	switch {
 	case prec < 1:
 		return true
 	case prec > len(pow10):
 		return false
 	}
+	// General case
 	return x >= pow10[prec-1]
 }
 
 // bint (Big INTeger) is a wrapper around big.Int.
 type bint big.Int
 
-// bpow10 is a cache of powers of 10.
+// bpow10 is a cache of powers of 10, where bpow10[x] = 10^x.
 var bpow10 = [...]*bint{
 	newBintFromPow10(0),
 	newBintFromPow10(1),
@@ -520,8 +520,8 @@ func (z *bint) rshHalfEven(x *bint, shift int) {
 // prec assumes that 0 has no digits.
 // If z is negative, the result is unpredictable.
 //
-// z.prec() provides a more efficient approach than len(z.string())
-// when dealing with decimals having less than len(bpow10) digits.
+// z.prec() is significantly faster than len(z.string()),
+// if z has less than len(bpow10) digits.
 func (z *bint) prec() int {
 	// Special case
 	if z.cmp(bpow10[len(bpow10)-1]) > 0 {
@@ -544,8 +544,8 @@ func (z *bint) prec() int {
 // hasPrec assumes that 0 has no digits.
 // If *big.Int is negative, the result is unpredictable.
 //
-// z.hasPrec(p) is significantly faster than (z.prec() >= p)
-// if z has less than len(bpow10) digits.
+// z.hasPrec(p) is significantly faster than z.prec() >= p,
+// if z has no more than len(bpow10) digits.
 func (z *bint) hasPrec(prec int) bool {
 	// Special cases
 	switch {
