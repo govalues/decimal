@@ -172,4 +172,4 @@ This ensures alignment with the project's objectives and roadmap.
 [cockroachdb/apd]: https://pkg.go.dev/github.com/cockroachdb/apd
 [shopspring/decimal]: https://pkg.go.dev/github.com/shopspring/decimal
 [specification]: https://speleotrove.com/decimal/telcoSpec.html
-[cross-validate]: https://github.com/govalues/decimal-tests/blob/main/decimal_fuzz_test.go
+[cross-validate]: https://github.com/govalues/decimal-tests
