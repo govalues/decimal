@@ -67,7 +67,7 @@ func main() {
     fmt.Println(d.Pow(2))          // 8 ^ 2
 
     fmt.Println(d.Quo(e))          // 8 ÷ 12.5
-    fmt.Println(d.QuoRem(e))       // 8 div 12.5, 8 mod 12.5
+    fmt.Println(d.QuoRem(e))       // 8 ÷ 12.5, 8 mod 12.5
     fmt.Println(d.Inv())           // 1 ÷ 8
 
     // Rounding to 2 decimal places
