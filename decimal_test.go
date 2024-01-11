@@ -676,6 +676,28 @@ func TestDecimal_Scan(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("error", func(t *testing.T) {
+		tests := []any{
+			int8(123),
+			int16(123),
+			int32(123),
+			int(123),
+			uint8(123),
+			uint16(123),
+			uint32(123),
+			uint(123),
+			uint64(123),
+			float32(123),
+		}
+		for _, tt := range tests {
+			got := Decimal{}
+			err := got.Scan(tt)
+			if err == nil {
+				t.Errorf("Scan(%v) did not fail", tt)
+			}
+		}
+	})
 }
 
 func TestDecimal_Format(t *testing.T) {
