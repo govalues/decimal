@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.22] - 2024-01-11
+
+### Changed
+
+- Supported MySQL in `Decimal.Scan`.
+- Added examples for XML marshaling.
+
 ## [0.1.21] - 2024-01-05
 
 ### Changed
