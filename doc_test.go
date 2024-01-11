@@ -2,6 +2,7 @@ package decimal_test
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"strings"
 
@@ -283,24 +284,44 @@ func ExampleDecimal_Int64() {
 	// 5 6700 true
 }
 
-type Value struct {
+type Object struct {
 	Number decimal.Decimal `json:"number"`
 }
 
-func ExampleDecimal_UnmarshalText() {
-	var v Value
+func ExampleDecimal_UnmarshalText_json() {
+	var v Object
 	_ = json.Unmarshal([]byte(`{"number": "5.67"}`), &v)
 	fmt.Println(v)
 	// Output: {5.67}
 }
 
-func ExampleDecimal_MarshalText() {
-	v := Value{
+func ExampleDecimal_MarshalText_json() {
+	v := Object{
 		Number: decimal.MustParse("5.67"),
 	}
 	b, _ := json.Marshal(v)
 	fmt.Println(string(b))
 	// Output: {"number":"5.67"}
+}
+
+type Entity struct {
+	Number decimal.Decimal `xml:"Number"`
+}
+
+func ExampleDecimal_UnmarshalText_xml() {
+	var v Entity
+	_ = xml.Unmarshal([]byte(`<Entity><Number>5.67</Number></Entity>`), &v)
+	fmt.Println(v)
+	// Output: {5.67}
+}
+
+func ExampleDecimal_MarshalText_xml() {
+	v := Entity{
+		Number: decimal.MustParse("5.67"),
+	}
+	b, _ := xml.Marshal(v)
+	fmt.Println(string(b))
+	// Output: <Entity><Number>5.67</Number></Entity>
 }
 
 func ExampleDecimal_Scan() {

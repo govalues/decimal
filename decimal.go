@@ -611,6 +611,8 @@ func (d *Decimal) Scan(value any) error {
 	switch value := value.(type) {
 	case string:
 		*d, err = Parse(value)
+	case []byte:
+		*d, err = Parse(string(value))
 	case int64:
 		*d, err = New(value, 0)
 	case float64:

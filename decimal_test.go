@@ -656,12 +656,45 @@ func TestDecimal_Scan(t *testing.T) {
 	})
 
 	t.Run("[]byte", func(t *testing.T) {
-		tests := []string{"0"}
+		tests := []struct {
+			b    []byte
+			want string
+		}{
+			{[]byte("-9223372036854775808"), "-9223372036854775808"},
+			{[]byte("0"), "0"},
+			{[]byte("9223372036854775807"), "9223372036854775807"},
+		}
 		for _, tt := range tests {
 			got := Decimal{}
-			err := got.Scan([]byte(tt))
+			err := got.Scan(tt.b)
+			if err != nil {
+				t.Errorf("Scan(%v) failed: %v", tt.b, err)
+			}
+			want := MustParse(tt.want)
+			if got != want {
+				t.Errorf("Scan(%v) = %v, want %v", tt.b, got, want)
+			}
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		tests := []any{
+			int8(123),
+			int16(123),
+			int32(123),
+			int(123),
+			uint8(123),
+			uint16(123),
+			uint32(123),
+			uint(123),
+			uint64(123),
+			float32(123),
+		}
+		for _, tt := range tests {
+			got := Decimal{}
+			err := got.Scan(tt)
 			if err == nil {
-				t.Errorf("Scan(%q) did not fail", tt)
+				t.Errorf("Scan(%v) did not fail", tt)
 			}
 		}
 	})
