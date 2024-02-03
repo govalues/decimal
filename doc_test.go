@@ -288,40 +288,94 @@ type Object struct {
 	Number decimal.Decimal `json:"number"`
 }
 
-func ExampleDecimal_UnmarshalText_json() {
+func unmarshalJSON(s string) (Object, error) {
 	var v Object
-	_ = json.Unmarshal([]byte(`{"number": "5.67"}`), &v)
-	fmt.Println(v)
-	// Output: {5.67}
+	err := json.Unmarshal([]byte(s), &v)
+	return v, err
+}
+
+func marshalJSON(s string) (string, error) {
+	d, err := decimal.Parse(s)
+	if err != nil {
+		return "", err
+	}
+	v := Object{Number: d}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func ExampleDecimal_UnmarshalText_json() {
+	fmt.Println(unmarshalJSON(`{"number":"5.67"}`))
+	fmt.Println(unmarshalJSON(`{"number":"-5.67"}`))
+	fmt.Println(unmarshalJSON(`{"number":"5.67e-5"}`))
+	fmt.Println(unmarshalJSON(`{"number":"5.67e5"}`))
+	// Output:
+	// {5.67} <nil>
+	// {-5.67} <nil>
+	// {0.0000567} <nil>
+	// {567000} <nil>
 }
 
 func ExampleDecimal_MarshalText_json() {
-	v := Object{
-		Number: decimal.MustParse("5.67"),
-	}
-	b, _ := json.Marshal(v)
-	fmt.Println(string(b))
-	// Output: {"number":"5.67"}
+	fmt.Println(marshalJSON("5.67"))
+	fmt.Println(marshalJSON("-5.67"))
+	fmt.Println(marshalJSON("5.67e-5"))
+	fmt.Println(marshalJSON("5.67e5"))
+	// Output:
+	// {"number":"5.67"} <nil>
+	// {"number":"-5.67"} <nil>
+	// {"number":"0.0000567"} <nil>
+	// {"number":"567000"} <nil>
 }
 
 type Entity struct {
 	Number decimal.Decimal `xml:"Number"`
 }
 
-func ExampleDecimal_UnmarshalText_xml() {
+func unmarshalXML(s string) (Entity, error) {
 	var v Entity
-	_ = xml.Unmarshal([]byte(`<Entity><Number>5.67</Number></Entity>`), &v)
-	fmt.Println(v)
-	// Output: {5.67}
+	err := xml.Unmarshal([]byte(s), &v)
+	return v, err
+}
+
+func marshalXML(s string) (string, error) {
+	d, err := decimal.Parse(s)
+	if err != nil {
+		return "", err
+	}
+	v := Entity{Number: d}
+	b, err := xml.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func ExampleDecimal_UnmarshalText_xml() {
+	fmt.Println(unmarshalXML(`<Entity><Number>5.67</Number></Entity>`))
+	fmt.Println(unmarshalXML(`<Entity><Number>-5.67</Number></Entity>`))
+	fmt.Println(unmarshalXML(`<Entity><Number>5.67e-5</Number></Entity>`))
+	fmt.Println(unmarshalXML(`<Entity><Number>5.67e5</Number></Entity>`))
+	// Output:
+	// {5.67} <nil>
+	// {-5.67} <nil>
+	// {0.0000567} <nil>
+	// {567000} <nil>
 }
 
 func ExampleDecimal_MarshalText_xml() {
-	v := Entity{
-		Number: decimal.MustParse("5.67"),
-	}
-	b, _ := xml.Marshal(v)
-	fmt.Println(string(b))
-	// Output: <Entity><Number>5.67</Number></Entity>
+	fmt.Println(marshalXML("5.67"))
+	fmt.Println(marshalXML("-5.67"))
+	fmt.Println(marshalXML("5.67e-5"))
+	fmt.Println(marshalXML("5.67e5"))
+	// Output:
+	// <Entity><Number>5.67</Number></Entity> <nil>
+	// <Entity><Number>-5.67</Number></Entity> <nil>
+	// <Entity><Number>0.0000567</Number></Entity> <nil>
+	// <Entity><Number>567000</Number></Entity> <nil>
 }
 
 func ExampleDecimal_Scan() {
