@@ -1,11 +1,11 @@
 /*
 Package decimal implements immutable decimal floating-point numbers.
-It is specifically designed for use in transactional financial systems.
-This package adheres to the principles set by [ANSI X3.274-1996 (section 7.4)].
+It is specifically designed for transactional financial systems
+and adheres to the principles set by [ANSI X3.274-1996].
 
 # Representation
 
-[Decimal] is a struct with three fields:
+Decimal is a struct with three fields:
 
   - Sign: a boolean indicating whether the decimal is negative.
   - Coefficient: an unsigned integer representing the numeric value of the decimal
@@ -19,13 +19,13 @@ This package adheres to the principles set by [ANSI X3.274-1996 (section 7.4)].
     For example, a scale of 2 corresponds to an exponent of -2.
     The range of allowed values for the scale is from 0 to 19.
 
-The numerical value of a decimal is calculated as:
+The numerical value of a decimal is calculated as follows:
 
-  - -Coefficient / 10^Scale, if Sign is true.
-  - Coefficient / 10^Scale, if Sign is false.
+  - -Coefficient / 10^Scale if Sign is true.
+  - Coefficient / 10^Scale if Sign is false.
 
-In this approach, the same numeric value can have multiple representations.
-For example, 1, 1.0, and 1.00 all represent the same value but have different
+This approach allows the same numeric value to have multiple representations,
+for example, 1, 1.0, and 1.00, which represent the same value but have different
 scales and coefficients.
 
 # Constraints
@@ -39,48 +39,34 @@ Here are the ranges for frequently used scales:
 	| US Dollar    | 2     |    -99,999,999,999,999,999.99        |    99,999,999,999,999,999.99        |
 	| Omani Rial   | 3     |     -9,999,999,999,999,999.999       |     9,999,999,999,999,999.999       |
 	| Bitcoin      | 8     |            -99,999,999,999.99999999  |            99,999,999,999.99999999  |
-	| Etherium     | 9     |             -9,999,999,999.999999999 |             9,999,999,999.999999999 |
+	| Ethereum     | 9     |             -9,999,999,999.999999999 |             9,999,999,999.999999999 |
 
 [Subnormal numbers] are not supported to ensure peak performance.
 Consequently, decimals between -0.00000000000000000005 and 0.00000000000000000005
-inclusive are rounded to 0.
+inclusive, are rounded to 0.
 
 Special values such as [NaN], [Infinity], or [negative zeros] are not supported.
 This ensures that arithmetic operations always produce either valid decimals
 or errors.
 
-# Conversions
-
-The package provides methods for converting decimals:
-
-  - from/to string:
-    [Parse], [Decimal.String], [Decimal.Format].
-  - from/to float64:
-    [NewFromFloat64], [Decimal.Float64].
-  - from/to int64:
-    [New], [NewFromInt64], [Decimal.Int64].
-
-See the documentation for each method for more details.
-
 # Operations
 
-Each arithmetic operation is carried out in two steps:
+Each arithmetic operation occurs in two steps:
 
  1. The operation is initially performed using uint64 arithmetic.
     If no overflow occurs, the exact result is immediately returned.
-    If an overflow does occur, the operation proceeds to step 2.
+    If overflow occurs, the operation proceeds to step 2.
 
  2. The operation is repeated with increased precision using [big.Int] arithmetic.
     The result is then rounded to 19 digits.
     If no significant digits are lost during rounding, the inexact result is returned.
     If any significant digit is lost, an overflow error is returned.
 
-Step 1 was introduced to improve performance by avoiding heap allocation
-for [big.Int] and the complexities associated with [big.Int] arithmetic.
-It is expected that, in transactional financial systems, the majority of
-arithmetic operations will successfully compute an exact result during step 1.
+Step 1 improves performance by avoiding performance impact associated with [big.Int] arithmetic.
+It is expected that, in transactional financial systems, most arithmetic operations
+will compute an exact result during step 1.
 
-The following rules are used to determine the significance of digits during step 2:
+The following rules determine the significance of digits during step 2:
 
   - [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.FMA], [Decimal.Pow],
     [Decimal.Quo], [Decimal.QuoRem], [Decimal.Inv]:
@@ -96,7 +82,7 @@ The following rules are used to determine the significance of digits during step
 
 Unlike many other decimal libraries, this package does not provide
 an explicit context.
-Instead, the context is implicit and can be approximately equated to
+Instead, the [context] is implicit and can be approximately equated to
 the following settings:
 
 	| Attribute               | Value                                           |
@@ -114,10 +100,10 @@ subnormal numbers.
 
 # Rounding
 
-Implicit rounding is applied when a result exceeds 19 digits.
-In such cases, the result is rounded to 19 digits using half-to-even rounding.
+Implicit rounding is applied when a result exceeds 19 digits,
+rounding it to 19 digits using half-to-even rounding.
 This method ensures that rounding errors are evenly distributed between rounding up
-and rounding down.
+and down.
 
 For all arithmetic operations, except for [Decimal.Pow] and [Decimal.PowExact],
 the result is the one that would be obtained by computing the exact mathematical
@@ -128,13 +114,13 @@ off by 1 unit in the last place.
 In addition to implicit rounding, the package provides several methods for
 explicit rounding:
 
-  - half-to-even rounding:
+  - Half-to-even rounding:
     [Decimal.Round], [Decimal.Quantize], [Decimal.Rescale].
-  - rounding towards positive infinity:
+  - Rounding towards positive infinity:
     [Decimal.Ceil].
-  - rounding towards negative infinity:
+  - Rounding towards negative infinity:
     [Decimal.Floor].
-  - rounding towards zero:
+  - Rounding towards zero:
     [Decimal.Trunc].
 
 See the documentation for each method for more details.
@@ -164,11 +150,107 @@ Errors are not returned in the following cases:
     If the result is a decimal between -0.00000000000000000005 and
     0.00000000000000000005 inclusive, it will be rounded to 0.
 
+# Conversions
+
+JSON.
+
+The package integrates seamlessly with standard [encoding/json] through
+the implementation of [encoding.TextMarshaller] and [encoding.TextUnmarshaler]
+interfaces.
+Here is an example structure:
+
+	type Object struct {
+	  Number decimal.Decimal `json:"some_number"`
+	  // Other fields...
+	}
+
+The package marshals decimals as quoted strings,
+ensuring the preservation of the exact numerical value.
+Here is an example OpenAPI schema:
+
+	Decimal:
+	  type: string
+	  format: decimal
+	  pattern: '^(\-|\+)?((\d+(\.\d*)?)|(\.\d+))$'
+
+XML.
+
+The package integrates with standard [encoding/xml] via the implementation of
+[encoding.TextMarshaller] and [encoding.TextUnmarshaler] interfaces.
+Here is an example structure:
+
+	type Entity struct {
+	  Number decimal.Decimal `xml:"SomeNumber"`
+	  // Other fields...
+	}
+
+"xs:decimal" type can be used to represent decimals in XML schema.
+It is possible to impose restrictions on the length of the decimals
+using the following type:
+
+	<xs:simpleType name="Decimal">
+	  <xs:restriction base="xs:decimal">
+	    <xs:totalDigits value="19"/>
+	  </xs:restriction>
+	</xs:simpleType>
+
+Protocol Buffers.
+
+Protocol Buffers can represent decimals as numerical strings,
+preserving trailing zeros. To convert between numerical strings and decimals,
+use [Parse] and [Decimal.String].
+Here is an example proto definition:
+
+	message Decimal {
+	  string value = 1;
+	}
+
+Alternatively, decimals can be represented as two integers:
+one for the integer part and another for the fractional part.
+For conversion between this format and decimals, use [NewFromInt64] and
+[Decimal.Int64] with a scale argument equal to "9".
+Here is an example proto definition:
+
+	message Decimal {
+	  int64 units = 1;
+	  int32 nanos = 2;
+	}
+
+SQL.
+
+The package integrates with the standard [database/sql] via the implementation
+of [sql.Scanner] and [driver.Valuer] interfaces.
+To ensure accurate preservation of decimal scales, it is essential to choose
+appropriate column types:
+
+	| Database   | Type                          |
+	| ---------- | ----------------------------- |
+	| PostgreSQL | DECIMAL                       |
+	| SQLite     | TEXT                          |
+	| MySQL      | DECIMAL(19, d) or VARCHAR(22) |
+
+Here are the reasons:
+
+  - For PostgreSQL, always use DECIMAL without precision or scale specifications
+    (avoid DECIMAL(p) or DECIMAL(p, s)).
+    DECIMAL accurately preserves the scale of decimals.
+
+  - In SQLite, prefer TEXT, since DECIMAL is just an alias for floating-point numbers.
+    TEXT preserves the scale of decimals.
+
+  - In MySQL, use DECIMAL(19, d), as DECIMAL is just an alias for DECIMAL(10, 0).
+    The disadvantage of this format is that MySQL automatically rescales all decimals:
+    values with a scale exceeding "d" are rounded (using half away from zero),
+    while those with a lower scale are padded with trailing zeros.
+    To avoid automatic rescaling, consider using VARCHAR(22).
+
 [Infinity]: https://en.wikipedia.org/wiki/Infinity#Computing
 [Subnormal numbers]: https://en.wikipedia.org/wiki/Subnormal_number
 [NaN]: https://en.wikipedia.org/wiki/NaN
-[ANSI X3.274-1996 (section 7.4)]: https://speleotrove.com/decimal/dax3274.html
+[ANSI X3.274-1996]: https://speleotrove.com/decimal/dax3274.html
 [big.Int]: https://pkg.go.dev/math/big#Int
+[sql.Scanner]: https://pkg.go.dev/database/sql#Scanner
 [negative zeros]: https://en.wikipedia.org/wiki/Signed_zero
+[context]: https://speleotrove.com/decimal/damodel.html
 */
 package decimal
