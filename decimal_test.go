@@ -1,6 +1,9 @@
 package decimal
 
 import (
+	"database/sql"
+	"database/sql/driver"
+	"encoding"
 	"errors"
 	"fmt"
 	"math"
@@ -17,12 +20,42 @@ func TestDecimal_ZeroValue(t *testing.T) {
 	}
 }
 
-func TestDecimal_Sizeof(t *testing.T) {
+func TestDecimal_Size(t *testing.T) {
 	d := Decimal{}
 	got := unsafe.Sizeof(d)
 	want := uintptr(16)
 	if got != want {
 		t.Errorf("unsafe.Sizeof(%q) = %v, want %v", d, got, want)
+	}
+}
+
+func TestDecimal_Interfaces(t *testing.T) {
+	var d any = Decimal{}
+	_, ok := d.(fmt.Stringer)
+	if !ok {
+		t.Errorf("%T does not implement fmt.Stringer", d)
+	}
+	_, ok = d.(fmt.Formatter)
+	if !ok {
+		t.Errorf("%T does not implement fmt.Formatter", d)
+	}
+	_, ok = d.(encoding.TextMarshaler)
+	if !ok {
+		t.Errorf("%T does not implement encoding.TextMarshaler", d)
+	}
+	_, ok = d.(driver.Valuer)
+	if !ok {
+		t.Errorf("%T does not implement driver.Valuer", d)
+	}
+
+	d = &Decimal{}
+	_, ok = d.(encoding.TextUnmarshaler)
+	if !ok {
+		t.Errorf("%T does not implement encoding.TextUnmarshaler", d)
+	}
+	_, ok = d.(sql.Scanner)
+	if !ok {
+		t.Errorf("%T does not implement sql.Scanner", d)
 	}
 }
 
@@ -615,8 +648,17 @@ func TestDecimal_Scan(t *testing.T) {
 			want string
 		}{
 			{1e-20, "0.0000000000000000000"},
+			{1e-19, "0.0000000000000000001"},
 			{1e-5, "0.00001"},
+			{1e-4, "0.0001"},
+			{1e-3, "0.001"},
+			{1e-2, "0.01"},
+			{1e-1, "0.1"},
 			{1e0, "1"},
+			{1e1, "10"},
+			{1e2, "100"},
+			{1e3, "1000"},
+			{1e4, "10000"},
 			{1e5, "100000"},
 			{1e18, "1000000000000000000"},
 		}
@@ -625,6 +667,7 @@ func TestDecimal_Scan(t *testing.T) {
 			err := got.Scan(tt.f)
 			if err != nil {
 				t.Errorf("Scan(1.23456) failed: %v", err)
+				continue
 			}
 			want := MustParse(tt.want)
 			if got != want {
@@ -647,6 +690,7 @@ func TestDecimal_Scan(t *testing.T) {
 			err := got.Scan(tt.i)
 			if err != nil {
 				t.Errorf("Scan(%v) failed: %v", tt.i, err)
+				continue
 			}
 			want := MustParse(tt.want)
 			if got != want {
@@ -669,6 +713,7 @@ func TestDecimal_Scan(t *testing.T) {
 			err := got.Scan(tt.b)
 			if err != nil {
 				t.Errorf("Scan(%v) failed: %v", tt.b, err)
+				continue
 			}
 			want := MustParse(tt.want)
 			if got != want {
@@ -689,6 +734,7 @@ func TestDecimal_Scan(t *testing.T) {
 			uint(123),
 			uint64(123),
 			float32(123),
+			nil,
 		}
 		for _, tt := range tests {
 			got := Decimal{}
@@ -702,7 +748,7 @@ func TestDecimal_Scan(t *testing.T) {
 
 func TestDecimal_Format(t *testing.T) {
 	tests := []struct {
-		decimal, format, want string
+		d, format, want string
 	}{
 		// %T verb
 		{"12.34", "%T", "decimal.Decimal"},
@@ -808,10 +854,10 @@ func TestDecimal_Format(t *testing.T) {
 		{"9999999999999999999", "%k", "%!k(PANIC=Format method: formatting percent: computing [9999999999999999999 * 100]: the integer part of a decimal.Decimal can have at most 19 digits, but it has 21 digits: decimal overflow)"},
 	}
 	for _, tt := range tests {
-		d := MustParse(tt.decimal)
+		d := MustParse(tt.d)
 		got := fmt.Sprintf(tt.format, d)
 		if got != tt.want {
-			t.Errorf("fmt.Sprintf(%q, %q) = %q, want %q", tt.format, tt.decimal, got, tt.want)
+			t.Errorf("fmt.Sprintf(%q, %q) = %q, want %q", tt.format, tt.d, got, tt.want)
 		}
 	}
 }
@@ -2742,6 +2788,20 @@ func TestDecimal_Clamp(t *testing.T) {
 	})
 }
 
+func TestNullDecimal_Interfaces(t *testing.T) {
+	var n any = NullDecimal{}
+	_, ok := n.(driver.Valuer)
+	if !ok {
+		t.Errorf("%T does not implement driver.Valuer", n)
+	}
+
+	n = &NullDecimal{}
+	_, ok = n.(sql.Scanner)
+	if !ok {
+		t.Errorf("%T does not implement sql.Scanner", n)
+	}
+}
+
 func TestNullDecimal_Scan(t *testing.T) {
 	t.Run("[]byte", func(t *testing.T) {
 		tests := []string{"."}
@@ -3267,7 +3327,7 @@ func FuzzDecimal_New(f *testing.F) {
 				t.Skip()
 				return
 			}
-			want, err := newFromBint(neg, newBintFromFint(fint(coef)), scale, 0)
+			want, err := newFromBint(neg, newBintFromUint64(coef), scale, 0)
 			if err != nil {
 				t.Errorf("newDecimalFromBint(%v, %v, %v, 0) failed: %v", neg, coef, scale, err)
 				return
@@ -3279,9 +3339,9 @@ func FuzzDecimal_New(f *testing.F) {
 	)
 }
 
-// newBintFromFint converts uint64 to *big.Int.
-func newBintFromFint(f fint) *bint {
+// newBintFromUint64 converts uint64 to *big.Int.
+func newBintFromUint64(u uint64) *bint {
 	z := new(big.Int)
-	z.SetUint64(uint64(f))
+	z.SetUint64(u)
 	return (*bint)(z)
 }

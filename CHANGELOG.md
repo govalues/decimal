@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.23] - 2024-03-04
+
+### Changed
+
+- Improved documentation.
+
 ## [0.1.22] - 2024-01-11
 
 ### Changed

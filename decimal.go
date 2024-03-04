@@ -617,8 +617,10 @@ func (d *Decimal) Scan(value any) error {
 		*d, err = New(value, 0)
 	case float64:
 		*d, err = NewFromFloat64(value)
+	case nil:
+		err = fmt.Errorf("converting to %T: nil is not supported", d)
 	default:
-		err = fmt.Errorf("failed to convert from %T to %T", value, Decimal{})
+		err = fmt.Errorf("converting from %T to %T: type %T is not supported", value, d, value)
 	}
 	return err
 }
