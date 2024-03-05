@@ -152,39 +152,39 @@ Errors are not returned in the following cases:
 
 # Conversions
 
-JSON.
+A. JSON
 
 The package integrates seamlessly with standard [encoding/json] through
 the implementation of [encoding.TextMarshaller] and [encoding.TextUnmarshaler]
 interfaces.
-Here is an example structure:
+Below is an example structure:
 
 	type Object struct {
 	  Number decimal.Decimal `json:"some_number"`
 	  // Other fields...
 	}
 
-The package marshals decimals as quoted strings,
+This package marshals decimals as quoted strings,
 ensuring the preservation of the exact numerical value.
-Here is an example OpenAPI schema:
+Below is an example OpenAPI schema:
 
 	Decimal:
 	  type: string
 	  format: decimal
 	  pattern: '^(\-|\+)?((\d+(\.\d*)?)|(\.\d+))$'
 
-XML.
+B. XML
 
 The package integrates with standard [encoding/xml] via the implementation of
 [encoding.TextMarshaller] and [encoding.TextUnmarshaler] interfaces.
-Here is an example structure:
+Below is an example structure:
 
 	type Entity struct {
 	  Number decimal.Decimal `xml:"SomeNumber"`
 	  // Other fields...
 	}
 
-"xs:decimal" type can be used to represent decimals in XML schema.
+"xs:decimal" type can represent decimals in XML schema.
 It is possible to impose restrictions on the length of the decimals
 using the following type:
 
@@ -194,12 +194,11 @@ using the following type:
 	  </xs:restriction>
 	</xs:simpleType>
 
-Protocol Buffers.
+C. Protocol Buffers
 
-Protocol Buffers can represent decimals as numerical strings,
-preserving trailing zeros. To convert between numerical strings and decimals,
-use [Parse] and [Decimal.String].
-Here is an example proto definition:
+Protocol Buffers can represent decimals as numerical strings, preserving trailing zeros.
+To convert between numerical strings and decimals, use [Parse] and [Decimal.String].
+Below is an example proto definition:
 
 	message Decimal {
 	  string value = 1;
@@ -208,15 +207,15 @@ Here is an example proto definition:
 Alternatively, decimals can be represented as two integers:
 one for the integer part and another for the fractional part.
 For conversion between this format and decimals, use [NewFromInt64] and
-[Decimal.Int64] with a scale argument equal to "9".
-Here is an example proto definition:
+[Decimal.Int64] with a scale argument of "9".
+Below is an example proto definition:
 
 	message Decimal {
 	  int64 units = 1;
 	  int32 nanos = 2;
 	}
 
-SQL.
+D. SQL
 
 The package integrates with the standard [database/sql] via the implementation
 of [sql.Scanner] and [driver.Valuer] interfaces.
@@ -229,20 +228,21 @@ appropriate column types:
 	| SQLite     | TEXT                          |
 	| MySQL      | DECIMAL(19, d) or VARCHAR(22) |
 
-Here are the reasons:
+Below are the reasons for these preferences:
 
-  - For PostgreSQL, always use DECIMAL without precision or scale specifications
-    (avoid DECIMAL(p) or DECIMAL(p, s)).
+  - PostgreSQL: Always use DECIMAL without precision or scale specifications,
+    that is, avoid DECIMAL(p) or DECIMAL(p, s).
     DECIMAL accurately preserves the scale of decimals.
 
-  - In SQLite, prefer TEXT, since DECIMAL is just an alias for floating-point numbers.
-    TEXT preserves the scale of decimals.
+  - SQLite: Prefer TEXT, since DECIMAL is just an alias for floating-point numbers.
+    TEXT accurately preserves the scale of decimals.
 
-  - In MySQL, use DECIMAL(19, d), as DECIMAL is just an alias for DECIMAL(10, 0).
-    The disadvantage of this format is that MySQL automatically rescales all decimals:
-    values with a scale exceeding "d" are rounded (using half away from zero),
-    while those with a lower scale are padded with trailing zeros.
-    To avoid automatic rescaling, consider using VARCHAR(22).
+  - MySQL: Use DECIMAL(19, d), as DECIMAL is merely an alias for DECIMAL(10, 0).
+    The downside of this format is that MySQL automatically rescales all decimals:
+    it rounds values with a scale exceeding "d" (using half away from zero) and
+    pads those with a scale less than "d" with trailing zeros.
+    To prevent automatic rescaling, consider using VARCHAR(22), which accurately
+    preserves the scale of decimals.
 
 [Infinity]: https://en.wikipedia.org/wiki/Infinity#Computing
 [Subnormal numbers]: https://en.wikipedia.org/wiki/Subnormal_number
