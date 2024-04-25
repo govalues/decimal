@@ -1925,6 +1925,15 @@ func (d Decimal) Clamp(min, max Decimal) (Decimal, error) {
 	return d, nil
 }
 
+// GOB
+func (d Decimal) GobEncode() ([]byte, error) {
+	return d.MarshalText()
+}
+
+func (d *Decimal) GobDecode(data []byte) error {
+	return d.UnmarshalText(data)
+}
+
 // NullDecimal represents a decimal that can be null.
 // Its zero value is null.
 // NullDecimal is not thread-safe.
