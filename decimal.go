@@ -602,6 +602,16 @@ func (d Decimal) MarshalText() ([]byte, error) {
 	return []byte(d.String()), nil
 }
 
+// GobDecode implements the gob.GobDecoder interface for gob serialization.
+func (d *Decimal) GobDecode(data []byte) error {
+	return d.UnmarshalText(data)
+}
+
+// GobEncode implements the gob.GobEncoder interface for gob serialization.
+func (d Decimal) GobEncode() ([]byte, error) {
+	return d.MarshalText()
+}
+
 // Scan implements the [sql.Scanner] interface.
 // See also constructor [Parse].
 //
@@ -1923,15 +1933,6 @@ func (d Decimal) Clamp(min, max Decimal) (Decimal, error) {
 		return max, nil
 	}
 	return d, nil
-}
-
-// GOB
-func (d Decimal) GobEncode() ([]byte, error) {
-	return d.MarshalText()
-}
-
-func (d *Decimal) GobDecode(data []byte) error {
-	return d.UnmarshalText(data)
 }
 
 // NullDecimal represents a decimal that can be null.

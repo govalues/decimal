@@ -1,9 +1,11 @@
 package decimal
 
 import (
+	"bytes"
 	"database/sql"
 	"database/sql/driver"
 	"encoding"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"math"
@@ -43,6 +45,10 @@ func TestDecimal_Interfaces(t *testing.T) {
 	if !ok {
 		t.Errorf("%T does not implement encoding.TextMarshaler", d)
 	}
+	_, ok = d.(gob.GobEncoder)
+	if !ok {
+		t.Errorf("%T does not implement gob.GobEncode", d)
+	}
 	_, ok = d.(driver.Valuer)
 	if !ok {
 		t.Errorf("%T does not implement driver.Valuer", d)
@@ -53,9 +59,35 @@ func TestDecimal_Interfaces(t *testing.T) {
 	if !ok {
 		t.Errorf("%T does not implement encoding.TextUnmarshaler", d)
 	}
+	_, ok = d.(gob.GobDecoder)
+	if !ok {
+		t.Errorf("%T does not implement gob.GobDecode", d)
+	}
 	_, ok = d.(sql.Scanner)
 	if !ok {
 		t.Errorf("%T does not implement sql.Scanner", d)
+	}
+}
+
+func TestDecimal_Gob(t *testing.T) {
+	d := Decimal{coef: 123456, scale: 3}
+	want := []byte("123.456")
+
+	got, err := d.GobEncode()
+	if err != nil {
+		t.Errorf("GobEncode() failed: %v", err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Errorf("GobEncode() = %v, want %v", got, want)
+	}
+
+	newD := &Decimal{}
+	err = newD.GobDecode(got)
+	if err != nil {
+		t.Errorf("GobDecode() failed: %v", err)
+	}
+	if newD.Cmp(d) != 0 {
+		t.Errorf("GobDecode() did not decode correctly, got %q, want %q", newD, d)
 	}
 }
 
