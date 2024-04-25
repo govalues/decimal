@@ -69,9 +69,10 @@ func TestDecimal_Interfaces(t *testing.T) {
 	}
 }
 
-func TestDecimal_Gob(t *testing.T) {
-	d := Decimal{coef: 123456, scale: 3}
-	want := []byte("123.456")
+func TestDecimal_GobEncode(t *testing.T) {
+	s := "123.456"
+	d := MustParse(s)
+	want := []byte(s)
 
 	got, err := d.GobEncode()
 	if err != nil {
@@ -81,13 +82,45 @@ func TestDecimal_Gob(t *testing.T) {
 		t.Errorf("GobEncode() = %v, want %v", got, want)
 	}
 
-	newD := &Decimal{}
-	err = newD.GobDecode(got)
+}
+
+func TestDecimal_GobDecode(t *testing.T) {
+	s := "123.456"
+	got := &Decimal{}
+	want := MustParse(s)
+
+	err := got.GobDecode([]byte(s))
 	if err != nil {
 		t.Errorf("GobDecode() failed: %v", err)
 	}
-	if newD.Cmp(d) != 0 {
-		t.Errorf("GobDecode() did not decode correctly, got %q, want %q", newD, d)
+	if got.Cmp(want) != 0 {
+		t.Errorf("GobDecode() did not decode correctly, got %q, want %q", got, want)
+	}
+}
+
+func TestDecimal_GobEnd2End(t *testing.T) {
+	type Parent struct {
+		D Decimal
+	}
+
+	s := "123.456"
+	original := Parent{D: MustParse(s)}
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(original)
+	if err != nil {
+		t.Errorf("gob.Encode() failed: %v", err)
+	}
+
+	dec := gob.NewDecoder(&buf)
+	var decoded Parent
+	err = dec.Decode(&decoded)
+	if err != nil {
+		t.Errorf("gob.Decode() failed: %v", err)
+	}
+	if decoded.D.Cmp(original.D) != 0 {
+		t.Errorf("gob did not encode/decode correctly, decoded %q, original %q", decoded, original)
 	}
 }
 
