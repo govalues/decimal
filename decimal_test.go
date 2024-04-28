@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"encoding"
 	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -45,6 +46,10 @@ func TestDecimal_Interfaces(t *testing.T) {
 	if !ok {
 		t.Errorf("%T does not implement encoding.TextMarshaler", d)
 	}
+	_, ok = d.(json.Marshaler)
+	if !ok {
+		t.Errorf("%T does not implement json.Marshaler", d)
+	}
 	_, ok = d.(gob.GobEncoder)
 	if !ok {
 		t.Errorf("%T does not implement gob.GobEncode", d)
@@ -58,6 +63,10 @@ func TestDecimal_Interfaces(t *testing.T) {
 	_, ok = d.(encoding.TextUnmarshaler)
 	if !ok {
 		t.Errorf("%T does not implement encoding.TextUnmarshaler", d)
+	}
+	_, ok = d.(json.Unmarshaler)
+	if !ok {
+		t.Errorf("%T does not implement json.Unmarshaler", d)
 	}
 	_, ok = d.(gob.GobDecoder)
 	if !ok {

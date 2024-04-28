@@ -602,6 +602,40 @@ func (d Decimal) MarshalText() ([]byte, error) {
 	return []byte(d.String()), nil
 }
 
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (d *Decimal) UnmarshalJSON(s []byte) error {
+	var err error
+	unquoted := string(s[1 : len(s)-1])
+	*d, err = Parse(unquoted)
+	return err
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (d Decimal) MarshalJSON() ([]byte, error) {
+	return []byte("\"" + d.String() + "\""), nil
+}
+
+// // UnmarshalJSON implements the json.Unmarshaler interface.
+// func (d *Decimal) UnmarshalJSON(data []byte) error {
+// 	var float64Val float64
+// 	err := json.Unmarshal(data, &float64Val)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	*d, err = NewFromFloat64(float64Val)
+// 	return err
+// }
+
+// // MarshalJSON implements the json.Marshaler interface.
+// func (d Decimal) MarshalJSON() ([]byte, error) {
+// 	float64Val, ok := d.Float64()
+// 	if !ok {
+// 		return []byte(nil), fmt.Errorf("converting %v to JSON: %w", d, errInvalidDecimal)
+// 	}
+// 	return json.Marshal(float64Val)
+// }
+
 // GobDecode implements the gob.GobDecoder interface for gob serialization.
 func (d *Decimal) GobDecode(data []byte) error {
 	return d.UnmarshalText(data)
