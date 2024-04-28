@@ -1149,6 +1149,15 @@ func (d Decimal) Mul(e Decimal) (Decimal, error) {
 	return d.MulExact(e, 0)
 }
 
+// MustMul is like [Mul] but panics if computing error.
+func (d Decimal) MustMul(e Decimal) Decimal {
+	f, err := d.Mul(e)
+	if err != nil {
+		panic(fmt.Sprintf("MustMul(%v) failed: %v", d, err))
+	}
+	return f
+}
+
 // MulExact is similar to [Decimal.Mul], but it allows you to specify the number
 // of digits after the decimal point that should be considered significant.
 // If any of the significant digits are lost during rounding, the method will
@@ -1389,6 +1398,15 @@ func (d Decimal) Add(e Decimal) (Decimal, error) {
 	return d.AddExact(e, 0)
 }
 
+// MustAdd is like [Add] but panics if computing error.
+func (d Decimal) MustAdd(e Decimal) Decimal {
+	f, err := d.Add(e)
+	if err != nil {
+		panic(fmt.Sprintf("MustAdd(%v) failed: %v", d, err))
+	}
+	return f
+}
+
 // AddExact is similar to [Decimal.Add], but it allows you to specify the number of digits
 // after the decimal point that should be considered significant.
 // If any of the significant digits are lost during rounding, the method will return an error.
@@ -1499,6 +1517,15 @@ func (d Decimal) addBint(e Decimal, minScale int) (Decimal, error) {
 // Sub returns an error if the integer part of the result has more than [MaxPrec] digits.
 func (d Decimal) Sub(e Decimal) (Decimal, error) {
 	return d.SubExact(e, 0)
+}
+
+// MustSub is like [Sub] but panics if computing error.
+func (d Decimal) MustSub(e Decimal) Decimal {
+	f, err := d.Sub(e)
+	if err != nil {
+		panic(fmt.Sprintf("MustSub(%v) failed: %v", d, err))
+	}
+	return f
 }
 
 // SubExact is similar to [Decimal.Sub], but it allows you to specify the number of digits
@@ -1652,6 +1679,15 @@ func (d Decimal) fmaBint(e, f Decimal, minScale int) (Decimal, error) {
 //   - the integer part of the result has more than [MaxPrec] digits.
 func (d Decimal) Quo(e Decimal) (Decimal, error) {
 	return d.QuoExact(e, 0)
+}
+
+// MustQuo is like [Quo] but panics if computing error.
+func (d Decimal) MustQuo(e Decimal) Decimal {
+	f, err := d.Quo(e)
+	if err != nil {
+		panic(fmt.Sprintf("MustQuo(%v) failed: %v", d, err))
+	}
+	return f
 }
 
 // QuoExact is similar to [Decimal.Quo], but it allows you to specify the number of digits
