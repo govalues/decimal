@@ -98,7 +98,7 @@ For examples related to financial calculations, see the `money` package
 
 Comparison with other popular packages:
 
-| Feature          | govalues     | [cockroachdb/apd] v3.2.1 | [shopspring/decimal] v1.3.1 |
+| Feature          | govalues     | [cockroachdb/apd] v3.2.1 | [shopspring/decimal] v1.4.0 |
 | ---------------- | ------------ | ------------------------ | --------------------------- |
 | Speed            | High         | Medium                   | Low[^reason]                |
 | Mutability       | Immutable    | Mutable[^reason]         | Immutable                   |
@@ -122,39 +122,24 @@ pkg: github.com/govalues/decimal-tests
 cpu: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx 
 ```
 
-| Test Case   | Expression           | govalues | [cockroachdb/apd] v3.2.1 | [shopspring/decimal] v1.3.1 | govalues vs cockroachdb | govalues vs shopspring |
+| Test Case   | Expression           | govalues | [cockroachdb/apd] v3.2.1 | [shopspring/decimal] v1.4.0 | govalues vs cockroachdb | govalues vs shopspring |
 | ----------- | -------------------- | -------: | -----------------------: | --------------------------: | ----------------------: | ---------------------: |
-| Add         | 5 + 6                |   16.89n |                   80.96n |                     140.50n |                +379.48% |               +732.10% |
-| Mul         | 2 * 3                |   16.85n |                   58.14n |                     145.30n |                +245.15% |               +762.57% |
-| QuoExact    | 2 ÷ 4                |   66.00n |                  193.25n |                     619.15n |                +192.78% |               +838.03% |
-| QuoInfinite | 2 ÷ 3                |  453.30n |                  961.00n |                    2767.00n |                +112.01% |               +510.41% |
-| Pow         | 1.1^60               |    1.04µ |                    3.42µ |                      15.76µ |                +227.72% |              +1408.43% |
-| Pow         | 1.01^600             |    3.57µ |                   10.70µ |                      35.70µ |                +200.11% |               +901.23% |
-| Pow         | 1.001^6000           |    6.19µ |                   20.72µ |                     634.41µ |                +234.65% |             +10148.95% |
-| Parse       | 1                    |   16.98n |                   80.98n |                     132.40n |                +376.91% |               +679.74% |
-| Parse       | 123.456              |   50.80n |                  195.05n |                     246.10n |                +283.92% |               +384.40% |
-| Parse       | 123456789.1234567890 |   96.36n |                  239.60n |                     516.20n |                +148.64% |               +435.67% |
-| String      | 1                    |    5.70n |                   20.89n |                     203.25n |                +266.24% |              +3464.23% |
-| String      | 123.456              |   42.74n |                   75.71n |                     235.65n |                 +77.14% |               +451.36% |
-| String      | 123456789.1234567890 |   72.34n |                  215.90n |                     331.20n |                +198.47% |               +357.87% |
-| Telco       | see [specification]  |  148.00n |                 1075.00n |                    4010.50n |                +626.35% |              +2609.80% |
+| Add         | 5 + 6                |   16.06n |                   74.88n |                     140.90n |                +366.22% |               +777.33% |
+| Mul         | 2 * 3                |   16.93n |                   62.20n |                     146.00n |                +267.40% |               +762.37% |
+| QuoExact    | 2 ÷ 4                |   59.52n |                  176.95n |                     657.40n |                +197.30% |              +1004.50% |
+| QuoInfinite | 2 ÷ 3                |  391.60n |                   976.8n |                    2962.50n |                +149.39% |               +656.42% |
+| Pow         | 1.1^60               |  950.90n |                 3302.50n |                    4599.50n |                +247.32% |               +383.73% |
+| Pow         | 1.01^600             |    3.45µ |                   10.67µ |                      18.67µ |                +209.04% |               +440.89% |
+| Pow         | 1.001^6000           |    5.94µ |                   20.50µ |                     722.22µ |                +244.88% |             +12052.44% |
+| Parse       | 1                    |   16.52n |                   76.30n |                     136.55n |                +362.00% |               +726.82% |
+| Parse       | 123.456              |   47.37n |                  176.90n |                     242.60n |                +273.44% |               +412.14% |
+| Parse       | 123456789.1234567890 |   85.49n |                  224.15n |                     497.95n |                +162.19% |               +482.47% |
+| String      | 1                    |    5.11n |                   19.57n |                     198.25n |                +283.21% |              +3783.07% |
+| String      | 123.456              |   35.78n |                   77.12n |                     228.85n |                +115.52% |               +539.51% |
+| String      | 123456789.1234567890 |   70.72n |                  239.10n |                     337.25n |                +238.12% |               +376.91% |
+| Telco       | see [specification]  |  137.00n |                  969.40n |                    3981.00n |                +607.33% |              +2804.78% |
 
 The benchmark results shown in the table are provided for informational purposes only and may vary depending on your specific use case.
-
-## Contributing
-
-Interested in contributing? Here's how to get started:
-
-1. Fork and clone the repository.
-1. Implement your changes.
-1. Write tests to cover your changes.
-1. Ensure all tests pass with `go test`.
-1. Commit and push to your fork.
-1. Open a pull request detailing your changes.
-
-**Note**: If you're considering significant changes, please open an issue first to
-discuss with the maintainers.
-This ensures alignment with the project's objectives and roadmap.
 
 [codecov]: https://codecov.io/gh/govalues/decimal
 [codecovb]: https://img.shields.io/codecov/c/github/govalues/decimal/main?color=brightcolor
