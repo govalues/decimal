@@ -26,7 +26,7 @@ const (
 
 var (
 	NegOne              = MustNew(-1, 0)                         // NegOne represents the decimal value of -1.
-	Zero                = MustNew(0, 0)                          // Zero represents the decimal value of 0.
+	Zero                = MustNew(0, 0)                          // Zero represents the decimal value of 0. For comparison purposes, use IsZero method.
 	One                 = MustNew(1, 0)                          // One represents the decimal value of 1.
 	Two                 = MustNew(2, 0)                          // Two represents the decimal value of 2.
 	Ten                 = MustNew(10, 0)                         // Ten represents the decimal value of 10.
@@ -845,19 +845,17 @@ func (d Decimal) Scale() int {
 	return int(d.scale)
 }
 
-// MinScale returns the smallest scale that the decimal can be rescaled to without rounding.
+// MinScale returns the smallest scale that the decimal can be rescaled to
+// without rounding.
 // See also method [Decimal.Trim].
 func (d Decimal) MinScale() int {
-	// Special case: no scale
-	if d.Scale() == MinScale || d.IsZero() {
+	// Special case: zero
+	if d.IsZero() {
 		return MinScale
 	}
 	// General case
-	z := d.coef.ntz()
-	if d.Scale() <= z {
-		return MinScale
-	}
-	return d.Scale() - z
+	dcoef := d.coef
+	return max(MinScale, d.Scale()-dcoef.ntz())
 }
 
 // IsInt returns true if there are no significant digits after the decimal point.
@@ -905,8 +903,9 @@ func (d Decimal) Round(scale int) Decimal {
 // the decimal point.
 // See also method [Decimal.Trim].
 //
-// Pad returns an error if the integer part of the result has more than
-// ([MaxPrec] - scale) digits.
+// Pad returns an error if:
+//   - the scale is greater than [MaxScale];
+//   - the integer part of the result has more than ([MaxPrec] - scale) digits.
 func (d Decimal) Pad(scale int) (Decimal, error) {
 	if scale > MaxScale {
 		return Decimal{}, fmt.Errorf("padding %v with zeros: %w", d, errScaleRange)
@@ -924,21 +923,21 @@ func (d Decimal) Pad(scale int) (Decimal, error) {
 
 // Rescale returns a decimal rounded or zero-padded to the given number of digits
 // after the decimal point.
+// If the given scale is negative, it is redefined to zero.
 // For financial calculations, the scale should be equal to or greater than
 // the scale of the currency.
 // See also methods [Decimal.Round], [Decimal.Pad].
 //
-// Rescale returns an overflow error if the integer part of the result has more
-// than ([MaxPrec] - scale) digits.
+// Rescale returns an error if:
+//   - the scale is greater than [MaxScale];
+//   - the integer part of the result has more than ([MaxPrec] - scale) digits.
 func (d Decimal) Rescale(scale int) (Decimal, error) {
-	if scale < MinScale || scale > MaxScale {
-		return Decimal{}, fmt.Errorf("rescaling %v: %w", d, errScaleRange)
-	}
-	switch {
-	case scale < d.Scale():
+	if scale <= d.Scale() {
 		return d.Round(scale), nil
-	case scale > d.Scale():
-		return d.Pad(scale)
+	}
+	d, err := d.Pad(scale)
+	if err != nil {
+		return Decimal{}, fmt.Errorf("rescaling %v: %w", d, err)
 	}
 	return d, nil
 }
@@ -983,10 +982,7 @@ func (d Decimal) Trunc(scale int) Decimal {
 // If the given scale is negative, it is redefined to zero.
 // See also method [Decimal.Pad].
 func (d Decimal) Trim(scale int) Decimal {
-	m := d.MinScale()
-	if scale < m {
-		scale = m
-	}
+	scale = max(scale, d.MinScale())
 	return d.Trunc(scale)
 }
 
@@ -1063,6 +1059,8 @@ func (d Decimal) CopySign(e Decimal) Decimal {
 //	-1 if d < 0
 //	 0 if d = 0
 //	+1 if d > 0
+//
+// See also methods [Decimal.IsPos], [Decimal.IsNeg], [Decimal.IsZero].
 func (d Decimal) Sign() int {
 	switch {
 	case d.neg:
@@ -1167,6 +1165,7 @@ func (d Decimal) mulBint(e Decimal, minScale int) (Decimal, error) {
 }
 
 // Pow returns the (possibly rounded) decimal raised to the given power.
+// If zero is raised to zero power then the result is one.
 //
 // Pow returns an error if:
 //   - the integer part of the result has more than [MaxPrec] digits;
@@ -1627,9 +1626,7 @@ func (d Decimal) QuoExact(e Decimal, scale int) (Decimal, error) {
 
 	// Special case: zero dividend
 	if d.IsZero() {
-		if t := d.Scale() - e.Scale(); scale < t {
-			scale = t
-		}
+		scale = max(scale, d.Scale()-e.Scale())
 		return newSafe(false, 0, scale)
 	}
 
@@ -1643,9 +1640,7 @@ func (d Decimal) QuoExact(e Decimal, scale int) (Decimal, error) {
 	}
 
 	// Preferred scale
-	if t := d.Scale() - e.Scale(); scale < t {
-		scale = t
-	}
+	scale = max(scale, d.Scale()-e.Scale())
 	f = f.Trim(scale)
 
 	return f, nil

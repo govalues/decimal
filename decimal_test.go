@@ -141,11 +141,13 @@ func TestNewFromInt64(t *testing.T) {
 			// Zeros
 			{0, 0, 0, "0"},
 			{0, 0, 19, "0"},
+
 			// Negatives
 			{-1, -1, 1, "-1.1"},
 			{-1, -1, 2, "-1.01"},
 			{-1, -1, 3, "-1.001"},
 			{-1, -1, 18, "-1.000000000000000001"},
+
 			// Positives
 			{1, 1, 1, "1.1"},
 			{1, 1, 2, "1.01"},
@@ -307,7 +309,8 @@ func TestParse(t *testing.T) {
 			{"999999999999999999.9", false, 9999999999999999999, 1},
 			{"99999999999999999.99", false, 9999999999999999999, 2},
 			{"0.9999999999999999999", false, 9999999999999999999, 19},
-			// rounding
+
+			// Rounding
 			{"0.00000000000000000000000000000000000000", false, 0, 19},
 			{"0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", false, 0, 19},
 			{"-0.00000000000000000000000000000000000001", false, 0, 19},
@@ -315,7 +318,8 @@ func TestParse(t *testing.T) {
 			{"-999999999999999999.99", true, 1000000000000000000, 0},
 			{"0.123456789012345678901234567890", false, 1234567890123456789, 19},
 			{"0.12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678", false, 1234567890123456789, 19},
-			// exponential notation
+
+			// Exponential notation
 			{"0e9", false, 0, 0},
 			{"0e-9", false, 0, 9},
 			{"1.23e-12", false, 123, 14},
@@ -494,16 +498,16 @@ func TestDecimal_String(t *testing.T) {
 			{false, maxCoef, 3, "9999999999999999.999"},
 			{false, maxCoef, 19, "0.9999999999999999999"},
 
-			// Exported Constants
-			{NegOne.neg, NegOne.coef, int(NegOne.scale), "-1"},
-			{Zero.neg, Zero.coef, int(Zero.scale), "0"},
-			{One.neg, One.coef, int(One.scale), "1"},
-			{Two.neg, Two.coef, int(Two.scale), "2"},
-			{Ten.neg, Ten.coef, int(Ten.scale), "10"},
-			{Hundred.neg, Hundred.coef, int(Hundred.scale), "100"},
-			{Thousand.neg, Thousand.coef, int(Thousand.scale), "1000"},
-			{E.neg, E.coef, int(E.scale), "2.718281828459045235"},
-			{Pi.neg, Pi.coef, int(Pi.scale), "3.141592653589793238"},
+			// Exported constants
+			{NegOne.neg, NegOne.coef, NegOne.Scale(), "-1"},
+			{Zero.neg, Zero.coef, Zero.Scale(), "0"},
+			{One.neg, One.coef, One.Scale(), "1"},
+			{Two.neg, Two.coef, Two.Scale(), "2"},
+			{Ten.neg, Ten.coef, Ten.Scale(), "10"},
+			{Hundred.neg, Hundred.coef, Hundred.Scale(), "100"},
+			{Thousand.neg, Thousand.coef, Thousand.Scale(), "1000"},
+			{E.neg, E.coef, E.Scale(), "2.718281828459045235"},
+			{Pi.neg, Pi.coef, Pi.Scale(), "3.141592653589793238"},
 		}
 		for _, tt := range tests {
 			d, err := newSafe(tt.neg, tt.coef, tt.scale)
@@ -752,6 +756,7 @@ func TestDecimal_Format(t *testing.T) {
 	}{
 		// %T verb
 		{"12.34", "%T", "decimal.Decimal"},
+
 		// %q verb
 		{"12.34", "%q", "\"12.34\""},
 		{"12.34", "%+q", "\"+12.34\""},
@@ -763,6 +768,7 @@ func TestDecimal_Format(t *testing.T) {
 		{"12.34", "%010q", "\"00012.34\""},
 		{"12.34", "%+10q", "  \"+12.34\""},
 		{"12.34", "%-10q", "\"12.34\"   "},
+
 		// %s verb
 		{"12.34", "%s", "12.34"},
 		{"12.34", "%+s", "+12.34"},
@@ -774,6 +780,7 @@ func TestDecimal_Format(t *testing.T) {
 		{"12.34", "%010s", "0000012.34"},
 		{"12.34", "%+10s", "    +12.34"},
 		{"12.34", "%-10s", "12.34     "},
+
 		// %v verb
 		{"12.34", "%v", "12.34"},
 		{"12.34", "% v", " 12.34"},
@@ -786,6 +793,7 @@ func TestDecimal_Format(t *testing.T) {
 		{"12.34", "%010v", "0000012.34"},
 		{"12.34", "%+10v", "    +12.34"},
 		{"12.34", "%-10v", "12.34     "},
+
 		// %k verb
 		{"12.34", "%k", "1234%"},
 		{"12.34", "%+k", "+1234%"},
@@ -811,6 +819,7 @@ func TestDecimal_Format(t *testing.T) {
 		{"2.300", "%k", "230.0%"},
 		{"0.2300", "%k", "23.00%"},
 		{"0.02300", "%k", "2.300%"},
+
 		// %f verb
 		{"12.34", "%f", "12.34"},
 		{"12.34", "%+f", "+12.34"},
@@ -842,7 +851,8 @@ func TestDecimal_Format(t *testing.T) {
 		{"9999999999999999999", "%.1f", "9999999999999999999.0"},
 		{"9999999999999999999", "%.2f", "9999999999999999999.00"},
 		{"9999999999999999999", "%.3f", "9999999999999999999.000"},
-		// wrong verbs
+
+		// Wrong verbs
 		{"12.34", "%b", "%!b(decimal.Decimal=12.34)"},
 		{"12.34", "%e", "%!e(decimal.Decimal=12.34)"},
 		{"12.34", "%E", "%!E(decimal.Decimal=12.34)"},
@@ -850,7 +860,8 @@ func TestDecimal_Format(t *testing.T) {
 		{"12.34", "%G", "%!G(decimal.Decimal=12.34)"},
 		{"12.34", "%x", "%!x(decimal.Decimal=12.34)"},
 		{"12.34", "%X", "%!X(decimal.Decimal=12.34)"},
-		// errors
+
+		// Errors
 		{"9999999999999999999", "%k", "%!k(PANIC=Format method: formatting percent: computing [9999999999999999999 * 100]: the integer part of a decimal.Decimal can have at most 19 digits, but it has 21 digits: decimal overflow)"},
 	}
 	for _, tt := range tests {
@@ -1843,7 +1854,7 @@ func TestDecimal_FMA(t *testing.T) {
 		tests := []struct {
 			d, e, f, want string
 		}{
-			// Sign
+			// Signs
 			{"2", "3", "4", "10"},
 			{"2", "3", "-4", "2"},
 			{"2", "-3", "4", "-2"},
@@ -2000,7 +2011,7 @@ func TestDecimal_Pow(t *testing.T) {
 			{"-1", 1, "-1"},
 			{"-1", 2, "1"},
 
-			// One Tenths
+			// One tenths
 			{"0.1", -18, "1000000000000000000"},
 			{"0.1", -10, "10000000000"},
 			{"0.1", -9, "1000000000"},
@@ -2028,7 +2039,7 @@ func TestDecimal_Pow(t *testing.T) {
 			{"0.1", 20, "0.0000000000000000000"},
 			{"0.1", 40, "0.0000000000000000000"},
 
-			// Negative One Tenths
+			// Negative one tenths
 			{"-0.1", -18, "1000000000000000000"},
 			{"-0.1", -10, "10000000000"},
 			{"-0.1", -9, "-1000000000"},
@@ -2084,7 +2095,7 @@ func TestDecimal_Pow(t *testing.T) {
 			{"2", 32, "4294967296"},
 			{"2", 63, "9223372036854775808"},
 
-			// Negative Twos
+			// Negative twos
 			{"-2", -64, "0.0000000000000000001"},
 			{"-2", -63, "-0.0000000000000000001"},
 			{"-2", -32, "0.0000000002328306437"},
