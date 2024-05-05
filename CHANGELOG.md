@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.24] - 2024-05-05
+
+### Changed
+
+- Bumped go version to 1.21.
+- Improved documentation.
+
 ## [0.1.23] - 2024-03-04
 
 ### Changed
