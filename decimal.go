@@ -521,6 +521,108 @@ func (d Decimal) String() string {
 	return string(buf[pos+1:])
 }
 
+// parseBCD converts a [packed BCD] representation to a decimal.
+//
+// [packed BCD]: https://en.wikipedia.org/wiki/Binary-coded_decimal#Packed_BCD
+func parseBCD(b []byte) (Decimal, error) {
+	var pos int
+	width := len(b)
+
+	// Coefficient and sign
+	var neg bool
+	var coef fint
+	var ok bool
+	for pos < width {
+		hi := b[pos] >> 4
+		lo := b[pos] & 0x0f
+
+		if hi > 9 {
+			return Decimal{}, fmt.Errorf("parsing \"%x\": invalid high nibble: %w", b[pos], errInvalidDecimal)
+		}
+		coef, ok = coef.fsa(1, hi)
+		if !ok {
+			return Decimal{}, errDecimalOverflow
+		}
+
+		if lo > 9 {
+			if lo == 0x0d {
+				neg = true
+			} else if lo != 0x0c {
+				return Decimal{}, fmt.Errorf("parsing \"%x\": invalid low nibble: %w", b[pos], errInvalidDecimal)
+			}
+			pos++
+			break
+		}
+		coef, ok = coef.fsa(1, lo)
+		if !ok {
+			return Decimal{}, errDecimalOverflow
+		}
+		pos++
+	}
+
+	// Scale
+	var scale int
+	var hasScale bool
+	if pos < width {
+		hi := b[pos] >> 4
+		lo := b[pos] & 0x0f
+		hasScale = true
+
+		if hi > 1 {
+			return Decimal{}, fmt.Errorf("parsing \"%x\": invalid high nibble: %w", b[pos], errInvalidDecimal)
+		}
+		scale = int(hi) * 10
+
+		if lo > 9 {
+			return Decimal{}, fmt.Errorf("parsing \"%x\": invalid low nibble: %w", b[pos], errInvalidDecimal)
+		}
+		scale += int(lo)
+
+		pos++
+	}
+
+	if pos != width {
+		return Decimal{}, fmt.Errorf("invalid byte \"%x\": %w", b[pos], errInvalidDecimal)
+	}
+	if !hasScale {
+		return Decimal{}, fmt.Errorf("no scale: %w", errInvalidDecimal)
+	}
+
+	return newSafe(neg, coef, scale)
+}
+
+// bcd returns a [packed BCD] representation of a decimal.
+//
+// [packed BCD]: https://en.wikipedia.org/wiki/Binary-coded_decimal#Packed_BCD
+func (d Decimal) bcd() []byte {
+	var buf [11]byte
+	pos := len(buf) - 1
+	coef := d.Coef()
+	scale := d.Scale()
+
+	// Scale
+	buf[pos] = byte(scale/10)<<4 | byte(scale%10)
+	pos--
+
+	// Sign and first digit
+	if d.IsNeg() {
+		buf[pos] = byte(coef%10)<<4 | 0x0d
+	} else {
+		buf[pos] = byte(coef%10)<<4 | 0x0c
+	}
+	pos--
+	coef /= 10
+
+	// Coefficient
+	for coef > 0 {
+		buf[pos] = byte(coef/10%10)<<4 | byte(coef%10)
+		pos--
+		coef /= 100
+	}
+
+	return buf[pos+1:]
+}
+
 // Float64 returns the nearest binary floating-point number rounded
 // using [rounding half to even] (banker's rounding).
 // See also constructor [NewFromFloat64].
@@ -600,6 +702,22 @@ func (d *Decimal) UnmarshalText(text []byte) error {
 // [encoding.TextMarshaler]: https://pkg.go.dev/encoding#TextMarshaler
 func (d Decimal) MarshalText() ([]byte, error) {
 	return []byte(d.String()), nil
+}
+
+// UnmarshalBinary implements the [encoding.BinaryUnmarshaler] interface.
+//
+// [encoding.BinaryUnmarshaler]: https://pkg.go.dev/encoding#BinaryUnmarshaler
+func (d *Decimal) UnmarshalBinary(data []byte) error {
+	var err error
+	*d, err = parseBCD(data)
+	return err
+}
+
+// MarshalBinary implements the [encoding.BinaryMarshaler] interface.
+//
+// [encoding.BinaryMarshaler]: https://pkg.go.dev/encoding#BinaryMarshaler
+func (d Decimal) MarshalBinary() ([]byte, error) {
+	return d.bcd(), nil
 }
 
 // Scan implements the [sql.Scanner] interface.

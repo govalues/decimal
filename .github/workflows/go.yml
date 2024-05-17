@@ -12,79 +12,82 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: false
 
-    - name: Setup Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ matrix.go-version }}
-        cache: false
+      - name: Check out code
+        uses: actions/checkout@v4
 
-    - name: Check out code
-      uses: actions/checkout@v4
+      - name: Verify code formatting
+        run: gofmt -s -w . && git diff --exit-code
 
-    - name: Verify code formatting
-      run: gofmt -s -w . && git diff --exit-code
+      - name: Verify dependency consistency
+        run: go get -u -t . && go mod tidy && git diff --exit-code
 
-    - name: Verify dependency consistency
-      run: go get -u -t . && go mod tidy && git diff --exit-code
+      - name: Verify generated code
+        run: go generate ./... && git diff --exit-code
 
-    - name: Verify generated code
-      run: go generate ./... && git diff --exit-code
+      - name: Verify potential issues
+        uses: golangci/golangci-lint-action@v4
 
-    - name: Verify potential issues
-      uses: golangci/golangci-lint-action@v4
+      - name: Run tests with coverage
+        run: go test -race -shuffle=on -coverprofile="coverage.txt" -covermode=atomic ./...
 
-    - name: Run tests with coverage
-      run: go test -race -shuffle=on -coverprofile="coverage.txt" -covermode=atomic ./...
-
-    - name: Upload test coverage
-      if: matrix.os == 'ubuntu-latest' && matrix.go-version == 'stable'
-      uses: codecov/codecov-action@v3
+      - name: Upload test coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.go-version == 'stable'
+        uses: codecov/codecov-action@v3
 
   fuzz:
     needs: test
     runs-on: ubuntu-latest
     steps:
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
 
-    - name: Setup Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: stable 
-        cache: false
+      - name: Check out code
+        uses: actions/checkout@v4
 
-    - name: Check out code
-      uses: actions/checkout@v4
+      - name: Run fuzzing for string parsing
+        run: go test -fuzztime 20s -fuzz ^FuzzParse$
 
-    - name: Run fuzzing for string parsing
-      run: go test -fuzztime 20s -fuzz ^FuzzParse$
+      - name: Run fuzzing for binary parsing
+        run: go test -fuzztime 20s -fuzz ^FuzzBCD$
 
-    - name: Run fuzzing for string conversion
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_String$
+      - name: Run fuzzing for string conversion
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_String$
 
-    - name: Run fuzzing for float64 conversion
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Float64$
+      - name: Run fuzzing for binary conversion
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_BCD$
 
-    - name: Run fuzzing for int64 conversion
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Int64$
+      - name: Run fuzzing for float64 conversion
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Float64$
 
-    - name: Run fuzzing for addition
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Add$
+      - name: Run fuzzing for int64 conversion
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Int64$
 
-    - name: Run fuzzing for multiplication
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Mul$
+      - name: Run fuzzing for addition
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Add$
 
-    - name: Run fuzzing for fused multiply-addition
-      run: go test -fuzztime 60s -fuzz ^FuzzDecimal_FMA$
+      - name: Run fuzzing for multiplication
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Mul$
 
-    - name: Run fuzzing for division
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Quo$
+      - name: Run fuzzing for fused multiply-addition
+        run: go test -fuzztime 60s -fuzz ^FuzzDecimal_FMA$
 
-    - name: Run fuzzing for integer division and remainder
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_QuoRem$
+      - name: Run fuzzing for division
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Quo$
 
-    - name: Run fuzzing for comparison
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Cmp$
+      - name: Run fuzzing for integer division and remainder
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_QuoRem$
 
-    - name: Run fuzzing for comparison and subtraction
-      run: go test -fuzztime 20s -fuzz ^FuzzDecimal_CmpSub$
- 
+      - name: Run fuzzing for comparison
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Cmp$
+
+      - name: Run fuzzing for comparison and subtraction
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_CmpSub$
