@@ -256,6 +256,37 @@ func ExampleDecimal_String() {
 	// Output: 1234567890.123456789
 }
 
+func unmarshalBytes(b []byte) (decimal.Decimal, error) {
+	var d decimal.Decimal
+	err := d.UnmarshalBinary(b)
+	return d, err
+}
+
+func marshalBytes(s string) ([]byte, error) {
+	d, err := decimal.Parse(s)
+	if err != nil {
+		panic(err)
+	}
+	bcd, err := d.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	return bcd, nil
+}
+
+func ExampleDecimal_UnmarshalBinary() {
+	fmt.Println(unmarshalBytes([]byte{0x56, 0x7c, 0x02}))
+	// Output:
+	// 5.67 <nil>
+}
+
+func ExampleDecimal_MarshalBinary() {
+	bcd, err := marshalBytes("5.67")
+	fmt.Printf("% x %v\n", bcd, err)
+	// Output:
+	// 56 7c 02 <nil>
+}
+
 func ExampleDecimal_Float64() {
 	d := decimal.MustParse("0.1")
 	e := decimal.MustParse("123.456")
@@ -291,7 +322,10 @@ type Object struct {
 func unmarshalJSON(s string) (Object, error) {
 	var v Object
 	err := json.Unmarshal([]byte(s), &v)
-	return v, err
+	if err != nil {
+		return Object{}, err
+	}
+	return v, nil
 }
 
 func marshalJSON(s string) (string, error) {

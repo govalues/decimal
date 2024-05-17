@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.25] - 2024-05-17
+
+### Added
+
+- Implemented binary marshaling.
+
 ## [0.1.24] - 2024-05-05
 
 ### Changed

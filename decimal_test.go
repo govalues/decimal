@@ -1,6 +1,7 @@
 package decimal
 
 import (
+	"bytes"
 	"database/sql"
 	"database/sql/driver"
 	"encoding"
@@ -30,7 +31,9 @@ func TestDecimal_Size(t *testing.T) {
 }
 
 func TestDecimal_Interfaces(t *testing.T) {
-	var d any = Decimal{}
+	var d any
+
+	d = Decimal{}
 	_, ok := d.(fmt.Stringer)
 	if !ok {
 		t.Errorf("%T does not implement fmt.Stringer", d)
@@ -43,6 +46,10 @@ func TestDecimal_Interfaces(t *testing.T) {
 	if !ok {
 		t.Errorf("%T does not implement encoding.TextMarshaler", d)
 	}
+	_, ok = d.(encoding.BinaryMarshaler)
+	if !ok {
+		t.Errorf("%T does not implement encoding.BinaryMarshaler", d)
+	}
 	_, ok = d.(driver.Valuer)
 	if !ok {
 		t.Errorf("%T does not implement driver.Valuer", d)
@@ -52,6 +59,10 @@ func TestDecimal_Interfaces(t *testing.T) {
 	_, ok = d.(encoding.TextUnmarshaler)
 	if !ok {
 		t.Errorf("%T does not implement encoding.TextUnmarshaler", d)
+	}
+	_, ok = d.(encoding.BinaryUnmarshaler)
+	if !ok {
+		t.Errorf("%T does not implement encoding.BinaryUnmarshaler", d)
 	}
 	_, ok = d.(sql.Scanner)
 	if !ok {
@@ -518,6 +529,136 @@ func TestDecimal_String(t *testing.T) {
 			got := d.String()
 			if got != tt.want {
 				t.Errorf("newDecimal(%v, %v, %v).String() = %q, want %q", tt.neg, tt.coef, tt.scale, got, tt.want)
+			}
+		}
+	})
+}
+
+func TestParseBCD(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			bcd  []byte
+			want string
+		}{
+			{[]byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9d, 0x00}, "-9999999999999999999"},
+			{[]byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9d, 0x01}, "-999999999999999999.9"},
+			{[]byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9d, 0x02}, "-99999999999999999.99"},
+			{[]byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9d, 0x03}, "-9999999999999999.999"},
+			{[]byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9d, 0x19}, "-0.9999999999999999999"},
+			{[]byte{0x1d, 0x00}, "-1"},
+			{[]byte{0x1d, 0x01}, "-0.1"},
+			{[]byte{0x1d, 0x02}, "-0.01"},
+			{[]byte{0x1d, 0x19}, "-0.0000000000000000001"},
+			{[]byte{0x0c, 0x00}, "0"},
+			{[]byte{0x0c, 0x01}, "0.0"},
+			{[]byte{0x0c, 0x02}, "0.00"},
+			{[]byte{0x0c, 0x19}, "0.0000000000000000000"},
+			{[]byte{0x1c, 0x00}, "1"},
+			{[]byte{0x1c, 0x01}, "0.1"},
+			{[]byte{0x1c, 0x02}, "0.01"},
+			{[]byte{0x1c, 0x19}, "0.0000000000000000001"},
+			{[]byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9c, 0x00}, "9999999999999999999"},
+			{[]byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9c, 0x01}, "999999999999999999.9"},
+			{[]byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9c, 0x02}, "99999999999999999.99"},
+			{[]byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9c, 0x03}, "9999999999999999.999"},
+			{[]byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9c, 0x19}, "0.9999999999999999999"},
+
+			// Exported constants
+			{[]byte{0x1d, 0x00}, NegOne.String()},
+			{[]byte{0x0c, 0x00}, Zero.String()},
+			{[]byte{0x1c, 0x00}, One.String()},
+			{[]byte{0x2c, 0x00}, Two.String()},
+			{[]byte{0x01, 0x0c, 0x00}, Ten.String()},
+			{[]byte{0x10, 0x0c, 0x00}, Hundred.String()},
+			{[]byte{0x01, 0x00, 0x0c, 0x00}, Thousand.String()},
+			{[]byte{0x27, 0x18, 0x28, 0x18, 0x28, 0x45, 0x90, 0x45, 0x23, 0x5c, 0x18}, E.String()},
+			{[]byte{0x31, 0x41, 0x59, 0x26, 0x53, 0x58, 0x97, 0x93, 0x23, 0x8c, 0x18}, Pi.String()},
+		}
+		for _, tt := range tests {
+			got, err := parseBCD(tt.bcd)
+			if err != nil {
+				t.Errorf("parseBCD(% x) failed: %v", tt.bcd, err)
+				continue
+			}
+			want := MustParse(tt.want)
+			if got != want {
+				t.Errorf("parseBCD(% x) = %q, want %q", tt.bcd, got, want)
+			}
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		tests := map[string][]byte{
+			"empty":              {},
+			"invalid nibble 1":   {0x0f},
+			"invalid nibble 2":   {0xf0},
+			"invalid nibble 3":   {0x0c, 0x0f},
+			"invalid nibble 4":   {0x0c, 0xf0},
+			"decimal overflow 1": {0x09, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9d, 0x00},
+			"decimal overflow 2": {0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9d, 0x00},
+			"no sign":            {0x00},
+			"scale overflow":     {0x0c, 0x00, 0x00},
+		}
+		for name, tt := range tests {
+			t.Run(name, func(t *testing.T) {
+				_, err := parseBCD(tt)
+				if err == nil {
+					t.Errorf("parseBCD(% x) did not fail", tt)
+				}
+			})
+		}
+	})
+}
+
+func TestDecimal_BCD(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			d    string
+			want []byte
+		}{
+			{"-9999999999999999999", []byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9d, 0x00}},
+			{"-999999999999999999.9", []byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9d, 0x01}},
+			{"-99999999999999999.99", []byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9d, 0x02}},
+			{"-9999999999999999.999", []byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9d, 0x03}},
+			{"-0.9999999999999999999", []byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9d, 0x19}},
+			{"-1", []byte{0x1d, 0x00}},
+			{"-0.1", []byte{0x1d, 0x01}},
+			{"-0.01", []byte{0x1d, 0x02}},
+			{"-0.0000000000000000001", []byte{0x1d, 0x19}},
+			{"0", []byte{0x0c, 0x00}},
+			{"0.0", []byte{0x0c, 0x01}},
+			{"0.00", []byte{0x0c, 0x02}},
+			{"0.0000000000000000000", []byte{0x0c, 0x19}},
+			{"1", []byte{0x1c, 0x00}},
+			{"0.1", []byte{0x1c, 0x01}},
+			{"0.01", []byte{0x1c, 0x02}},
+			{"0.0000000000000000001", []byte{0x1c, 0x19}},
+			{"9999999999999999999", []byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9c, 0x00}},
+			{"999999999999999999.9", []byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9c, 0x01}},
+			{"99999999999999999.99", []byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9c, 0x02}},
+			{"9999999999999999.999", []byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9c, 0x03}},
+			{"0.9999999999999999999", []byte{0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9c, 0x19}},
+
+			// Exported constants
+			{NegOne.String(), []byte{0x1d, 0x00}},
+			{Zero.String(), []byte{0x0c, 0x00}},
+			{One.String(), []byte{0x1c, 0x00}},
+			{Two.String(), []byte{0x2c, 0x00}},
+			{Ten.String(), []byte{0x01, 0x0c, 0x00}},
+			{Hundred.String(), []byte{0x10, 0x0c, 0x00}},
+			{Thousand.String(), []byte{0x01, 0x00, 0x0c, 0x00}},
+			{E.String(), []byte{0x27, 0x18, 0x28, 0x18, 0x28, 0x45, 0x90, 0x45, 0x23, 0x5c, 0x18}},
+			{Pi.String(), []byte{0x31, 0x41, 0x59, 0x26, 0x53, 0x58, 0x97, 0x93, 0x23, 0x8c, 0x18}},
+		}
+		for _, tt := range tests {
+			d, err := Parse(tt.d)
+			if err != nil {
+				t.Errorf("Parse(%q) failed: %v", tt.d, err)
+				continue
+			}
+			got := d.bcd()
+			if !bytes.Equal(got, tt.want) {
+				t.Errorf("Parse(%q).bcd() = % x, want % x", tt.d, got, tt.want)
 			}
 		}
 	})
@@ -2885,6 +3026,25 @@ func FuzzParse(f *testing.F) {
 	)
 }
 
+func FuzzBCD(f *testing.F) {
+	for _, c := range corpus {
+		d, err := newSafe(c.neg, fint(c.coef), c.scale)
+		if err != nil {
+			continue
+		}
+		f.Add(d.bcd())
+	}
+
+	f.Fuzz(
+		func(t *testing.T, bcd []byte) {
+			_, err := parseBCD(bcd)
+			if err != nil {
+				t.Skip()
+			}
+		},
+	)
+}
+
 func FuzzDecimal_String(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
@@ -2904,8 +3064,37 @@ func FuzzDecimal_String(f *testing.F) {
 				t.Errorf("Parse(%q) failed: %v", s, err)
 				return
 			}
+
 			if got.CmpTotal(want) != 0 {
 				t.Errorf("Parse(%q) = %v, want %v", s, got, want)
+				return
+			}
+		},
+	)
+}
+
+func FuzzDecimal_BCD(f *testing.F) {
+	for _, d := range corpus {
+		f.Add(d.neg, d.scale, d.coef)
+	}
+
+	f.Fuzz(
+		func(t *testing.T, neg bool, scale int, coef uint64) {
+			want, err := newSafe(neg, fint(coef), scale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			s := want.bcd()
+			got, err := parseBCD(s)
+			if err != nil {
+				t.Errorf("parseBCD(% x) failed: %v", s, err)
+				return
+			}
+
+			if got.CmpTotal(want) != 0 {
+				t.Errorf("parseBCD(% x) = %v, want %v", s, got, want)
 				return
 			}
 		},
