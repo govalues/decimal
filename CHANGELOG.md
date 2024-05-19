@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.26] - 2024-05-19
+
+### Changed
+
+- `Decimal.Pad`, `Decimal.Rescale`, and `Descimal.Quantize` methods
+  do not return errors anymore.
+
 ## [0.1.25] - 2024-05-17
 
 ### Added
@@ -23,7 +30,7 @@
 
 ### Changed
 
-- Supported MySQL in `Decimal.Scan`.
+- Supported MySQL in `Decimal.Scan` method.
 - Added examples for XML marshaling.
 
 ## [0.1.21] - 2024-01-05
@@ -109,7 +116,7 @@
 ### Added
 
 - Implemented `Decimal.SubAbs`, `Decimal.CmpAbs`, `Decimal.Inv`.
-- Added `Decimal.Pi`, `Decimal.E`, `Decimal.NegOne`, `Decimal.Two`, `Decimal.Thousand`
+- Added `Decimal.Pi`, `Decimal.E`, `Decimal.NegOne`, `Decimal.Two`, `Decimal.Thousand`.
 
 ### Changed
 

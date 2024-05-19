@@ -794,9 +794,7 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 		case verb == 'f' || verb == 'F':
 			scale = d.Scale()
 		}
-		if scale < MinScale {
-			scale = MinScale
-		}
+		scale = max(scale, MinScale)
 		switch {
 		case scale < d.Scale():
 			d = d.Round(scale)
@@ -1006,9 +1004,7 @@ func (d Decimal) WithinOne() bool {
 //
 // [rounding half to even]: https://en.wikipedia.org/wiki/Rounding#Rounding_half_to_even
 func (d Decimal) Round(scale int) Decimal {
-	if scale < MinScale {
-		scale = MinScale
-	}
+	scale = max(scale, MinScale)
 	if scale >= d.Scale() {
 		return d
 	}
@@ -1019,24 +1015,19 @@ func (d Decimal) Round(scale int) Decimal {
 
 // Pad returns a decimal zero-padded to the specified number of digits after
 // the decimal point.
+// The total number of digits in the result is limited by [MaxPrec].
 // See also method [Decimal.Trim].
-//
-// Pad returns an error if:
-//   - the scale is greater than [MaxScale];
-//   - the integer part of the result has more than ([MaxPrec] - scale) digits.
-func (d Decimal) Pad(scale int) (Decimal, error) {
-	if scale > MaxScale {
-		return Decimal{}, fmt.Errorf("padding %v with zeros: %w", d, errScaleRange)
-	}
+func (d Decimal) Pad(scale int) Decimal {
+	scale = min(scale, MaxPrec-d.Prec()+d.Scale())
 	if scale <= d.Scale() {
-		return d, nil
+		return d
 	}
 	coef := d.coef
 	coef, ok := coef.lsh(scale - d.Scale())
 	if !ok {
-		return Decimal{}, fmt.Errorf("padding %v with zeros: %w", d, overflowError(d.Prec(), d.Scale(), scale))
+		return d // Should never happen
 	}
-	return newSafe(d.IsNeg(), coef, scale)
+	return newUnsafe(d.IsNeg(), coef, scale)
 }
 
 // Rescale returns a decimal rounded or zero-padded to the given number of digits
@@ -1045,28 +1036,17 @@ func (d Decimal) Pad(scale int) (Decimal, error) {
 // For financial calculations, the scale should be equal to or greater than
 // the scale of the currency.
 // See also methods [Decimal.Round], [Decimal.Pad].
-//
-// Rescale returns an error if:
-//   - the scale is greater than [MaxScale];
-//   - the integer part of the result has more than ([MaxPrec] - scale) digits.
-func (d Decimal) Rescale(scale int) (Decimal, error) {
-	if scale <= d.Scale() {
-		return d.Round(scale), nil
+func (d Decimal) Rescale(scale int) Decimal {
+	if scale > d.Scale() {
+		return d.Pad(scale)
 	}
-	d, err := d.Pad(scale)
-	if err != nil {
-		return Decimal{}, fmt.Errorf("rescaling %v: %w", d, err)
-	}
-	return d, nil
+	return d.Round(scale)
 }
 
 // Quantize returns a decimal rescaled to the same scale as decimal e.
 // The sign and the coefficient of decimal e are ignored.
-// See also methods [Decimal.Scale], [Decimal.SameScale], [Decimal.Rescale].
-//
-// Qunatize returns an overflow error if the integer part of result has more
-// than ([MaxPrec] - e.Scale()) digits.
-func (d Decimal) Quantize(e Decimal) (Decimal, error) {
+// See also methods [Decimal.SameScale] and [Decimal.Rescale].
+func (d Decimal) Quantize(e Decimal) Decimal {
 	return d.Rescale(e.Scale())
 }
 
@@ -1084,9 +1064,7 @@ func (d Decimal) SameScale(e Decimal) bool {
 //
 // [rounding toward zero]: https://en.wikipedia.org/wiki/Rounding#Rounding_toward_zero
 func (d Decimal) Trunc(scale int) Decimal {
-	if scale < MinScale {
-		scale = MinScale
-	}
+	scale = max(scale, MinScale)
 	if scale >= d.Scale() {
 		return d
 	}
@@ -1113,9 +1091,7 @@ func (d Decimal) Trim(scale int) Decimal {
 //
 // [rounding toward positive infinity]: https://en.wikipedia.org/wiki/Rounding#Rounding_up
 func (d Decimal) Ceil(scale int) Decimal {
-	if scale < MinScale {
-		scale = MinScale
-	}
+	scale = max(scale, MinScale)
 	if scale >= d.Scale() {
 		return d
 	}
@@ -1137,9 +1113,7 @@ func (d Decimal) Ceil(scale int) Decimal {
 //
 // [rounding toward negative infinity]: https://en.wikipedia.org/wiki/Rounding#Rounding_down
 func (d Decimal) Floor(scale int) Decimal {
-	if scale < MinScale {
-		scale = MinScale
-	}
+	scale = max(scale, MinScale)
 	if scale >= d.Scale() {
 		return d
 	}
@@ -1776,7 +1750,7 @@ func (d Decimal) quoFint(e Decimal, minScale int) (Decimal, error) {
 	if p := MaxPrec - dcoef.prec(); p > 0 {
 		dcoef, ok = dcoef.lsh(p)
 		if !ok {
-			return Decimal{}, errDecimalOverflow
+			return Decimal{}, errDecimalOverflow // Should never happen
 		}
 		scale = scale + p
 	}

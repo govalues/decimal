@@ -91,3 +91,6 @@ jobs:
 
       - name: Run fuzzing for comparison and subtraction
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_CmpSub$
+
+      - name: Run fuzzing for padding
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Pad$

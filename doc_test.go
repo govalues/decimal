@@ -700,11 +700,11 @@ func ExampleDecimal_Rescale() {
 	fmt.Println(d.Rescale(3))
 	fmt.Println(d.Rescale(4))
 	// Output:
-	// 6 <nil>
-	// 5.7 <nil>
-	// 5.68 <nil>
-	// 5.678 <nil>
-	// 5.6780 <nil>
+	// 6
+	// 5.7
+	// 5.68
+	// 5.678
+	// 5.6780
 }
 
 func ExampleDecimal_Quantize() {
@@ -716,9 +716,9 @@ func ExampleDecimal_Quantize() {
 	fmt.Println(d.Quantize(y))
 	fmt.Println(d.Quantize(z))
 	// Output:
-	// 6 <nil>
-	// 5.7 <nil>
-	// 5.68 <nil>
+	// 6
+	// 5.7
+	// 5.68
 }
 
 func ExampleDecimal_Pad() {
@@ -729,11 +729,11 @@ func ExampleDecimal_Pad() {
 	fmt.Println(d.Pad(3))
 	fmt.Println(d.Pad(4))
 	// Output:
-	// 5.67 <nil>
-	// 5.67 <nil>
-	// 5.67 <nil>
-	// 5.670 <nil>
-	// 5.6700 <nil>
+	// 5.67
+	// 5.67
+	// 5.67
+	// 5.670
+	// 5.6700
 }
 
 func ExampleDecimal_Round() {
