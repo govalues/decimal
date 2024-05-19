@@ -100,7 +100,7 @@ func newFromBint(neg bool, coef *bint, scale, minScale int) (Decimal, error) {
 		scale = MaxScale
 	case prec > scale && prec > MaxPrec: // there is an integer part
 		coef.rshHalfEven(coef, prec-MaxPrec)
-		scale = scale - (prec - MaxPrec)
+		scale = MaxPrec - prec + scale
 	}
 	// Handling the rare case when rshHalfEven rounded
 	// a 19-digit coefficient to a 20-digit coefficient.
@@ -1018,7 +1018,7 @@ func (d Decimal) Round(scale int) Decimal {
 // The total number of digits in the result is limited by [MaxPrec].
 // See also method [Decimal.Trim].
 func (d Decimal) Pad(scale int) Decimal {
-	scale = min(scale, MaxPrec-d.Prec()+d.Scale())
+	scale = min(scale, MaxScale, MaxPrec-d.Prec()+d.Scale())
 	if scale <= d.Scale() {
 		return d
 	}
