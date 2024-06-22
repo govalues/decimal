@@ -931,6 +931,7 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 	}
 
 	// Writing result
+	//nolint:errcheck
 	switch verb {
 	case 'q', 'Q', 's', 'S', 'v', 'V', 'f', 'F', 'k', 'K':
 		state.Write(buf)
