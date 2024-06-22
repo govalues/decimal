@@ -539,6 +539,37 @@ func ExampleDecimal_PowExact() {
 	// 8.0000 <nil>
 }
 
+func ExampleDecimal_Sqrt() {
+	d := decimal.MustParse("1")
+	e := decimal.MustParse("2")
+	f := decimal.MustParse("3")
+	g := decimal.MustParse("4")
+	fmt.Println(d.Sqrt())
+	fmt.Println(e.Sqrt())
+	fmt.Println(f.Sqrt())
+	fmt.Println(g.Sqrt())
+	// Output:
+	// 1 <nil>
+	// 1.414213562373095049 <nil>
+	// 1.732050807568877294 <nil>
+	// 2 <nil>
+}
+
+func ExampleDecimal_SqrtExact() {
+	d := decimal.MustParse("4")
+	fmt.Println(d.SqrtExact(0))
+	fmt.Println(d.SqrtExact(1))
+	fmt.Println(d.SqrtExact(2))
+	fmt.Println(d.SqrtExact(3))
+	fmt.Println(d.SqrtExact(4))
+	// Output:
+	// 2 <nil>
+	// 2.0 <nil>
+	// 2.00 <nil>
+	// 2.000 <nil>
+	// 2.0000 <nil>
+}
+
 func ExampleDecimal_Add() {
 	d := decimal.MustParse("5.67")
 	e := decimal.MustParse("8")

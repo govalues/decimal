@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.28] - 2024-06-22
+
+### Added
+
+- Implemented `Decimal.Sqrt`, `Decimal.SqrtExact`.
+
 ## [0.1.27] - 2024-05-19
 
 ### Changed

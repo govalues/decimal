@@ -54,7 +54,8 @@ or errors.
 
 # Operations
 
-Each arithmetic operation occurs in two steps:
+Each arithmetic operation, except for [Decimal.Sqrt] and [Decimal.SqrtExact],
+occurs in two steps:
 
  1. The operation is initially performed using uint64 arithmetic.
     If no overflow occurs, the exact result is immediately returned.
@@ -72,11 +73,11 @@ will compute an exact result during step 1.
 The following rules determine the significance of digits during step 2:
 
   - [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.FMA], [Decimal.Pow],
-    [Decimal.Quo], [Decimal.QuoRem], [Decimal.Inv]:
+    [Decimal.Quo], [Decimal.QuoRem], [Decimal.Inv], [Decimal.Sqrt]:
     All digits in the integer part are significant, while digits in the
     fractional part are considered insignificant.
   - [Decimal.AddExact], [Decimal.SubExact], [Decimal.MulExact], [Decimal.FMAExact],
-    [Decimal.PowExact], [Decimal.QuoExact]:
+    [Decimal.PowExact], [Decimal.QuoExact], [Decimal.SqrtExact]:
     All digits in the integer part are significant. The significance of digits
     in the fractional part is determined by the scale argument, which is typically
     equal to the scale of the currency.
@@ -141,6 +142,8 @@ Errors are returned in the following cases:
   - Invalid Operation:
     [Decimal.Pow] and [Decimal.PowExact] return an error if 0 is raised to
     a negative power.
+    [Decimal.Sqrt] and [Decimal.SqrtExact] return an error if the square root
+    of a negative decimal is requested.
 
   - Overflow:
     Unlike standard integers, there is no "wrap around" for decimals at certain sizes.
