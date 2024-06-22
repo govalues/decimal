@@ -931,6 +931,7 @@ func (d Decimal) Format(state fmt.State, verb rune) {
 	}
 
 	// Writing result
+	//nolint:errcheck
 	switch verb {
 	case 'q', 'Q', 's', 'S', 'v', 'V', 'f', 'F', 'k', 'K':
 		state.Write(buf)
@@ -1270,8 +1271,6 @@ func (d Decimal) Pow(power int) (Decimal, error) {
 // of digits after the decimal point that should be considered significant.
 // If any of the significant digits are lost during rounding, the method will
 // return an overflow error.
-// This method is useful for financial calculations where the scale should be
-// equal to or greater than the currency's scale.
 func (d Decimal) PowExact(power, scale int) (Decimal, error) {
 	if scale < MinScale || scale > MaxScale {
 		return Decimal{}, fmt.Errorf("computing [%v^%v]: %w", d, power, errScaleRange)
@@ -1427,6 +1426,78 @@ func (d Decimal) powBint(power, minScale int) (Decimal, error) {
 	}
 
 	return newFromBint(eneg, ecoef, escale, minScale)
+}
+
+// Sqrt computes the square root of a decimal.
+//
+// Sqrt returns an error if the decimal is negative.
+func (d Decimal) Sqrt() (Decimal, error) {
+	return d.SqrtExact(0)
+}
+
+// SqrtExact is similar to [Decimal.Sqrt], but it allows you to specify the number of digits
+// after the decimal point that should be considered significant.
+// If any of the significant digits are lost during rounding, the method will return an error.
+func (d Decimal) SqrtExact(scale int) (Decimal, error) {
+	// Special case: negative
+	if d.IsNeg() {
+		return Decimal{}, fmt.Errorf("computing sqrt(%v): %w", d, errInvalidOperation)
+	}
+
+	// Special case: zero
+	if d.IsZero() {
+		scale = max(scale, d.Scale()/2)
+		return newSafe(false, 0, scale)
+	}
+
+	// General case
+	e, err := d.sqrtBint(scale)
+	if err != nil {
+		return Decimal{}, fmt.Errorf("computing sqrt(%v): %w", d, err)
+	}
+
+	// Preferred scale
+	scale = max(scale, d.Scale()/2)
+	e = e.Trim(scale)
+
+	return e, nil
+}
+
+// sqrtBint computes the square root of a decimal using *big.Int arithmetic.
+func (d Decimal) sqrtBint(minScale int) (Decimal, error) {
+	dcoef := getBint()
+	defer putBint(dcoef)
+	dcoef.setFint(d.coef)
+
+	ecoef := getBint()
+	defer putBint(ecoef)
+
+	fcoef := getBint()
+	defer putBint(fcoef)
+
+	two := getBint()
+	defer putBint(two)
+	two.setFint(2)
+
+	// Babylonian method
+	dcoef.lsh(dcoef, 2*MaxScale-d.Scale())
+	ecoef.quo(dcoef, two)
+	fcoef.setFint(1)
+	fcoef.lsh(fcoef, 2*MaxScale)
+	fcoef.add(fcoef, ecoef)
+	dcoef.lsh(dcoef, 2*MaxScale)
+
+	for {
+		if ecoef.cmp(fcoef) == 0 {
+			break
+		}
+		fcoef.setBint(ecoef)
+		ecoef.quo(dcoef, ecoef)
+		ecoef.add(ecoef, fcoef)
+		ecoef.quo(ecoef, two)
+	}
+
+	return newFromBint(false, ecoef, 2*MaxScale, minScale)
 }
 
 // Add returns the (possibly rounded) sum of decimals d and e.

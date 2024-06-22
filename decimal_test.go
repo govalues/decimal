@@ -2319,6 +2319,80 @@ func TestDecimal_Pow(t *testing.T) {
 	})
 }
 
+func TestDecimal_Sqrt(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			d, want string
+		}{
+			// Zeros
+			{"0", "0"},
+			{"0.0", "0"},
+			{"0.00", "0.0"},
+			{"0.000", "0.0"},
+			{"0.0000", "0.00"},
+
+			// Numbers
+			{"0", "0"},
+			{"1", "1"},
+			{"2", "1.414213562373095049"},
+			{"3", "1.732050807568877294"},
+			{"4", "2"},
+			{"5", "2.236067977499789696"},
+			{"6", "2.449489742783178098"},
+			{"7", "2.645751311064590591"},
+			{"8", "2.828427124746190098"},
+			{"9", "3"},
+			{"10", "3.162277660168379332"},
+			{"11", "3.316624790355399849"},
+			{"12", "3.464101615137754587"},
+			{"13", "3.605551275463989293"},
+			{"14", "3.741657386773941386"},
+			{"15", "3.872983346207416885"},
+			{"16", "4"},
+			{"17", "4.12310562561766055"},
+			{"18", "4.242640687119285146"},
+			{"19", "4.358898943540673552"},
+			{"20", "4.472135954999579393"},
+			{"21", "4.582575694955840007"},
+			{"22", "4.690415759823429555"},
+			{"23", "4.795831523312719542"},
+			{"24", "4.898979485566356196"},
+			{"25", "5"},
+
+			// Edge cases
+			{"0.0000000000000000001", "0.000000000316227766"},
+			{"9999999999999999999", "3162277660.168379332"},
+		}
+		for _, tt := range tests {
+			d := MustParse(tt.d)
+			got, err := d.Sqrt()
+			if err != nil {
+				t.Errorf("%q.Sqrt() failed: %v", d, err)
+				continue
+			}
+			want := MustParse(tt.want)
+			if got != want {
+				t.Errorf("%q.Sqrt() = %q, want %q", d, got, want)
+			}
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		tests := map[string]string{
+			"negative": "-1",
+		}
+		for name, d := range tests {
+			t.Run(name, func(t *testing.T) {
+				d := MustParse(d)
+				_, err := d.Sqrt()
+				if err == nil {
+					t.Errorf("%q.Sqrt() did not fail", d)
+				}
+			})
+		}
+	})
+}
+
 func TestDecimal_Abs(t *testing.T) {
 	tests := []struct {
 		d, want string
@@ -3436,6 +3510,71 @@ func FuzzDecimal_Cmp(f *testing.F) {
 			}
 		},
 	)
+}
+
+func FuzzDecimal_Sqrt(f *testing.F) {
+	for _, d := range corpus {
+		f.Add(d.neg, d.scale, d.coef)
+	}
+
+	f.Fuzz(
+		func(t *testing.T, neg bool, scale int, coef uint64) {
+			if neg {
+				t.Skip()
+				return
+			}
+			if scale < 0 || MaxScale < scale {
+				t.Skip()
+				return
+			}
+			want, err := newSafe(neg, fint(coef), scale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+			d, err := want.Sqrt()
+			if err != nil {
+				t.Errorf("%q.Sqrt() failed: %v", want, err)
+				return
+			}
+			got, err := d.Pow(2)
+			if err != nil {
+				if errors.Is(err, errDecimalOverflow) {
+					t.Skip() // Decimal overflow is an expected error here
+				} else {
+					t.Errorf("%q.Pow(2) failed: %v", d, err)
+				}
+				return
+			}
+			if cmp, err := cmp3ULP(got, want); err != nil {
+				t.Errorf("cmpULP(%q, %q) failed: %v", got, want, err)
+			} else if cmp != 0 {
+				t.Errorf("%q.Sqrt().Pow(2) = %q, want %q", want, got, want)
+				return
+			}
+		},
+	)
+}
+
+// cmp3ULP compares decimals and returns 0 if they are within 3 ULPs.
+func cmp3ULP(d, e Decimal) (int, error) {
+	three, err := New(3, 0)
+	if err != nil {
+		return 0, err
+	}
+	dist, err := d.SubAbs(e)
+	if err != nil {
+		return 0, err
+	}
+	ulp := d.ULP().Min(e.ULP())
+	tlr, err := ulp.Mul(three)
+	if err != nil {
+		return 0, err
+	}
+	if dist.Cmp(tlr) <= 0 {
+		return 0, nil
+	}
+	return d.Cmp(e), nil
 }
 
 func FuzzDecimal_CmpSub(f *testing.F) {
