@@ -2731,6 +2731,8 @@ func TestDecimal_QuoRem(t *testing.T) {
 			{"4.2", "3.1000003", "1", "1.0999997"},
 			{"1.000000000000000000", "0.000000000000000003", "333333333333333333", "0.000000000000000001"},
 			{"1.000000000000000001", "0.000000000000000003", "333333333333333333", "0.000000000000000002"},
+			{"3", "0.9999999999999999999", "3", "0.0000000000000000003"},
+			{"0.9999999999999999999", "3", "0", "0.9999999999999999999"},
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.d)
@@ -2752,7 +2754,8 @@ func TestDecimal_QuoRem(t *testing.T) {
 		tests := map[string]struct {
 			d, e string
 		}{
-			"zero 1": {"1", "0"},
+			"zero 1":     {"1", "0"},
+			"overflow 1": {"9999999999999999999", "0.0000000000000000001"},
 		}
 		for _, tt := range tests {
 			d := MustParse(tt.d)
@@ -3374,7 +3377,7 @@ func FuzzDecimal_Quo(f *testing.F) {
 				t.Skip()
 				return
 			}
-			if dcoef == 0 || ecoef == 0 {
+			if ecoef == 0 {
 				t.Skip()
 				return
 			}
@@ -3417,23 +3420,17 @@ func FuzzDecimal_Quo(f *testing.F) {
 func FuzzDecimal_QuoRem(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
-			for s := 0; s <= MaxScale; s++ {
-				f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef, s)
-			}
+			f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef)
 		}
 	}
 
 	f.Fuzz(
-		func(t *testing.T, dneg bool, dscale int, dcoef uint64, eneg bool, escale int, ecoef uint64, scale int) {
-			if scale < 0 || MaxScale < scale {
+		func(t *testing.T, dneg bool, dscale int, dcoef uint64, eneg bool, escale int, ecoef uint64) {
+			if ecoef == 0 {
 				t.Skip()
 				return
 			}
-			if dcoef == 0 || ecoef == 0 {
-				t.Skip()
-				return
-			}
-			want, err := newSafe(dneg, fint(dcoef), dscale)
+			d, err := newSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
@@ -3444,29 +3441,25 @@ func FuzzDecimal_QuoRem(f *testing.F) {
 				return
 			}
 
-			q, r, err := want.QuoRem(e)
+			gotQ, gotR, err := d.quoRemFint(e)
 			if err != nil {
 				switch {
 				case errors.Is(err, errDecimalOverflow):
-					t.Skip() // Decimal overflow is an expected error in division
+					t.Skip() // Decimal overflow is an expected error in fast division
 				default:
-					t.Errorf("QuoRem(%q, %q) failed: %v", want, e, err)
+					t.Errorf("quoRemFint(%q, %q) failed: %v", d, e, err)
 				}
 				return
 			}
 
-			got, err := e.Mul(q)
+			wantQ, wantR, err := d.quoRemBint(e)
 			if err != nil {
-				t.Errorf("%q.Mul(%q) failed: %v", e, q, err)
+				t.Errorf("quoRemBint(%q, %q) failed: %v", d, e, err)
 				return
 			}
-			got, err = got.Add(r)
-			if err != nil {
-				t.Errorf("%q.Add(%q) failed: %v", got, r, err)
-				return
-			}
-			if got.Cmp(want) != 0 {
-				t.Errorf("%q.Mul(%q).Add(%q) = %q, want %q", e, q, r, got, want)
+
+			if gotQ.Cmp(wantQ) != 0 || gotR.Cmp(wantR) != 0 {
+				t.Errorf("quoRemBint(%q, %q) = (%q, %q), whereas quoRemFint(%q, %q) = (%q, %q)", d, e, wantQ, wantR, d, e, gotQ, gotR)
 			}
 		},
 	)
@@ -3546,7 +3539,7 @@ func FuzzDecimal_Sqrt(f *testing.F) {
 				}
 				return
 			}
-			if cmp, err := cmp3ULP(got, want); err != nil {
+			if cmp, err := cmpULP(got, want, 3); err != nil {
 				t.Errorf("cmpULP(%q, %q) failed: %v", got, want, err)
 			} else if cmp != 0 {
 				t.Errorf("%q.Sqrt().Pow(2) = %q, want %q", want, got, want)
@@ -3556,9 +3549,9 @@ func FuzzDecimal_Sqrt(f *testing.F) {
 	)
 }
 
-// cmp3ULP compares decimals and returns 0 if they are within 3 ULPs.
-func cmp3ULP(d, e Decimal) (int, error) {
-	three, err := New(3, 0)
+// cmpULP compares decimals and returns 0 if they are within specified number of ULPs.
+func cmpULP(d, e Decimal, ulps int) (int, error) {
+	n, err := New(int64(ulps), 0)
 	if err != nil {
 		return 0, err
 	}
@@ -3567,7 +3560,7 @@ func cmp3ULP(d, e Decimal) (int, error) {
 		return 0, err
 	}
 	ulp := d.ULP().Min(e.ULP())
-	tlr, err := ulp.Mul(three)
+	tlr, err := ulp.Mul(n)
 	if err != nil {
 		return 0, err
 	}
