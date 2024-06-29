@@ -1,10 +1,16 @@
 # Changelog
 
+## [0.1.29] - 2024-06-29
+
+### Changed
+
+- Improved `Decimal.Sqrt` and `Decimal.QuoRem` performance.
+
 ## [0.1.28] - 2024-06-22
 
 ### Added
 
-- Implemented `Decimal.Sqrt`, `Decimal.SqrtExact`.
+- Implemented `Decimal.Sqrt`.
 
 ## [0.1.27] - 2024-05-19
 
