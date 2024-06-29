@@ -3546,7 +3546,7 @@ func FuzzDecimal_Sqrt(f *testing.F) {
 				}
 				return
 			}
-			if cmp, err := cmp3ULP(got, want); err != nil {
+			if cmp, err := cmpULP(got, want, 3); err != nil {
 				t.Errorf("cmpULP(%q, %q) failed: %v", got, want, err)
 			} else if cmp != 0 {
 				t.Errorf("%q.Sqrt().Pow(2) = %q, want %q", want, got, want)
@@ -3556,9 +3556,9 @@ func FuzzDecimal_Sqrt(f *testing.F) {
 	)
 }
 
-// cmp3ULP compares decimals and returns 0 if they are within 3 ULPs.
-func cmp3ULP(d, e Decimal) (int, error) {
-	three, err := New(3, 0)
+// cmpULP compares decimals and returns 0 if they are within specified number of ULPs.
+func cmpULP(d, e Decimal, ulps int) (int, error) {
+	n, err := New(int64(ulps), 0)
 	if err != nil {
 		return 0, err
 	}
@@ -3567,7 +3567,7 @@ func cmp3ULP(d, e Decimal) (int, error) {
 		return 0, err
 	}
 	ulp := d.ULP().Min(e.ULP())
-	tlr, err := ulp.Mul(three)
+	tlr, err := ulp.Mul(n)
 	if err != nil {
 		return 0, err
 	}

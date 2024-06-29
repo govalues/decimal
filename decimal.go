@@ -1474,19 +1474,18 @@ func (d Decimal) sqrtBint(minScale int) (Decimal, error) {
 
 	fcoef := getBint()
 	defer putBint(fcoef)
+	fcoef.setFint(0)
 
-	two := getBint()
-	defer putBint(two)
-	two.setFint(2)
+	// Initial quess and alignment
+	// The initial guess is calculated as 10^(n/2) where n is the number of
+	// digits in the integer part. n can be negative if -1 < d < 1.
+	m := (d.Prec() - d.Scale()) / 2
+	ecoef.setBint(bpow10[2*MaxScale+m])
+
+	// Alignment
+	dcoef.lsh(dcoef, 4*MaxScale-d.Scale())
 
 	// Babylonian method
-	dcoef.lsh(dcoef, 2*MaxScale-d.Scale())
-	ecoef.quo(dcoef, two)
-	fcoef.setFint(1)
-	fcoef.lsh(fcoef, 2*MaxScale)
-	fcoef.add(fcoef, ecoef)
-	dcoef.lsh(dcoef, 2*MaxScale)
-
 	for {
 		if ecoef.cmp(fcoef) == 0 {
 			break
@@ -1494,7 +1493,7 @@ func (d Decimal) sqrtBint(minScale int) (Decimal, error) {
 		fcoef.setBint(ecoef)
 		ecoef.quo(dcoef, ecoef)
 		ecoef.add(ecoef, fcoef)
-		ecoef.quo(ecoef, two)
+		ecoef.hlf(ecoef)
 	}
 
 	return newFromBint(false, ecoef, 2*MaxScale, minScale)
