@@ -71,6 +71,16 @@ func (x fint) quo(y fint) (z fint, ok bool) {
 	return z, true
 }
 
+// quoRem calculates x div y and x mod y.
+func (x fint) quoRem(y fint) (q, r fint, ok bool) {
+	if y == 0 {
+		return 0, 0, false
+	}
+	q = x / y
+	r = x - q*y
+	return q, r, true
+}
+
 // dist calculates abs(x - y).
 func (x fint) dist(y fint) fint {
 	if x > y {

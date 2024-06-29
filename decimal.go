@@ -1876,33 +1876,112 @@ func (d Decimal) quoBint(e Decimal, minScale int) (Decimal, error) {
 //   - the divisor is 0;
 //   - the integer part of the quotient has more than [MaxPrec] digits.
 func (d Decimal) QuoRem(e Decimal) (q, r Decimal, err error) {
-	q, r, err = d.quoRem(e)
+	// Special case: zero divisor
+	if e.IsZero() {
+		return Decimal{}, Decimal{}, fmt.Errorf("computing [%v div %v] and [%v mod %v]: %w", d, e, d, e, errDivisionByZero)
+	}
+
+	// General case
+	q, r, err = d.quoRemFint(e)
 	if err != nil {
-		return Decimal{}, Decimal{}, fmt.Errorf("computing [%v div %v] and [%v mod %v]: %w", d, e, d, e, err)
+		q, r, err = d.quoRemBint(e)
+		if err != nil {
+			return Decimal{}, Decimal{}, fmt.Errorf("computing [%v div %v] and [%v mod %v]: %w", d, e, d, e, err)
+		}
+	}
+
+	return q, r, nil
+}
+
+// quoRemFint computes the quotient and remainder of two decimals using uint64 arithmetic.
+func (d Decimal) quoRemFint(e Decimal) (q, r Decimal, err error) {
+	dcoef, ecoef := d.coef, e.coef
+
+	// Alignment and rscale
+	var rscale int
+	var ok bool
+	switch {
+	case d.Scale() == e.Scale():
+		rscale = d.Scale()
+	case d.Scale() > e.Scale():
+		rscale = d.Scale()
+		ecoef, ok = ecoef.lsh(d.Scale() - e.Scale())
+		if !ok {
+			return Decimal{}, Decimal{}, errDecimalOverflow
+		}
+	case d.Scale() < e.Scale():
+		rscale = e.Scale()
+		dcoef, ok = dcoef.lsh(e.Scale() - d.Scale())
+		if !ok {
+			return Decimal{}, Decimal{}, errDecimalOverflow
+		}
+	}
+
+	// Coefficients
+	qcoef, rcoef, ok := dcoef.quoRem(ecoef)
+	if !ok {
+		return Decimal{}, Decimal{}, errDivisionByZero // Should never happen
+	}
+
+	// Signs
+	qsign := d.IsNeg() != e.IsNeg()
+	rsign := d.IsNeg()
+
+	q, err = newFromFint(qsign, qcoef, 0, 0)
+	if err != nil {
+		return Decimal{}, Decimal{}, err
+	}
+	r, err = newFromFint(rsign, rcoef, rscale, rscale)
+	if err != nil {
+		return Decimal{}, Decimal{}, err
 	}
 	return q, r, nil
 }
 
-func (d Decimal) quoRem(e Decimal) (q, r Decimal, err error) {
-	// Quotient
-	q, err = d.Quo(e)
+// quoRemBint computes the quotient and remainder of two decimals using *big.Int arithmetic.
+func (d Decimal) quoRemBint(e Decimal) (q, r Decimal, err error) {
+	dcoef := getBint()
+	defer putBint(dcoef)
+	dcoef.setFint(d.coef)
+
+	ecoef := getBint()
+	defer putBint(ecoef)
+	ecoef.setFint(e.coef)
+
+	qcoef := getBint()
+	defer putBint(qcoef)
+
+	rcoef := getBint()
+	defer putBint(rcoef)
+
+	// Alignment and scale
+	var rscale int
+	switch {
+	case d.Scale() == e.Scale():
+		rscale = d.Scale()
+	case d.Scale() > e.Scale():
+		rscale = d.Scale()
+		ecoef.lsh(ecoef, d.Scale()-e.Scale())
+	case d.Scale() < e.Scale():
+		rscale = e.Scale()
+		dcoef.lsh(dcoef, e.Scale()-d.Scale())
+	}
+
+	// Coefficients
+	qcoef.quoRem(dcoef, ecoef, rcoef)
+
+	// Signs
+	qsign := d.IsNeg() != e.IsNeg()
+	rsign := d.IsNeg()
+
+	q, err = newFromBint(qsign, qcoef, 0, 0)
 	if err != nil {
 		return Decimal{}, Decimal{}, err
 	}
-
-	// T-Division
-	q = q.Trunc(0)
-
-	// Reminder
-	r, err = e.Mul(q)
+	r, err = newFromBint(rsign, rcoef, rscale, rscale)
 	if err != nil {
 		return Decimal{}, Decimal{}, err
 	}
-	r, err = d.Sub(r)
-	if err != nil {
-		return Decimal{}, Decimal{}, err
-	}
-
 	return q, r, nil
 }
 
