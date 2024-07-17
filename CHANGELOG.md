@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.1.29] - 2024-06-29
+
+### Changed
+
+- Improved `Decimal.Sqrt` and `Decimal.QuoRem` performance.
+
+## [0.1.28] - 2024-06-22
+
+### Added
+
+- Implemented `Decimal.Sqrt`.
+
+## [0.1.27] - 2024-05-19
+
+### Changed
+
+- `Decimal.Pad`, `Decimal.Rescale`, and `Descimal.Quantize` methods
+  do not return errors anymore.
+
+## [0.1.25] - 2024-05-17
+
+### Added
+
+- Implemented binary marshaling.
+
+## [0.1.24] - 2024-05-05
+
+### Changed
+
+- Bumped go version to 1.21.
+- Improved documentation.
+
 ## [0.1.23] - 2024-03-04
 
 ### Changed
@@ -10,7 +42,7 @@
 
 ### Changed
 
-- Supported MySQL in `Decimal.Scan`.
+- Supported MySQL in `Decimal.Scan` method.
 - Added examples for XML marshaling.
 
 ## [0.1.21] - 2024-01-05
@@ -96,7 +128,7 @@
 ### Added
 
 - Implemented `Decimal.SubAbs`, `Decimal.CmpAbs`, `Decimal.Inv`.
-- Added `Decimal.Pi`, `Decimal.E`, `Decimal.NegOne`, `Decimal.Two`, `Decimal.Thousand`
+- Added `Decimal.Pi`, `Decimal.E`, `Decimal.NegOne`, `Decimal.Two`, `Decimal.Thousand`.
 
 ### Changed
 

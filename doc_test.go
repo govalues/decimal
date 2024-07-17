@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/govalues/decimal"
@@ -256,6 +257,37 @@ func ExampleDecimal_String() {
 	// Output: 1234567890.123456789
 }
 
+func unmarshalBytes(b []byte) (decimal.Decimal, error) {
+	var d decimal.Decimal
+	err := d.UnmarshalBinary(b)
+	return d, err
+}
+
+func marshalBytes(s string) ([]byte, error) {
+	d, err := decimal.Parse(s)
+	if err != nil {
+		panic(err)
+	}
+	bcd, err := d.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	return bcd, nil
+}
+
+func ExampleDecimal_UnmarshalBinary() {
+	fmt.Println(unmarshalBytes([]byte{0x56, 0x7c, 0x02}))
+	// Output:
+	// 5.67 <nil>
+}
+
+func ExampleDecimal_MarshalBinary() {
+	bcd, err := marshalBytes("5.67")
+	fmt.Printf("% x %v\n", bcd, err)
+	// Output:
+	// 56 7c 02 <nil>
+}
+
 func ExampleDecimal_Float64() {
 	d := decimal.MustParse("0.1")
 	e := decimal.MustParse("123.456")
@@ -291,7 +323,10 @@ type Object struct {
 func unmarshalJSON(s string) (Object, error) {
 	var v Object
 	err := json.Unmarshal([]byte(s), &v)
-	return v, err
+	if err != nil {
+		return Object{}, err
+	}
+	return v, nil
 }
 
 func marshalJSON(s string) (string, error) {
@@ -504,6 +539,37 @@ func ExampleDecimal_PowExact() {
 	// 8.0000 <nil>
 }
 
+func ExampleDecimal_Sqrt() {
+	d := decimal.MustParse("1")
+	e := decimal.MustParse("2")
+	f := decimal.MustParse("3")
+	g := decimal.MustParse("4")
+	fmt.Println(d.Sqrt())
+	fmt.Println(e.Sqrt())
+	fmt.Println(f.Sqrt())
+	fmt.Println(g.Sqrt())
+	// Output:
+	// 1 <nil>
+	// 1.414213562373095049 <nil>
+	// 1.732050807568877294 <nil>
+	// 2 <nil>
+}
+
+func ExampleDecimal_SqrtExact() {
+	d := decimal.MustParse("4")
+	fmt.Println(d.SqrtExact(0))
+	fmt.Println(d.SqrtExact(1))
+	fmt.Println(d.SqrtExact(2))
+	fmt.Println(d.SqrtExact(3))
+	fmt.Println(d.SqrtExact(4))
+	// Output:
+	// 2 <nil>
+	// 2.0 <nil>
+	// 2.00 <nil>
+	// 2.000 <nil>
+	// 2.0000 <nil>
+}
+
 func ExampleDecimal_Add() {
 	d := decimal.MustParse("5.67")
 	e := decimal.MustParse("8")
@@ -605,6 +671,28 @@ func ExampleDecimal_Cmp() {
 	// 1
 }
 
+func ExampleDecimal_Cmp_slices() {
+	s := []decimal.Decimal{
+		decimal.MustParse("-5.67"),
+		decimal.MustParse("23"),
+		decimal.MustParse("0"),
+	}
+	fmt.Println(slices.CompareFunc(s, s, decimal.Decimal.Cmp))
+	fmt.Println(slices.MaxFunc(s, decimal.Decimal.Cmp))
+	fmt.Println(slices.MinFunc(s, decimal.Decimal.Cmp))
+	fmt.Println(s, slices.IsSortedFunc(s, decimal.Decimal.Cmp))
+	slices.SortFunc(s, decimal.Decimal.Cmp)
+	fmt.Println(s, slices.IsSortedFunc(s, decimal.Decimal.Cmp))
+	fmt.Println(slices.BinarySearchFunc(s, decimal.MustParse("1"), decimal.Decimal.Cmp))
+	// Output:
+	// 0
+	// 23
+	// -5.67
+	// [-5.67 23 0] false
+	// [-5.67 0 23] true
+	// 2 false
+}
+
 func ExampleDecimal_CmpAbs() {
 	d := decimal.MustParse("-23")
 	e := decimal.MustParse("5.67")
@@ -617,6 +705,28 @@ func ExampleDecimal_CmpAbs() {
 	// -1
 }
 
+func ExampleDecimal_CmpAbs_slices() {
+	s := []decimal.Decimal{
+		decimal.MustParse("-5.67"),
+		decimal.MustParse("23"),
+		decimal.MustParse("0"),
+	}
+	fmt.Println(slices.CompareFunc(s, s, decimal.Decimal.CmpAbs))
+	fmt.Println(slices.MaxFunc(s, decimal.Decimal.CmpAbs))
+	fmt.Println(slices.MinFunc(s, decimal.Decimal.CmpAbs))
+	fmt.Println(s, slices.IsSortedFunc(s, decimal.Decimal.CmpAbs))
+	slices.SortFunc(s, decimal.Decimal.CmpAbs)
+	fmt.Println(s, slices.IsSortedFunc(s, decimal.Decimal.CmpAbs))
+	fmt.Println(slices.BinarySearchFunc(s, decimal.MustParse("1"), decimal.Decimal.CmpAbs))
+	// Output:
+	// 0
+	// 23
+	// 0
+	// [-5.67 23 0] false
+	// [0 -5.67 23] true
+	// 1 false
+}
+
 func ExampleDecimal_CmpTotal() {
 	d := decimal.MustParse("2.0")
 	e := decimal.MustParse("2.00")
@@ -627,6 +737,28 @@ func ExampleDecimal_CmpTotal() {
 	// 1
 	// 0
 	// -1
+}
+
+func ExampleDecimal_CmpTotal_slices() {
+	s := []decimal.Decimal{
+		decimal.MustParse("-5.67"),
+		decimal.MustParse("23"),
+		decimal.MustParse("0"),
+	}
+	fmt.Println(slices.CompareFunc(s, s, decimal.Decimal.CmpTotal))
+	fmt.Println(slices.MaxFunc(s, decimal.Decimal.CmpTotal))
+	fmt.Println(slices.MinFunc(s, decimal.Decimal.CmpTotal))
+	fmt.Println(s, slices.IsSortedFunc(s, decimal.Decimal.CmpTotal))
+	slices.SortFunc(s, decimal.Decimal.CmpTotal)
+	fmt.Println(s, slices.IsSortedFunc(s, decimal.Decimal.CmpTotal))
+	fmt.Println(slices.BinarySearchFunc(s, decimal.MustParse("10"), decimal.Decimal.CmpTotal))
+	// Output:
+	// 0
+	// 23
+	// -5.67
+	// [-5.67 23 0] false
+	// [-5.67 0 23] true
+	// 2 false
 }
 
 func ExampleDecimal_Max() {
@@ -666,11 +798,11 @@ func ExampleDecimal_Rescale() {
 	fmt.Println(d.Rescale(3))
 	fmt.Println(d.Rescale(4))
 	// Output:
-	// 6 <nil>
-	// 5.7 <nil>
-	// 5.68 <nil>
-	// 5.678 <nil>
-	// 5.6780 <nil>
+	// 6
+	// 5.7
+	// 5.68
+	// 5.678
+	// 5.6780
 }
 
 func ExampleDecimal_Quantize() {
@@ -682,9 +814,9 @@ func ExampleDecimal_Quantize() {
 	fmt.Println(d.Quantize(y))
 	fmt.Println(d.Quantize(z))
 	// Output:
-	// 6 <nil>
-	// 5.7 <nil>
-	// 5.68 <nil>
+	// 6
+	// 5.7
+	// 5.68
 }
 
 func ExampleDecimal_Pad() {
@@ -695,11 +827,11 @@ func ExampleDecimal_Pad() {
 	fmt.Println(d.Pad(3))
 	fmt.Println(d.Pad(4))
 	// Output:
-	// 5.67 <nil>
-	// 5.67 <nil>
-	// 5.67 <nil>
-	// 5.670 <nil>
-	// 5.6700 <nil>
+	// 5.67
+	// 5.67
+	// 5.67
+	// 5.670
+	// 5.6700
 }
 
 func ExampleDecimal_Round() {
@@ -856,6 +988,21 @@ func ExampleDecimal_IsNeg() {
 	// false
 }
 
+func ExampleDecimal_IsNeg_slices() {
+	s := []decimal.Decimal{
+		decimal.MustParse("-5.67"),
+		decimal.MustParse("23"),
+		decimal.MustParse("0"),
+	}
+	fmt.Println(slices.ContainsFunc(s, decimal.Decimal.IsNeg))
+	fmt.Println(slices.IndexFunc(s, decimal.Decimal.IsNeg))
+	fmt.Println(slices.DeleteFunc(s, decimal.Decimal.IsNeg))
+	// Output:
+	// true
+	// 0
+	// [23 0]
+}
+
 func ExampleDecimal_IsPos() {
 	d := decimal.MustParse("-5.67")
 	e := decimal.MustParse("23")
@@ -869,6 +1016,21 @@ func ExampleDecimal_IsPos() {
 	// false
 }
 
+func ExampleDecimal_IsPos_slices() {
+	s := []decimal.Decimal{
+		decimal.MustParse("-5.67"),
+		decimal.MustParse("23"),
+		decimal.MustParse("0"),
+	}
+	fmt.Println(slices.ContainsFunc(s, decimal.Decimal.IsPos))
+	fmt.Println(slices.IndexFunc(s, decimal.Decimal.IsPos))
+	fmt.Println(slices.DeleteFunc(s, decimal.Decimal.IsPos))
+	// Output:
+	// true
+	// 1
+	// [-5.67 0]
+}
+
 func ExampleDecimal_IsZero() {
 	d := decimal.MustParse("-5.67")
 	e := decimal.MustParse("23")
@@ -880,6 +1042,21 @@ func ExampleDecimal_IsZero() {
 	// false
 	// false
 	// true
+}
+
+func ExampleDecimal_IsZero_slices() {
+	s := []decimal.Decimal{
+		decimal.MustParse("-5.67"),
+		decimal.MustParse("23"),
+		decimal.MustParse("0"),
+	}
+	fmt.Println(slices.ContainsFunc(s, decimal.Decimal.IsZero))
+	fmt.Println(slices.IndexFunc(s, decimal.Decimal.IsZero))
+	fmt.Println(slices.DeleteFunc(s, decimal.Decimal.IsZero))
+	// Output:
+	// true
+	// 2
+	// [-5.67 23]
 }
 
 func ExampleDecimal_IsInt() {

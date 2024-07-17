@@ -63,6 +63,27 @@ func TestFint_quo(t *testing.T) {
 	}
 }
 
+func TestFint_quoRem(t *testing.T) {
+	cases := []struct {
+		x, y, wantQuo, wantRem fint
+		wantOk                 bool
+	}{
+		{1, 0, 0, 0, false},
+		{1, 1, 1, 0, true},
+		{2, 4, 0, 2, true},
+		{20, 4, 5, 0, true},
+		{20, 3, 6, 2, true},
+		{maxFint, 2, maxFint / 2, 1, true},
+	}
+	for _, tt := range cases {
+		x, y := tt.x, tt.y
+		gotQuo, gotRem, gotOk := x.quoRem(y)
+		if gotQuo != tt.wantQuo || gotRem != tt.wantRem || gotOk != tt.wantOk {
+			t.Errorf("%v.quoRem(%v) = %v, %v, %v, want %v, %v, %v", x, y, gotQuo, gotRem, gotOk, tt.wantQuo, tt.wantRem, tt.wantOk)
+		}
+	}
+}
+
 func TestFint_dist(t *testing.T) {
 	cases := []struct {
 		x, y, wantCoef fint
