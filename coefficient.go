@@ -71,6 +71,16 @@ func (x fint) quo(y fint) (z fint, ok bool) {
 	return z, true
 }
 
+// quoRem calculates x div y and x mod y.
+func (x fint) quoRem(y fint) (q, r fint, ok bool) {
+	if y == 0 {
+		return 0, 0, false
+	}
+	q = x / y
+	r = x - q*y
+	return q, r, true
+}
+
 // dist calculates abs(x - y).
 func (x fint) dist(y fint) fint {
 	if x > y {
@@ -389,13 +399,31 @@ func (z *bint) dist(x, y *bint) {
 	}
 }
 
-// dbl calculates z = 2 * x.
+// dbl (Double) calculates z = x * 2.
 func (z *bint) dbl(x *bint) {
 	(*big.Int)(z).Lsh((*big.Int)(x), 1)
 }
 
+// hlf (Half) calculates z = x / 2.
+func (z *bint) hlf(x *bint) {
+	(*big.Int)(z).Rsh((*big.Int)(x), 1)
+}
+
 // mul calculates z = x * y.
 func (z *bint) mul(x, y *bint) {
+	// Copying x, y to prevent heap allocations.
+	if z == x {
+		b := getBint()
+		defer putBint(b)
+		b.setBint(x)
+		x = b
+	}
+	if z == y {
+		b := getBint()
+		defer putBint(b)
+		b.setBint(y)
+		y = b
+	}
 	(*big.Int)(z).Mul((*big.Int)(x), (*big.Int)(y))
 }
 
@@ -516,7 +544,7 @@ func (z *bint) rshHalfEven(x *bint, shift int) {
 	}
 }
 
-// prec returns length of *big.Int in decimal digits.
+// prec returns length of z in decimal digits.
 // prec assumes that 0 has no digits.
 // If z is negative, the result is unpredictable.
 //
@@ -540,9 +568,9 @@ func (z *bint) prec() int {
 	return left
 }
 
-// hasPrec checks if *big.Int has a given number of digits or more.
+// hasPrec checks if z has a given number of digits or more.
 // hasPrec assumes that 0 has no digits.
-// If *big.Int is negative, the result is unpredictable.
+// If z is negative, the result is unpredictable.
 //
 // z.hasPrec(p) is significantly faster than z.prec() >= p,
 // if z has no more than len(bpow10) digits.
