@@ -88,32 +88,169 @@ func TestDecimal_Interfaces(t *testing.T) {
 	}
 }
 
-func TestDecimal_GobEncode(t *testing.T) {
-	s := "123.456"
-	d := MustParse(s)
-	want := []byte(s)
-
-	got, err := d.GobEncode()
-	if err != nil {
-		t.Errorf("GobEncode() failed: %v", err)
-	}
-	if !bytes.Equal(got, want) {
-		t.Errorf("GobEncode() = %v, want %v", got, want)
+func TestDecimal_UnmarshallJson(t *testing.T) {
+	type TestData struct {
+		Value Decimal `json:"value"`
 	}
 
+	tests := []struct {
+		name     string
+		input    string
+		expected Decimal
+	}{
+		{
+			name:     "valid decimal",
+			input:    `{"value": "123.456"}`,
+			expected: MustParse("123.456"),
+		},
+		{
+			name:     "negative decimal",
+			input:    `{"value": "-789.012"}`,
+			expected: MustParse("-789.012"),
+		},
+		{
+			name:     "zero decimal",
+			input:    `{"value": "0"}`,
+			expected: MustParse("0"),
+		},
+		{
+			name:     "decimal with leading zeros",
+			input:    `{"value": "0001.234"}`,
+			expected: MustParse("1.234"),
+		},
+		{
+			name:     "decimal with trailing zeros",
+			input:    `{"value": "123.4000"}`,
+			expected: MustParse("123.4"),
+		},
+		{
+			name:     "decimal with scientific notation",
+			input:    `{"value": "1.23e5"}`,
+			expected: MustParse("123000"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var data TestData
+			err := json.Unmarshal([]byte(tt.input), &data)
+			if err != nil {
+				t.Errorf("json.Unmarshal() failed: %v", err)
+			}
+
+			if data.Value.Cmp(tt.expected) != 0 {
+				t.Errorf("json.Unmarshal() failed, got=%q, want=%q", data.Value, tt.expected)
+			}
+		})
+	}
 }
 
-func TestDecimal_GobDecode(t *testing.T) {
-	s := "123.456"
-	got := &Decimal{}
-	want := MustParse(s)
-
-	err := got.GobDecode([]byte(s))
-	if err != nil {
-		t.Errorf("GobDecode() failed: %v", err)
+func TestDecimal_MarshallJson(t *testing.T) {
+	type TestData struct {
+		Value Decimal `json:"value"`
 	}
-	if got.Cmp(want) != 0 {
-		t.Errorf("GobDecode() did not decode correctly, got %q, want %q", got, want)
+
+	tests := []struct {
+		name     string
+		input    Decimal
+		expected string
+	}{
+		{
+			name:     "positive decimal",
+			input:    MustParse("123.456"),
+			expected: `{"value":"123.456"}`,
+		},
+		{
+			name:     "negative decimal",
+			input:    MustParse("-789.012"),
+			expected: `{"value":"-789.012"}`,
+		},
+		{
+			name:     "zero decimal",
+			input:    MustParse("0"),
+			expected: `{"value":"0"}`,
+		},
+		{
+			name:     "decimal with leading zeros",
+			input:    MustParse("0001.234"),
+			expected: `{"value":"1.234"}`,
+		},
+		{
+			name:     "decimal with scientific notation",
+			input:    MustParse("1.23e5"),
+			expected: `{"value":"123000"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := TestData{Value: tt.input}
+			result, err := json.Marshal(data)
+			if err != nil {
+				t.Errorf("json.Marshal() failed: %v", err)
+			}
+
+			if string(result) != tt.expected {
+				t.Errorf("json.Marshal() failed, got=%q, want=%q", string(result), tt.expected)
+			}
+		})
+	}
+}
+
+func TestDecimal_JsonEnd2End(t *testing.T) {
+	type TestData struct {
+		Value Decimal `json:"value"`
+	}
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "valid decimal",
+			input:    `{"value": "123.456"}`,
+			expected: `{"value":"123.456"}`,
+		},
+		{
+			name:     "negative decimal",
+			input:    `{"value": "-789.012"}`,
+			expected: `{"value":"-789.012"}`,
+		},
+		{
+			name:     "zero decimal",
+			input:    `{"value": "0"}`,
+			expected: `{"value":"0"}`,
+		},
+		{
+			name:     "decimal with leading zeros",
+			input:    `{"value": "0001.234"}`,
+			expected: `{"value":"1.234"}`,
+		},
+		{
+			name:     "decimal with scientific notation",
+			input:    `{"value": "1.23e5"}`,
+			expected: `{"value":"123000"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var data TestData
+			err := json.Unmarshal([]byte(tt.input), &data)
+			if err != nil {
+				t.Errorf("json.Unmarshal() failed: %v", err)
+			}
+
+			result, err := json.Marshal(data)
+			if err != nil {
+				t.Errorf("json.Marshal() failed: %v", err)
+			}
+
+			if string(result) != tt.expected {
+				t.Errorf("json.Marshal() failed, got=%q, want%q", string(result), tt.expected)
+			}
+		})
 	}
 }
 

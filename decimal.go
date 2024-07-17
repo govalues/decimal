@@ -719,12 +719,12 @@ func (d Decimal) MarshalJSON() ([]byte, error) {
 
 // GobDecode implements the gob.GobDecoder interface for gob serialization.
 func (d *Decimal) GobDecode(data []byte) error {
-	return d.UnmarshalText(data)
+	return d.UnmarshalBinary(data)
 }
 
 // GobEncode implements the gob.GobEncoder interface for gob serialization.
 func (d Decimal) GobEncode() ([]byte, error) {
-	return d.MarshalText()
+	return d.MarshalBinary()
 }
 
 // UnmarshalBinary implements the [encoding.BinaryUnmarshaler] interface.
