@@ -704,6 +704,29 @@ func (d Decimal) MarshalText() ([]byte, error) {
 	return []byte(d.String()), nil
 }
 
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (d *Decimal) UnmarshalJSON(s []byte) error {
+	var err error
+	unquoted := string(s[1 : len(s)-1])
+	*d, err = Parse(unquoted)
+	return err
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (d Decimal) MarshalJSON() ([]byte, error) {
+	return []byte("\"" + d.String() + "\""), nil
+}
+
+// GobDecode implements the gob.GobDecoder interface for gob serialization.
+func (d *Decimal) GobDecode(data []byte) error {
+	return d.UnmarshalBinary(data)
+}
+
+// GobEncode implements the gob.GobEncoder interface for gob serialization.
+func (d Decimal) GobEncode() ([]byte, error) {
+	return d.MarshalBinary()
+}
+
 // UnmarshalBinary implements the [encoding.BinaryUnmarshaler] interface.
 //
 // [encoding.BinaryUnmarshaler]: https://pkg.go.dev/encoding#BinaryUnmarshaler
