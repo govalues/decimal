@@ -3353,6 +3353,7 @@ func TestDecimal_Min(t *testing.T) {
 	}
 }
 
+//nolint:predeclared
 func TestDecimal_Clamp(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
