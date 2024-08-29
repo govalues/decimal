@@ -31,7 +31,7 @@ jobs:
         run: go generate ./... && git diff --exit-code
 
       - name: Verify potential issues
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v6
 
       - name: Run tests with coverage
         run: go test -race -shuffle=on -coverprofile="coverage.txt" -covermode=atomic ./...
