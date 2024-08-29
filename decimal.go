@@ -289,7 +289,7 @@ func ParseExact(s string, scale int) (Decimal, error) {
 // parseFint parses a decimal string using uint64 arithmetic.
 // parseFint does not support exponential notation to make it as fast as possible.
 //
-//nolint:gocycle
+//nolint:gocyclo
 func parseFint(s string, minScale int) (Decimal, error) {
 	var pos int
 	width := len(s)
@@ -347,7 +347,7 @@ func parseFint(s string, minScale int) (Decimal, error) {
 // parseBint parses a decimal string using *big.Int arithmetic.
 // parseBint supports exponential notation.
 //
-//nolint:gocycle
+//nolint:gocyclo
 func parseBint(s string, minScale int) (Decimal, error) {
 	var pos int
 	width := len(s)
@@ -774,7 +774,7 @@ func (d Decimal) Value() (driver.Value, error) {
 // [format verbs]: https://pkg.go.dev/fmt#hdr-Printing
 // [fmt.Formatter]: https://pkg.go.dev/fmt#Formatter
 //
-//nolint:gocycle
+//nolint:gocyclo
 func (d Decimal) Format(state fmt.State, verb rune) {
 	var err error
 
