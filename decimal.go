@@ -289,7 +289,7 @@ func ParseExact(s string, scale int) (Decimal, error) {
 // parseFint parses a decimal string using uint64 arithmetic.
 // parseFint does not support exponential notation to make it as fast as possible.
 //
-//gocyclo:ignore
+//nolint:gocycle
 func parseFint(s string, minScale int) (Decimal, error) {
 	var pos int
 	width := len(s)
@@ -347,7 +347,7 @@ func parseFint(s string, minScale int) (Decimal, error) {
 // parseBint parses a decimal string using *big.Int arithmetic.
 // parseBint supports exponential notation.
 //
-//gocyclo:ignore
+//nolint:gocycle
 func parseBint(s string, minScale int) (Decimal, error) {
 	var pos int
 	width := len(s)
@@ -774,7 +774,7 @@ func (d Decimal) Value() (driver.Value, error) {
 // [format verbs]: https://pkg.go.dev/fmt#hdr-Printing
 // [fmt.Formatter]: https://pkg.go.dev/fmt#Formatter
 //
-//gocyclo:ignore
+//nolint:gocycle
 func (d Decimal) Format(state fmt.State, verb rune) {
 	var err error
 
@@ -2415,6 +2415,7 @@ func (d Decimal) Min(e Decimal) Decimal {
 // See also method [Decimal.CmpTotal].
 //
 // Clamp returns an error if min is greater than max numerically.
+// nolint:predeclared
 func (d Decimal) Clamp(min, max Decimal) (Decimal, error) {
 	if min.Cmp(max) > 0 {
 		return Decimal{}, fmt.Errorf("clamping %v: invalid range", d)
