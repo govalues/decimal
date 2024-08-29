@@ -61,7 +61,7 @@ occurs in two steps:
     If no overflow occurs, the exact result is immediately returned.
     If overflow occurs, the operation proceeds to step 2.
 
- 2. The operation is repeated with increased precision using [big.Int] arithmetic.
+ 2. The operation is repeated with double precision using [big.Int] arithmetic.
     The result is then rounded to 19 digits.
     If no significant digits are lost during rounding, the inexact result is returned.
     If any significant digit is lost, an overflow error is returned.
@@ -72,12 +72,12 @@ will compute an exact result during step 1.
 
 The following rules determine the significance of digits during step 2:
 
-  - [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.FMA], [Decimal.Pow],
-    [Decimal.Quo], [Decimal.QuoRem], [Decimal.Inv], [Decimal.Sqrt]:
+  - [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.AddMul], [Decimal.Pow],
+    [Decimal.Quo], [Decimal.AddQuo], [Decimal.QuoRem], [Decimal.Inv], [Decimal.Sqrt], [Decimal.Exp]:
     All digits in the integer part are significant, while digits in the
     fractional part are considered insignificant.
-  - [Decimal.AddExact], [Decimal.SubExact], [Decimal.MulExact], [Decimal.FMAExact],
-    [Decimal.PowExact], [Decimal.QuoExact], [Decimal.SqrtExact]:
+  - [Decimal.AddExact], [Decimal.SubExact], [Decimal.MulExact], [Decimal.AddMulExact],
+    [Decimal.PowExact], [Decimal.QuoExact], [Decimal.AddQuoExact]:
     All digits in the integer part are significant. The significance of digits
     in the fractional part is determined by the scale argument, which is typically
     equal to the scale of the currency.
