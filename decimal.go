@@ -48,6 +48,7 @@ func newUnsafe(neg bool, coef fint, scale int) Decimal {
 	if coef == 0 {
 		neg = false
 	}
+	//nolint:gosec
 	return Decimal{neg: neg, coef: coef, scale: int8(scale)}
 }
 
@@ -680,11 +681,13 @@ func (d Decimal) Int64(scale int) (whole, frac int64, ok bool) {
 		if q > -math.MinInt64 || r > -math.MinInt64 {
 			return 0, 0, false
 		}
+		//nolint:gosec
 		return -int64(q), -int64(r), true
 	}
 	if q > math.MaxInt64 || r > math.MaxInt64 {
 		return 0, 0, false
 	}
+	//nolint:gosec
 	return int64(q), int64(r), true
 }
 
