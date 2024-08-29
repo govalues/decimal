@@ -31,14 +31,14 @@ jobs:
         run: go generate ./... && git diff --exit-code
 
       - name: Verify potential issues
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v6
 
       - name: Run tests with coverage
         run: go test -race -shuffle=on -coverprofile="coverage.txt" -covermode=atomic ./...
 
       - name: Upload test coverage
         if: matrix.os == 'ubuntu-latest' && matrix.go-version == 'stable'
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
 
   fuzz:
     needs: test
@@ -78,7 +78,10 @@ jobs:
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Mul$
 
       - name: Run fuzzing for fused multiply-addition
-        run: go test -fuzztime 60s -fuzz ^FuzzDecimal_FMA$
+        run: go test -fuzztime 60s -fuzz ^FuzzDecimal_AddMul$
+
+      - name: Run fuzzing for fused quotient-addition
+        run: go test -fuzztime 60s -fuzz ^FuzzDecimal_AddQuo$
 
       - name: Run fuzzing for square root
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Sqrt$

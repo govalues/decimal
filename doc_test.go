@@ -10,6 +10,18 @@ import (
 	"github.com/govalues/decimal"
 )
 
+// This example implements a simple calculator that evaluates mathematical
+// expressions written in [postfix notation].
+// The calculator can handle basic arithmetic operations such as addition,
+// subtraction, multiplication, and division.
+//
+// [postfix notation]: https://en.wikipedia.org/wiki/Reverse_Polish_notation
+func Example_postfixCalculator() {
+	fmt.Println(evaluate("1.23 4.56 + 10 *"))
+	// Output:
+	// 57.90 <nil>
+}
+
 func evaluate(input string) (decimal.Decimal, error) {
 	tokens := strings.Fields(input)
 	if len(tokens) == 0 {
@@ -50,20 +62,19 @@ func evaluate(input string) (decimal.Decimal, error) {
 	return stack[0], nil
 }
 
-// This example implements a simple calculator that evaluates mathematical
-// expressions written in [postfix notation].
-// The calculator can handle basic arithmetic operations such as addition,
-// subtraction, multiplication, and division.
+// This example calculates an approximate value of π using the [Leibniz formula].
+// The Leibniz formula is an infinite series that converges to π/4, and is
+// given by the equation: 1 - 1/3 + 1/5 - 1/7 + 1/9 - 1/11 + ... = π/4.
+// This example computes the series up to the 500,000th term using decimal arithmetic
+// and returns the approximate value of π.
 //
-// [postfix notation]: https://en.wikipedia.org/wiki/Reverse_Polish_notation
-func Example_postfixCalculator() {
-	d, err := evaluate("1.23 4.56 + 10 *")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(d)
+// [Leibniz formula]: https://en.wikipedia.org/wiki/Leibniz_formula_for_%CF%80
+func Example_piApproximation() {
+	fmt.Println(approximate(500_000))
+	fmt.Println(decimal.Pi)
 	// Output:
-	// 57.90
+	// 3.141590653589793192 <nil>
+	// 3.141592653589793238
 }
 
 func approximate(terms int) (decimal.Decimal, error) {
@@ -72,12 +83,9 @@ func approximate(terms int) (decimal.Decimal, error) {
 	increment := decimal.Two
 	multiplier := decimal.MustParse("4")
 
-	for i := 0; i < terms; i++ {
-		term, err := multiplier.Quo(denominator)
-		if err != nil {
-			return decimal.Decimal{}, err
-		}
-		pi, err = pi.Add(term)
+	var err error
+	for range terms {
+		pi, err = pi.AddQuo(multiplier, denominator)
 		if err != nil {
 			return decimal.Decimal{}, err
 		}
@@ -90,46 +98,27 @@ func approximate(terms int) (decimal.Decimal, error) {
 	return pi, nil
 }
 
-// This example calculates an approximate value of π using the [Leibniz formula].
-// The Leibniz formula is an infinite series that converges to π/4, and is
-// given by the equation: 1 - 1/3 + 1/5 - 1/7 + 1/9 - 1/11 + ... = π/4.
-// This example computes the series up to the 500,000th term using decimal arithmetic
-// and returns the approximate value of π.
-//
-// [Leibniz formula]: https://en.wikipedia.org/wiki/Leibniz_formula_for_%CF%80
-func Example_piApproximation() {
-	pi, err := approximate(500000)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(pi)
-	fmt.Println(decimal.Pi)
-	// Output:
-	// 3.141590653589793206
-	// 3.141592653589793238
-}
-
 // This example demonstrates the advantage of decimals for financial calculations.
-// It computes the sum 0.1 + 0.1 + 0.1 + 0.1 + 0.1 + 0.1 + 0.1 + 0.1 + 0.1 + 0.1.
-// In decimal arithmetic, the result is exactly 1.0.
-// In float64 arithmetic, the result slightly deviates from 1.0 due to binary
-// floating-point representation.
+// It computes the sum 1.1 + 1.2 + 1.3 using both decimal and float64 arithmetic.
+// In decimal arithmetic, the result is exactly 3.6, as expected.
+// In float64 arithmetic, the result is 3.5999999999999996 due to floating-point inaccuracy.
 func Example_floatInaccuracy() {
-	d := decimal.MustParse("0.0")
-	e := decimal.MustParse("0.1")
-	for i := 0; i < 10; i++ {
-		d, _ = d.Add(e)
-	}
-	fmt.Println(d)
+	a := decimal.MustParse("1.1")
+	b := decimal.MustParse("1.2")
+	c := decimal.MustParse("1.3")
+	s := decimal.Zero
+	s, _ = s.Add(a)
+	s, _ = s.Add(b)
+	s, _ = s.Add(c)
+	fmt.Println(s)
 
-	f := 0.0
-	for i := 0; i < 10; i++ {
-		f += 0.1
-	}
-	fmt.Println(f)
+	x := 1.1
+	y := 1.2
+	z := 1.3
+	fmt.Println(x + y + z)
 	// Output:
-	// 1.0
-	// 0.9999999999999999
+	// 3.6
+	// 3.5999999999999996
 }
 
 func ExampleMustNew() {
@@ -266,11 +255,11 @@ func unmarshalBytes(b []byte) (decimal.Decimal, error) {
 func marshalBytes(s string) ([]byte, error) {
 	d, err := decimal.Parse(s)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	bcd, err := d.MarshalBinary()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	return bcd, nil
 }
@@ -321,12 +310,12 @@ type Object struct {
 }
 
 func unmarshalJSON(s string) (Object, error) {
-	var v Object
-	err := json.Unmarshal([]byte(s), &v)
+	var o Object
+	err := json.Unmarshal([]byte(s), &o)
 	if err != nil {
 		return Object{}, err
 	}
-	return v, nil
+	return o, nil
 }
 
 func marshalJSON(s string) (string, error) {
@@ -371,9 +360,9 @@ type Entity struct {
 }
 
 func unmarshalXML(s string) (Entity, error) {
-	var v Entity
-	err := xml.Unmarshal([]byte(s), &v)
-	return v, err
+	var e Entity
+	err := xml.Unmarshal([]byte(s), &e)
+	return e, err
 }
 
 func marshalXML(s string) (string, error) {
@@ -484,29 +473,54 @@ func ExampleDecimal_MulExact() {
 	// 17.1000 <nil>
 }
 
-func ExampleDecimal_FMA() {
+func ExampleDecimal_AddMul() {
 	d := decimal.MustParse("2")
 	e := decimal.MustParse("3")
 	f := decimal.MustParse("4")
-	fmt.Println(d.FMA(e, f))
-	// Output: 10 <nil>
+	fmt.Println(d.AddMul(e, f))
+	// Output: 14 <nil>
 }
 
-func ExampleDecimal_FMAExact() {
+func ExampleDecimal_AddMulExact() {
 	d := decimal.MustParse("2")
 	e := decimal.MustParse("3")
 	f := decimal.MustParse("4")
-	fmt.Println(d.FMAExact(e, f, 0))
-	fmt.Println(d.FMAExact(e, f, 1))
-	fmt.Println(d.FMAExact(e, f, 2))
-	fmt.Println(d.FMAExact(e, f, 3))
-	fmt.Println(d.FMAExact(e, f, 4))
+	fmt.Println(d.AddMulExact(e, f, 0))
+	fmt.Println(d.AddMulExact(e, f, 1))
+	fmt.Println(d.AddMulExact(e, f, 2))
+	fmt.Println(d.AddMulExact(e, f, 3))
+	fmt.Println(d.AddMulExact(e, f, 4))
 	// Output:
-	// 10 <nil>
-	// 10.0 <nil>
-	// 10.00 <nil>
-	// 10.000 <nil>
-	// 10.0000 <nil>
+	// 14 <nil>
+	// 14.0 <nil>
+	// 14.00 <nil>
+	// 14.000 <nil>
+	// 14.0000 <nil>
+}
+
+func ExampleDecimal_AddQuo() {
+	d := decimal.MustParse("2")
+	e := decimal.MustParse("3")
+	f := decimal.MustParse("4")
+	fmt.Println(d.AddQuo(e, f))
+	// Output: 2.75 <nil>
+}
+
+func ExampleDecimal_AddQuoExact() {
+	d := decimal.MustParse("2")
+	e := decimal.MustParse("3")
+	f := decimal.MustParse("4")
+	fmt.Println(d.AddQuoExact(e, f, 0))
+	fmt.Println(d.AddQuoExact(e, f, 1))
+	fmt.Println(d.AddQuoExact(e, f, 2))
+	fmt.Println(d.AddQuoExact(e, f, 3))
+	fmt.Println(d.AddQuoExact(e, f, 4))
+	// Output:
+	// 2.75 <nil>
+	// 2.75 <nil>
+	// 2.75 <nil>
+	// 2.750 <nil>
+	// 2.7500 <nil>
 }
 
 func ExampleDecimal_Pow() {
@@ -555,19 +569,17 @@ func ExampleDecimal_Sqrt() {
 	// 2 <nil>
 }
 
-func ExampleDecimal_SqrtExact() {
-	d := decimal.MustParse("4")
-	fmt.Println(d.SqrtExact(0))
-	fmt.Println(d.SqrtExact(1))
-	fmt.Println(d.SqrtExact(2))
-	fmt.Println(d.SqrtExact(3))
-	fmt.Println(d.SqrtExact(4))
+func ExampleDecimal_Exp() {
+	d := decimal.MustParse("-2.302585092994045684")
+	e := decimal.MustParse("0")
+	f := decimal.MustParse("2.302585092994045684")
+	fmt.Println(d.Exp())
+	fmt.Println(e.Exp())
+	fmt.Println(f.Exp())
 	// Output:
-	// 2 <nil>
-	// 2.0 <nil>
-	// 2.00 <nil>
-	// 2.000 <nil>
-	// 2.0000 <nil>
+	// 0.1 <nil>
+	// 1 <nil>
+	// 10 <nil>
 }
 
 func ExampleDecimal_Add() {
@@ -775,6 +787,7 @@ func ExampleDecimal_Min() {
 	// Output: -5.67
 }
 
+//nolint:predeclared
 func ExampleDecimal_Clamp() {
 	min := decimal.MustParse("-20")
 	max := decimal.MustParse("20")
@@ -1069,6 +1082,21 @@ func ExampleDecimal_IsInt() {
 	// false
 }
 
+func ExampleDecimal_IsInt_slices() {
+	s := []decimal.Decimal{
+		decimal.MustParse("-5.67"),
+		decimal.MustParse("23"),
+		decimal.MustParse("0"),
+	}
+	fmt.Println(slices.ContainsFunc(s, decimal.Decimal.IsInt))
+	fmt.Println(slices.IndexFunc(s, decimal.Decimal.IsInt))
+	fmt.Println(slices.DeleteFunc(s, decimal.Decimal.IsInt))
+	// Output:
+	// true
+	// 1
+	// [-5.67]
+}
+
 func ExampleDecimal_IsOne() {
 	d := decimal.MustParse("1")
 	e := decimal.MustParse("2")
@@ -1077,6 +1105,21 @@ func ExampleDecimal_IsOne() {
 	// Output:
 	// true
 	// false
+}
+
+func ExampleDecimal_IsOne_slices() {
+	s := []decimal.Decimal{
+		decimal.MustParse("-5.67"),
+		decimal.MustParse("23"),
+		decimal.MustParse("1"),
+	}
+	fmt.Println(slices.ContainsFunc(s, decimal.Decimal.IsOne))
+	fmt.Println(slices.IndexFunc(s, decimal.Decimal.IsOne))
+	fmt.Println(slices.DeleteFunc(s, decimal.Decimal.IsOne))
+	// Output:
+	// true
+	// 2
+	// [-5.67 23]
 }
 
 func ExampleDecimal_WithinOne() {
@@ -1093,6 +1136,21 @@ func ExampleDecimal_WithinOne() {
 	// true
 	// true
 	// false
+}
+
+func ExampleDecimal_WithinOne_slices() {
+	s := []decimal.Decimal{
+		decimal.MustParse("-5.67"),
+		decimal.MustParse("23"),
+		decimal.MustParse("0.1"),
+	}
+	fmt.Println(slices.ContainsFunc(s, decimal.Decimal.WithinOne))
+	fmt.Println(slices.IndexFunc(s, decimal.Decimal.WithinOne))
+	fmt.Println(slices.DeleteFunc(s, decimal.Decimal.WithinOne))
+	// Output:
+	// true
+	// 2
+	// [-5.67 23]
 }
 
 func ExampleNullDecimal_Scan() {
