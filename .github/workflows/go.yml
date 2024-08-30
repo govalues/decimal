@@ -60,16 +60,16 @@ jobs:
         run: go test -fuzztime 20s -fuzz ^FuzzBCD$
 
       - name: Run fuzzing for string conversion
-        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_String$
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_String_Parse$
 
       - name: Run fuzzing for binary conversion
-        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_BCD$
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_BCD_ParseBCD$
 
       - name: Run fuzzing for float64 conversion
-        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Float64$
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Float64_NewFromFloat64$
 
       - name: Run fuzzing for int64 conversion
-        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Int64$
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Int64_NewFromInt64$
 
       - name: Run fuzzing for addition
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Add$
@@ -80,23 +80,32 @@ jobs:
       - name: Run fuzzing for fused multiply-addition
         run: go test -fuzztime 60s -fuzz ^FuzzDecimal_AddMul$
 
-      - name: Run fuzzing for fused quotient-addition
-        run: go test -fuzztime 60s -fuzz ^FuzzDecimal_AddQuo$
-
-      - name: Run fuzzing for square root
-        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Sqrt$
+      - name: Run fuzzing for fused multiply-addition
+        run: go test -fuzztime 60s -fuzz ^FuzzDecimal_Add_Mul_AddMul$
 
       - name: Run fuzzing for division
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Quo$
 
+      - name: Run fuzzing for fused quotient-addition
+        run: go test -fuzztime 60s -fuzz ^FuzzDecimal_AddQuo$
+
+      - name: Run fuzzing for fused quotient-addition
+        run: go test -fuzztime 60s -fuzz ^FuzzDecimal_Add_Quo_AddQuo$
+
       - name: Run fuzzing for integer division and remainder
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_QuoRem$
+
+      - name: Run fuzzing for square root
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Sqrt_Pow$
 
       - name: Run fuzzing for comparison
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Cmp$
 
       - name: Run fuzzing for comparison and subtraction
-        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_CmpSub$
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Cmp_Sub$
+
+      - name: Run fuzzing for constructor
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_New$
 
       - name: Run fuzzing for padding
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Pad$

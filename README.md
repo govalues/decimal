@@ -60,18 +60,21 @@ func main() {
     // Operations
     fmt.Println(d.Add(e))          // 8 + 12.5
     fmt.Println(d.Sub(e))          // 8 - 12.5
+    fmt.Println(d.SubAbs(e))       // abs(8 - 12.5)
 
     fmt.Println(d.Mul(e))          // 8 * 12.5
     fmt.Println(d.AddMul(e, f))    // 8 + 12.5 * 2.567
+    fmt.Println(d.SubMul(e, f))    // 8 - 12.5 * 2.567
 
-    fmt.Println(d.Quo(e))          // 8 ÷ 12.5
-    fmt.Println(d.AddQuo(e, f))    // 8 + 12.5 ÷ 2.567
+    fmt.Println(d.Quo(e))          // 8 / 12.5
+    fmt.Println(d.AddQuo(e, f))    // 8 + 12.5 / 2.567
+    fmt.Println(d.SubQuo(e, f))    // 8 - 12.5 / 2.567
     fmt.Println(d.QuoRem(e))       // 8 div 12.5, 8 mod 12.5
-    fmt.Println(d.Inv())           // 1 ÷ 8
+    fmt.Println(d.Inv())           // 1 / 8
 
-    fmt.Println(d.Pow(2))          // 8²
     fmt.Println(d.Sqrt())          // √8
-    fmt.Println(d.Exp())           // e⁸
+    fmt.Println(d.Exp())           // exp(8)
+    fmt.Println(d.Pow(2))          // 8²
 
     // Rounding to 2 decimal places
     fmt.Println(g.Round(2))        // 7.90
@@ -125,24 +128,24 @@ pkg: github.com/govalues/decimal-tests
 cpu: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx 
 ```
 
-| Test Case     | Expression           | govalues | [cockroachdb/apd] v3.2.1 | [shopspring/decimal] v1.4.0 | govalues vs cockroachdb | govalues vs shopspring |
-| ------------- | -------------------- | -------: | -----------------------: | --------------------------: | ----------------------: | ---------------------: |
-| Add           | 5 + 6                |   16.06n |                   74.88n |                     140.90n |                +366.22% |               +777.33% |
-| Mul           | 2 * 3                |   16.93n |                   62.20n |                     146.00n |                +267.40% |               +762.37% |
-| Quo (exact)   | 2 ÷ 4                |   59.52n |                  176.95n |                     657.40n |                +197.30% |              +1004.50% |
-| Quo (inexact) | 2 ÷ 3                |  391.60n |                  976.80n |                    2962.50n |                +149.39% |               +656.42% |
-| Pow           | 1.1^60               |  950.90n |                 3302.50n |                    4599.50n |                +247.32% |               +383.73% |
-| Pow           | 1.01^600             |    3.45µ |                   10.67µ |                      18.67µ |                +209.04% |               +440.89% |
-| Pow           | 1.001^6000           |    5.94µ |                   20.50µ |                     722.22µ |                +244.88% |             +12052.44% |
-| Sqrt          | √2                   |    3.40µ |                    4.96µ |                    2101.86µ |                 +46.00% |             +61755.71% |
-| Exp           | exp(0.5)             |    8.35µ |                   39.28µ |                      20.06µ |                +370.58% |               +140.32% |
-| Parse         | 1                    |   16.52n |                   76.30n |                     136.55n |                +362.00% |               +726.82% |
-| Parse         | 123.456              |   47.37n |                  176.90n |                     242.60n |                +273.44% |               +412.14% |
-| Parse         | 123456789.1234567890 |   85.49n |                  224.15n |                     497.95n |                +162.19% |               +482.47% |
-| String        | 1                    |    5.11n |                   19.57n |                     198.25n |                +283.21% |              +3783.07% |
-| String        | 123.456              |   35.78n |                   77.12n |                     228.85n |                +115.52% |               +539.51% |
-| String        | 123456789.1234567890 |   70.72n |                  239.10n |                     337.25n |                +238.12% |               +376.91% |
-| Telco         | see [specification]  |  137.00n |                  969.40n |                    3981.00n |                +607.33% |              +2804.78% |
+| Test Case | Expression            | govalues | [cockroachdb/apd] v3.2.1 | [shopspring/decimal] v1.4.0 | govalues vs cockroachdb | govalues vs shopspring |
+| --------- | --------------------- | -------: | -----------------------: | --------------------------: | ----------------------: | ---------------------: |
+| Add       | 5 + 6                 |   16.06n |                   74.88n |                     140.90n |                +366.22% |               +777.33% |
+| Mul       | 2 * 3                 |   16.93n |                   62.20n |                     146.00n |                +267.40% |               +762.37% |
+| Quo       | 2 / 4 (exact)         |   59.52n |                  176.95n |                     657.40n |                +197.30% |              +1004.50% |
+| Quo       | 2 / 3 (inexact)       |  391.60n |                  976.80n |                    2962.50n |                +149.39% |               +656.42% |
+| Pow       | 1.1^60                |  950.90n |                 3302.50n |                    4599.50n |                +247.32% |               +383.73% |
+| Pow       | 1.01^600              |    3.45µ |                   10.67µ |                      18.67µ |                +209.04% |               +440.89% |
+| Pow       | 1.001^6000            |    5.94µ |                   20.50µ |                     722.22µ |                +244.88% |             +12052.44% |
+| Sqrt      | √2                    |    3.40µ |                    4.96µ |                    2101.86µ |                 +46.00% |             +61755.71% |
+| Exp       | exp(0.5)              |    8.35µ |                   39.28µ |                      20.06µ |                +370.58% |               +140.32% |
+| Parse     | 1                     |   16.52n |                   76.30n |                     136.55n |                +362.00% |               +726.82% |
+| Parse     | 123.456               |   47.37n |                  176.90n |                     242.60n |                +273.44% |               +412.14% |
+| Parse     | 123456789.1234567890  |   85.49n |                  224.15n |                     497.95n |                +162.19% |               +482.47% |
+| String    | 1                     |    5.11n |                   19.57n |                     198.25n |                +283.21% |              +3783.07% |
+| String    | 123.456               |   35.78n |                   77.12n |                     228.85n |                +115.52% |               +539.51% |
+| String    | 123456789.1234567890  |   70.72n |                  239.10n |                     337.25n |                +238.12% |               +376.91% |
+| Telco     | (see [specification]) |  137.00n |                  969.40n |                    3981.00n |                +607.33% |              +2804.78% |
 
 The benchmark results shown in the table are provided for informational purposes only and may vary depending on your specific use case.
 

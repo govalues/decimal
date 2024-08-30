@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.31] - 2024-08-30
+
+### Added
+
+- Implemented `Decimal.SubMul`, `Decimal.SubQuo`, `Decimal.Equal`, `Decimal.Less`.
+
 ## [0.1.30] - 2024-08-29
 
 ### Added
