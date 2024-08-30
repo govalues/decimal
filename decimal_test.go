@@ -2208,6 +2208,7 @@ func TestDecimal_AddQuo(t *testing.T) {
 			{"-0.0000000000000000001", "1", "0.9999999999999999999", "1.000000000000000000"},
 			{"0.00000000053", "4.3", "0.00000000071", "6056338028.169014085"},
 			{"8.9", "0.0000000000082", "-0.000000110", "8.899925454545454545"},
+			{"0.000000000000000", "0.9999999999999999940", "1", "0.9999999999999999940"},
 		}
 
 		for _, tt := range tests {
@@ -2220,7 +2221,7 @@ func TestDecimal_AddQuo(t *testing.T) {
 				continue
 			}
 			want := MustParse(tt.want)
-			if got != want {
+			if got.CmpTotal(want) != 0 {
 				t.Errorf("%q.AddQuo(%q, %q) = %q, want %q", d, e, f, got, want)
 			}
 		}
@@ -2495,25 +2496,22 @@ func TestDecimal_Pow(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		tests := map[string]struct {
-			d            string
-			power, scale int
+			d     string
+			power int
 		}{
-			"overflow 1": {"2", 64, 0},
-			"overflow 2": {"0.5", -64, 0},
-			"overflow 3": {"10", 19, 0},
-			"overflow 4": {"0.1", -19, 0},
-			"overflow 5": {"0.0000000000000000001", -3, 0},
-			"overflow 6": {"0.0000000000000000001", -3, 1},
-			"zero 1":     {"0", -1, 0},
-			"scale 1":    {"1", 1, MaxScale},
-			"scale 2":    {"1", 1, -1},
+			"overflow 1": {"2", 64},
+			"overflow 2": {"0.5", -64},
+			"overflow 3": {"10", 19},
+			"overflow 4": {"0.1", -19},
+			"overflow 5": {"0.0000000000000000001", -3},
+			"zero 1":     {"0", -1},
 		}
 		for name, tt := range tests {
 			t.Run(name, func(t *testing.T) {
 				d := MustParse(tt.d)
-				_, err := d.PowExact(tt.power, tt.scale)
+				_, err := d.Pow(tt.power)
 				if err == nil {
-					t.Errorf("%q.PowExact(%d, %d) did not fail", d, tt.power, tt.scale)
+					t.Errorf("%q.Pow(%d) did not fail", d, tt.power)
 				}
 			})
 		}
@@ -2679,12 +2677,12 @@ func TestDecimal_Exp(t *testing.T) {
 			{"0.00000", "1"},
 
 			// Ones
-			{"1", "2.718281828459045235"},
-			{"1.0", "2.718281828459045235"},
-			{"1.00", "2.718281828459045235"},
-			{"1.000", "2.718281828459045235"},
-			{"1.0000", "2.718281828459045235"},
-			{"1.00000", "2.718281828459045235"},
+			{"1", E.String()},
+			{"1.0", E.String()},
+			{"1.00", E.String()},
+			{"1.000", E.String()},
+			{"1.0000", E.String()},
+			{"1.00000", E.String()},
 
 			// Powers of ten
 			{"0.0000000000000000001", "1"},
@@ -2706,7 +2704,7 @@ func TestDecimal_Exp(t *testing.T) {
 			{"0.001", "1.001000500166708342"},
 			{"0.01", "1.010050167084168058"},
 			{"0.1", "1.105170918075647625"},
-			{"1", "2.718281828459045235"},
+			{"1", E.String()},
 			{"10", "22026.465794806716516957"},
 
 			// Logarithms of ten
@@ -2754,7 +2752,7 @@ func TestDecimal_Exp(t *testing.T) {
 			{"43.74911676688686799", "9999999999999999937"},
 
 			// Natural numbers
-			{"1", "2.718281828459045235"},
+			{"1", E.String()},
 			{"2", "7.389056098930650227"},
 			{"3", "20.08553692318766774"},
 			{"4", "54.59815003314423908"},
@@ -3522,7 +3520,7 @@ func FuzzBCD(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_String(f *testing.F) {
+func FuzzDecimal_String_Parse(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -3550,7 +3548,7 @@ func FuzzDecimal_String(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_BCD(f *testing.F) {
+func FuzzDecimal_BCD_ParseBCD(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -3578,7 +3576,7 @@ func FuzzDecimal_BCD(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Int64(f *testing.F) {
+func FuzzDecimal_Int64_NewFromInt64(f *testing.F) {
 	for _, d := range corpus {
 		for s := 0; s <= MaxScale; s++ {
 			f.Add(d.neg, d.scale, d.coef, s)
@@ -3614,7 +3612,7 @@ func FuzzDecimal_Int64(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Float64(f *testing.F) {
+func FuzzDecimal_Float64_NewFromFloat64(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -3751,6 +3749,64 @@ func FuzzDecimal_AddMul(f *testing.F) {
 	)
 }
 
+func FuzzDecimal_Add_Mul_AddMul(f *testing.F) {
+	for _, d := range corpus {
+		for _, e := range corpus {
+			for s := 0; s <= MaxScale; s++ {
+				f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef, s)
+			}
+		}
+	}
+
+	f.Fuzz(
+		func(t *testing.T, dneg bool, dscale int, dcoef uint64, eneg bool, escale int, ecoef uint64, scale int) {
+			if scale < 0 || MaxScale < scale {
+				t.Skip()
+				return
+			}
+			d, err := newSafe(dneg, fint(dcoef), dscale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+			e, err := newSafe(eneg, fint(ecoef), escale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			// Addition
+			got, err := d.AddExact(e, scale)
+			if err != nil {
+				return
+			}
+			want, err := d.AddMulExact(e, One, scale)
+			if err != nil {
+				t.Errorf("AddMulExact(%q, %q, %v) failed: %v", d, e, scale, err)
+				return
+			}
+			if got.CmpTotal(want) != 0 {
+				t.Errorf("AddMulExact(%q, %q, %q, %v) = %q, whereas AddExact(%q, %q, %v) = %q", d, e, One, scale, want, d, e, scale, got)
+				return
+			}
+
+			// Multiplication
+			got, err = d.MulExact(e, scale)
+			if err != nil {
+				return
+			}
+			want, err = Zero.AddMulExact(d, e, scale)
+			if err != nil {
+				t.Errorf("AddMulExact(%q, %q, %v) failed: %v", d, e, scale, err)
+				return
+			}
+			if got.CmpTotal(want) != 0 {
+				t.Errorf("AddMulExact(%q, %q, %q, %v) = %q, whereas MulExact(%q, %q, %v) = %q", Zero, d, e, scale, want, d, e, scale, got)
+			}
+		},
+	)
+}
+
 func FuzzDecimal_AddQuo(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
@@ -3812,6 +3868,64 @@ func FuzzDecimal_AddQuo(f *testing.F) {
 	)
 }
 
+func FuzzDecimal_Add_Quo_AddQuo(f *testing.F) {
+	for _, d := range corpus {
+		for _, e := range corpus {
+			for s := 0; s <= MaxScale; s++ {
+				f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef, s)
+			}
+		}
+	}
+
+	f.Fuzz(
+		func(t *testing.T, dneg bool, dscale int, dcoef uint64, eneg bool, escale int, ecoef uint64, scale int) {
+			if scale < 0 || MaxScale < scale {
+				t.Skip()
+				return
+			}
+			d, err := newSafe(dneg, fint(dcoef), dscale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+			e, err := newSafe(eneg, fint(ecoef), escale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			// Addition
+			got, err := d.AddExact(e, scale)
+			if err != nil {
+				return
+			}
+			want, err := d.AddQuoExact(e, One, scale)
+			if err != nil {
+				t.Errorf("AddQuoExact(%q, %q, %v) failed: %v", d, e, scale, err)
+				return
+			}
+			if got.CmpTotal(want) != 0 {
+				t.Errorf("AddQuoExact(%q, %q, %q, %v) = %q, whereas AddExact(%q, %q, %v) = %q", d, e, One, scale, want, d, e, scale, got)
+				return
+			}
+
+			// Quotient
+			got, err = d.QuoExact(e, scale)
+			if err != nil {
+				return
+			}
+			want, err = Zero.AddQuoExact(d, e, scale)
+			if err != nil {
+				t.Errorf("AddQuoExact(%q, %q, %v) failed: %v", d, e, scale, err)
+				return
+			}
+			if got.CmpTotal(want) != 0 {
+				t.Errorf("AddQuoExact(%q, %q, %q, %v) = %q, whereas QuoExact(%q, %q, %v) = %q", Zero, d, e, scale, want, d, e, scale, got)
+			}
+		},
+	)
+}
+
 func FuzzDecimal_Add(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
@@ -3853,7 +3967,7 @@ func FuzzDecimal_Add(f *testing.F) {
 				t.Errorf("addBint(%q, %q, %v) failed: %v", d, e, scale, err)
 				return
 			}
-			if got.CmpTotal(want) != 0 {
+			if got.Cmp(want) != 0 {
 				t.Errorf("addBint(%q, %q, %v) = %q, whereas addFint(%q, %q, %v) = %q", d, e, scale, want, d, e, scale, got)
 			}
 		},
@@ -4012,7 +4126,7 @@ func FuzzDecimal_Cmp(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Sqrt(f *testing.F) {
+func FuzzDecimal_Sqrt_Pow(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -4077,7 +4191,7 @@ func cmpULP(d, e Decimal, ulps int) (int, error) {
 	return d.Cmp(e), nil
 }
 
-func FuzzDecimal_CmpSub(f *testing.F) {
+func FuzzDecimal_Cmp_Sub(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
 			f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef)
