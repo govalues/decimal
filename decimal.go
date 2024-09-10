@@ -1754,6 +1754,10 @@ func (d Decimal) FMA(e, f Decimal) (Decimal, error) {
 	return f.AddMul(d, e)
 }
 
+// Deprecated: use [Decimal.AddMulExact] instead.
+// Pay attention to the order of arguments, [Decimal.FMAExact] computes d * e + f,
+// whereas [Decimal.AddMulExact] computes d + e * f.
+// This method will be removed in the v1.0 release.
 func (d Decimal) FMAExact(e, f Decimal, scale int) (Decimal, error) {
 	return f.AddMulExact(d, e, scale)
 }
