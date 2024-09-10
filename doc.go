@@ -54,14 +54,14 @@ or errors.
 
 # Operations
 
-Each arithmetic operation, except for [Decimal.Sqrt] and [Decimal.SqrtExact],
+Each arithmetic operation, except for [Decimal.Sqrt] and [Decimal.Exp],
 occurs in two steps:
 
  1. The operation is initially performed using uint64 arithmetic.
     If no overflow occurs, the exact result is immediately returned.
     If overflow occurs, the operation proceeds to step 2.
 
- 2. The operation is repeated with increased precision using [big.Int] arithmetic.
+ 2. The operation is repeated with double precision using [big.Int] arithmetic.
     The result is then rounded to 19 digits.
     If no significant digits are lost during rounding, the inexact result is returned.
     If any significant digit is lost, an overflow error is returned.
@@ -72,12 +72,13 @@ will compute an exact result during step 1.
 
 The following rules determine the significance of digits during step 2:
 
-  - [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.FMA], [Decimal.Pow],
-    [Decimal.Quo], [Decimal.QuoRem], [Decimal.Inv], [Decimal.Sqrt]:
+  - [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.Quo], [Decimal.QuoRem], [Decimal.Inv],
+    [Decimal.AddMul], [Decimal.AddQuo], [Decimal.SubMul], [Decimal.SubQuo], [Decimal.SubAbs],
+    [Decimal.Pow], [Decimal.Sqrt], [Decimal.Exp]:
     All digits in the integer part are significant, while digits in the
     fractional part are considered insignificant.
-  - [Decimal.AddExact], [Decimal.SubExact], [Decimal.MulExact], [Decimal.FMAExact],
-    [Decimal.PowExact], [Decimal.QuoExact], [Decimal.SqrtExact]:
+  - [Decimal.AddExact], [Decimal.SubExact], [Decimal.MulExact], [Decimal.QuoExact],
+    [Decimal.AddMulExact], [Decimal.AddQuoExact], [Decimal.SubMulExact], [Decimal.SubQuoExact]:
     All digits in the integer part are significant. The significance of digits
     in the fractional part is determined by the scale argument, which is typically
     equal to the scale of the currency.
@@ -109,11 +110,10 @@ rounding it to 19 digits using half-to-even rounding.
 This method ensures that rounding errors are evenly distributed between rounding up
 and down.
 
-For all arithmetic operations, except for [Decimal.Pow] and [Decimal.PowExact],
-the result is the one that would be obtained by computing the exact mathematical
-result with infinite precision and then rounding it to 19 digits.
-[Decimal.Pow] and [Decimal.PowExact] may occasionally produce a result that is
-off by 1 unit in the last place.
+For all arithmetic operations, except for [Decimal.Pow], the result is the one
+that would be obtained by computing the exact mathematical result with infinite
+precision and then rounding it to 19 digits.
+[Decimal.Pow] may occasionally produce a result that is off by 1 unit in the last place.
 
 In addition to implicit rounding, the package provides several methods for
 explicit rounding:
@@ -135,15 +135,13 @@ All methods are panic-free and pure.
 Errors are returned in the following cases:
 
   - Division by Zero:
-    Unlike the standard library, [Decimal.Quo], [Decimal.QuoRem], and [Decimal.Inv]
-    do not panic when dividing by 0.
+    Unlike the standard library, [Decimal.Quo], [Decimal.QuoRem], [Decimal.Inv],
+    [Decimal.AddQuo], [Decimal.SubQuo], do not panic when dividing by 0.
     Instead, they return an error.
 
   - Invalid Operation:
-    [Decimal.Pow] and [Decimal.PowExact] return an error if 0 is raised to
-    a negative power.
-    [Decimal.Sqrt] and [Decimal.SqrtExact] return an error if the square root
-    of a negative decimal is requested.
+    [Decimal.Pow] returns an error if 0 is raised to a negative power.
+    [Decimal.Sqrt] return an error if the square root of a negative decimal is requested.
 
   - Overflow:
     Unlike standard integers, there is no "wrap around" for decimals at certain sizes.
