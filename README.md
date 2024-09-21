@@ -20,7 +20,7 @@ This package is designed specifically for use in transactional financial systems
   in financial calculations.
 - **No Panics** - All methods are panic-free, returning errors instead of crashing
   your application in cases such as overflow or division by zero.
-- **Zero Heap Allocation** - Optimized to avoid heap allocations,
+- **No Heap Allocations** - Optimized to avoid heap allocations,
   reducing garbage collector impact during arithmetic operations.
 - **Simple String Representation** - Decimals are represented in a strightforward
   format avoiding the complexities of scientific or engineering notations.
@@ -57,39 +57,40 @@ func main() {
     f, _ := decimal.NewFromFloat64(2.567)   // f = 2.567
     g, _ := decimal.NewFromInt64(7, 896, 3) // g = 7.896
 
-    // Operations
-    fmt.Println(d.Add(e))          // 8 + 12.5
-    fmt.Println(d.Sub(e))          // 8 - 12.5
-    fmt.Println(d.SubAbs(e))       // abs(8 - 12.5)
+    // Arithmetic operations
+    fmt.Println(d.Add(e))        // 8 + 12.5
+    fmt.Println(d.Sub(e))        // 8 - 12.5
+    fmt.Println(d.SubAbs(e))     // abs(8 - 12.5)
 
-    fmt.Println(d.Mul(e))          // 8 * 12.5
-    fmt.Println(d.AddMul(e, f))    // 8 + 12.5 * 2.567
-    fmt.Println(d.SubMul(e, f))    // 8 - 12.5 * 2.567
+    fmt.Println(d.Mul(e))        // 8 * 12.5
+    fmt.Println(d.AddMul(e, f))  // 8 + 12.5 * 2.567
+    fmt.Println(d.SubMul(e, f))  // 8 - 12.5 * 2.567
 
-    fmt.Println(d.Quo(e))          // 8 / 12.5
-    fmt.Println(d.AddQuo(e, f))    // 8 + 12.5 / 2.567
-    fmt.Println(d.SubQuo(e, f))    // 8 - 12.5 / 2.567
-    fmt.Println(d.QuoRem(e))       // 8 div 12.5, 8 mod 12.5
-    fmt.Println(d.Inv())           // 1 / 8
+    fmt.Println(d.Quo(e))        // 8 / 12.5
+    fmt.Println(d.AddQuo(e, f))  // 8 + 12.5 / 2.567
+    fmt.Println(d.SubQuo(e, f))  // 8 - 12.5 / 2.567
+    fmt.Println(d.QuoRem(e))     // 8 div 12.5, 8 mod 12.5
+    fmt.Println(d.Inv())         // 1 / 8
 
-    fmt.Println(d.Sqrt())          // √8
-    fmt.Println(d.Exp())           // exp(8)
-    fmt.Println(d.Pow(2))          // 8²
+    // Transcendental functions
+    fmt.Println(d.Sqrt())        // √8
+    fmt.Println(d.Exp())         // exp(8)
+    fmt.Println(d.Pow(2))        // 8²
 
     // Rounding to 2 decimal places
-    fmt.Println(g.Round(2))        // 7.90
-    fmt.Println(g.Ceil(2))         // 7.90
-    fmt.Println(g.Floor(2))        // 7.89
-    fmt.Println(g.Trunc(2))        // 7.89
+    fmt.Println(g.Round(2))      // 7.90
+    fmt.Println(g.Ceil(2))       // 7.90
+    fmt.Println(g.Floor(2))      // 7.89
+    fmt.Println(g.Trunc(2))      // 7.89
 
     // Conversions
-    fmt.Println(f.Int64(9))        // 2 567000000
-    fmt.Println(f.Float64())       // 2.567
-    fmt.Println(f.String())        // 2.567
+    fmt.Println(f.Int64(9))      // 2 567000000
+    fmt.Println(f.Float64())     // 2.567
+    fmt.Println(f.String())      // 2.567
 
     // Formatting
-    fmt.Printf("%.2f", f)          // 2.57
-    fmt.Printf("%.2k", f)          // 256.70%
+    fmt.Printf("%.2f", f)        // 2.57
+    fmt.Printf("%.2k", f)        // 256.70%
 }
 ```
 
@@ -104,15 +105,15 @@ For examples related to financial calculations, see the `money` package
 
 Comparison with other popular packages:
 
-| Feature          | govalues     | [cockroachdb/apd] v3.2.1 | [shopspring/decimal] v1.4.0 |
-| ---------------- | ------------ | ------------------------ | --------------------------- |
-| Speed            | High         | Medium                   | Low[^reason]                |
-| Mutability       | Immutable    | Mutable[^reason]         | Immutable                   |
-| Memory Footprint | Low          | Medium                   | High                        |
-| Panic Free       | Yes          | Yes                      | No[^divzero]                |
-| Precision        | 19 digits    | Arbitrary                | Arbitrary                   |
-| Default Rounding | Half to even | Half up                  | Half away from 0            |
-| Context          | Implicit     | Explicit                 | Implicit                    |
+| Feature           | govalues  | [cockroachdb/apd] v3.2.1 | [shopspring/decimal] v1.4.0 |
+| ----------------- | --------- | ------------------------ | --------------------------- |
+| Speed             | High      | Medium                   | Low[^reason]                |
+| Mutability        | Immutable | Mutable[^reason]         | Immutable                   |
+| Heap Allocations  | No        | Medium                   | High                        |
+| Panic Free        | Yes       | Yes                      | No[^divzero]                |
+| Precision         | 19 digits | Arbitrary                | Arbitrary                   |
+| Correctly Rounded | Yes       | No                       | No                          |
+| Context           | Implicit  | Explicit                 | Implicit                    |
 
 [^reason]: decimal package was created simply because [shopspring/decimal] was
 too slow and [cockroachdb/apd] was mutable.

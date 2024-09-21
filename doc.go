@@ -105,15 +105,11 @@ subnormal numbers.
 
 # Rounding
 
-Implicit rounding is applied when a result exceeds 19 digits,
-rounding it to 19 digits using half-to-even rounding.
+For all operations the result is the one that would be obtained by computing
+the exact mathematical result with infinite precision and then rounding it
+to 19 digits using half-to-even rounding.
 This method ensures that rounding errors are evenly distributed between rounding up
 and down.
-
-For all arithmetic operations, except for [Decimal.Pow], the result is the one
-that would be obtained by computing the exact mathematical result with infinite
-precision and then rounding it to 19 digits.
-[Decimal.Pow] may occasionally produce a result that is off by 1 unit in the last place.
 
 In addition to implicit rounding, the package provides several methods for
 explicit rounding:

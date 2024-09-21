@@ -1214,6 +1214,8 @@ func (d Decimal) MulExact(e Decimal, scale int) (Decimal, error) {
 	if scale < MinScale || scale > MaxScale {
 		return Decimal{}, fmt.Errorf("computing [%v * %v]: %w", d, e, errScaleRange)
 	}
+
+	// General case
 	f, err := d.mulFint(e, scale)
 	if err != nil {
 		f, err = d.mulBint(e, scale)
@@ -1363,10 +1365,10 @@ func (d Decimal) powBint(power int) (Decimal, error) {
 			escale = escale + dscale
 
 			// Intermediate truncation
-			if escale > 2*MaxScale {
-				shift := escale - 2*MaxScale
+			if escale > 3*MaxScale {
+				shift := escale - 3*MaxScale
 				ecoef.rshDown(ecoef, shift)
-				escale = 2 * MaxScale
+				escale = 3 * MaxScale
 			}
 		}
 		if power > 0 {
@@ -1378,10 +1380,10 @@ func (d Decimal) powBint(power int) (Decimal, error) {
 			dscale = dscale * 2
 
 			// Intermediate truncation
-			if dscale > 2*MaxScale {
-				shift := dscale - 2*MaxScale
+			if dscale > 3*MaxScale {
+				shift := dscale - 3*MaxScale
 				dcoef.rshDown(dcoef, shift)
-				dscale = 2 * MaxScale
+				dscale = 3 * MaxScale
 			}
 		}
 	}
@@ -1440,15 +1442,15 @@ func (d Decimal) sqrtBint() (Decimal, error) {
 	fcoef.setFint(0)
 
 	// Alignment
-	dcoef.lsh(dcoef, 2*escale-d.Scale())
+	dcoef.lsh(dcoef, 4*MaxScale-d.Scale())
 
-	// Initial guess is calculated as 10^(n/2),
-	// where n is the number of digits in the integer part.
-	// n can be negative if -1 < d < 1.
-	ecoef.setBint(bpow10[(d.Prec()-d.Scale())/2+escale])
+	// Initial guess is calculated as 10^(n/2), where n is the position of
+	// the most significant digit (n is negative if -1 < d < 1).
+	n := dcoef.prec() - 4*MaxScale
+	ecoef.setBint(bpow10[n/2+escale])
 
 	// Newton's method
-	for {
+	for range 50 {
 		if ecoef.cmp(fcoef) == 0 {
 			break
 		}
@@ -1496,36 +1498,36 @@ func (d Decimal) expBint() (Decimal, error) {
 	// Check underflow and overflow
 	if q >= fint(len(bexp)) {
 		if d.IsNeg() {
-			return newUnsafe(false, 0, 0), nil
+			return newSafe(false, 0, 0)
 		}
 		return Decimal{}, unknownOverflowError(0)
 	}
 
-	// Retrieve exp(q) from precomputed cache
+	// Retrieve e = exp(q) from precomputed cache
 	ecoef := getBint()
 	defer putBint(ecoef)
 	ecoef.setBint(bexp[q])
 	escale := 2 * MaxScale
 
 	if r != 0 {
-		// Compute exp(r) using Taylor series expansion
+		// Compute f = exp(r) using Taylor series expansion
+		fcoef := getBint()
+		defer putBint(fcoef)
+		fcoef.setFint(0)
+		fscale := 2 * MaxScale
+
 		rcoef := getBint()
 		defer putBint(rcoef)
 		rcoef.setFint(r)
 		rscale := dscale
 
-		ncoef := getBint()
-		defer putBint(ncoef)
-		ncoef.setBint(bpow10[2*MaxScale])
-		nscale := 2 * MaxScale
+		gcoef := getBint()
+		defer putBint(gcoef)
+		gcoef.setBint(bpow10[2*MaxScale])
+		gscale := 2 * MaxScale
 
-		tcoef := getBint()
-		defer putBint(tcoef)
-
-		scoef := getBint()
-		defer putBint(scoef)
-		scoef.setFint(0)
-		sscale := 2 * MaxScale
+		hcoef := getBint()
+		defer putBint(hcoef)
 
 		// Alignment
 		if rscale < 2*MaxScale {
@@ -1533,32 +1535,30 @@ func (d Decimal) expBint() (Decimal, error) {
 			rscale = 2 * MaxScale
 		}
 
-		// Compute exp(r) = r^0 / 0! + r^1 / 1! + ... + r^n / n!
+		// Compute f = exp(r) = r^0 / 0! + r^1 / 1! + ... + r^n / n!
 		for i := range len(bfact) {
-			// Compute t = r^i / i!
-			tcoef.quo(ncoef, bfact[i])
-			if tcoef.sign() == 0 {
+			// Accumulate f = f + r^i / i!
+			hcoef.quo(gcoef, bfact[i])
+			if hcoef.sign() == 0 {
 				break
 			}
+			fcoef.add(fcoef, hcoef)
 
-			// Accumulate s = s + t
-			scoef.add(scoef, tcoef)
-
-			// Compute n = r^(i+1)
-			ncoef.mul(ncoef, rcoef)
-			nscale = nscale + rscale
+			// Compute g = r^(i+1)
+			gcoef.mul(gcoef, rcoef)
+			gscale = gscale + rscale
 
 			// Intermediate truncation
-			if nscale > 2*MaxScale {
-				shift := nscale - 2*MaxScale
-				ncoef.rshDown(ncoef, shift)
-				nscale = 2 * MaxScale
+			if gscale > 2*MaxScale {
+				shift := gscale - 2*MaxScale
+				gcoef.rshDown(gcoef, shift)
+				gscale = 2 * MaxScale
 			}
 		}
 
 		// Compute exp(|d|) = exp(q) * exp(r)
-		ecoef.mul(ecoef, scoef)
-		escale = escale + sscale
+		ecoef.mul(ecoef, fcoef)
+		escale = escale + fscale
 
 		// Intermediate truncation
 		if escale > 2*MaxScale {
@@ -1596,7 +1596,7 @@ func (d Decimal) SubAbs(e Decimal) (Decimal, error) {
 //
 // Sub returns an error if the integer part of the result has more than [MaxPrec] digits.
 func (d Decimal) Sub(e Decimal) (Decimal, error) {
-	return d.SubExact(e, 0)
+	return d.AddExact(e.Neg(), 0)
 }
 
 // SubExact is similar to [Decimal.Sub], but it allows you to specify the number of digits
@@ -1671,7 +1671,7 @@ func (d Decimal) addFint(e Decimal, minScale int) (Decimal, error) {
 
 	// Compute d = d + e
 	if d.IsNeg() != e.IsNeg() {
-		dcoef = dcoef.dist(ecoef)
+		dcoef = dcoef.subAbs(ecoef)
 	} else {
 		dcoef, ok = dcoef.add(ecoef)
 		if !ok {
@@ -1715,7 +1715,7 @@ func (d Decimal) addBint(e Decimal, minScale int) (Decimal, error) {
 
 	// Compute d = d + e
 	if d.IsNeg() != e.IsNeg() {
-		dcoef.dist(dcoef, ecoef)
+		dcoef.subAbs(dcoef, ecoef)
 	} else {
 		dcoef.add(dcoef, ecoef)
 	}
@@ -1728,7 +1728,7 @@ func (d Decimal) addBint(e Decimal, minScale int) (Decimal, error) {
 // whereas [Decimal.AddMul] computes d + e * f.
 // This method will be removed in the v1.0 release.
 func (d Decimal) FMA(e, f Decimal) (Decimal, error) {
-	return f.AddMul(d, e)
+	return f.AddMulExact(d, e, 0)
 }
 
 // Deprecated: use [Decimal.AddMulExact] instead.
@@ -1748,7 +1748,7 @@ func (d Decimal) FMAExact(e, f Decimal, scale int) (Decimal, error) {
 //
 // [fused multiply-subtraction]: https://en.wikipedia.org/wiki/Multiply%E2%80%93accumulate_operation#Fused_multiply%E2%80%93add
 func (d Decimal) SubMul(e, f Decimal) (Decimal, error) {
-	return d.SubMulExact(e, f, 0)
+	return d.AddMulExact(e.Neg(), f, 0)
 }
 
 // SubMulExact is similar to [Decimal.SubMul], but it allows you to specify the number of digits
@@ -1831,7 +1831,7 @@ func (d Decimal) addMulFint(e, f Decimal, minScale int) (Decimal, error) {
 
 	// Compute d = d + e
 	if d.IsNeg() != (e.IsNeg() != f.IsNeg()) {
-		dcoef = dcoef.dist(ecoef)
+		dcoef = dcoef.subAbs(ecoef)
 	} else {
 		dcoef, ok = dcoef.add(ecoef)
 		if !ok {
@@ -1879,7 +1879,7 @@ func (d Decimal) addMulBint(e, f Decimal, minScale int) (Decimal, error) {
 
 	// Compute d = d + e
 	if d.IsNeg() != (e.IsNeg() != f.IsNeg()) {
-		dcoef.dist(dcoef, ecoef)
+		dcoef.subAbs(dcoef, ecoef)
 	} else {
 		dcoef.add(dcoef, ecoef)
 	}
@@ -1896,7 +1896,7 @@ func (d Decimal) addMulBint(e, f Decimal, minScale int) (Decimal, error) {
 //   - the divisor is 0;
 //   - the integer part of the result has more than [MaxPrec] digits.
 func (d Decimal) SubQuo(e, f Decimal) (Decimal, error) {
-	return d.SubQuoExact(e, f, 0)
+	return d.AddQuoExact(e.Neg(), f, 0)
 }
 
 // SubQuoExact is similar to [Decimal.SubQuo], but it allows you to specify the number of digits
@@ -2013,7 +2013,7 @@ func (d Decimal) addQuoFint(e, f Decimal, minScale int) (Decimal, error) {
 
 	// Compute d = d + e
 	if d.IsNeg() != (e.IsNeg() != f.IsNeg()) {
-		dcoef = dcoef.dist(ecoef)
+		dcoef = dcoef.subAbs(ecoef)
 	} else {
 		dcoef, ok = dcoef.add(ecoef)
 		if !ok {
@@ -2056,7 +2056,7 @@ func (d Decimal) addQuoBint(e, f Decimal, minScale int) (Decimal, error) {
 
 	// Compute d = d + e
 	if d.IsNeg() != (e.IsNeg() != f.IsNeg()) {
-		dcoef.dist(dcoef, ecoef)
+		dcoef.subAbs(dcoef, ecoef)
 	} else {
 		dcoef.add(dcoef, ecoef)
 	}

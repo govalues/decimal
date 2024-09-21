@@ -82,7 +82,7 @@ func TestFint_quoRem(t *testing.T) {
 	}
 }
 
-func TestFint_dist(t *testing.T) {
+func TestFint_subAbs(t *testing.T) {
 	cases := []struct {
 		x, y, wantCoef fint
 	}{
@@ -97,9 +97,9 @@ func TestFint_dist(t *testing.T) {
 	}
 	for _, tt := range cases {
 		x, y := tt.x, tt.y
-		gotCoef := x.dist(y)
+		gotCoef := x.subAbs(y)
 		if gotCoef != tt.wantCoef {
-			t.Errorf("%v.dist(%v) = %v, want %v", x, y, gotCoef, tt.wantCoef)
+			t.Errorf("%v.subAbs(%v) = %v, want %v", x, y, gotCoef, tt.wantCoef)
 		}
 	}
 }

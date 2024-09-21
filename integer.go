@@ -60,7 +60,7 @@ func (x fint) mul(y fint) (z fint, ok bool) {
 	return z, true
 }
 
-// quo calculates x / y and checks inexact division.
+// quo calculates x / y and checks division by zero and inexact division.
 func (x fint) quo(y fint) (z fint, ok bool) {
 	if y == 0 {
 		return 0, false
@@ -72,7 +72,7 @@ func (x fint) quo(y fint) (z fint, ok bool) {
 	return z, true
 }
 
-// quoRem calculates q = ⌊x / y⌋, r = x - y * q.
+// quoRem calculates q = ⌊x / y⌋, r = x - y * q and checks division by zero.
 func (x fint) quoRem(y fint) (q, r fint, ok bool) {
 	if y == 0 {
 		return 0, 0, false
@@ -82,8 +82,8 @@ func (x fint) quoRem(y fint) (q, r fint, ok bool) {
 	return q, r, true
 }
 
-// dist calculates |x - y|.
-func (x fint) dist(y fint) fint {
+// subAbs calculates |x - y|.
+func (x fint) subAbs(y fint) fint {
 	if x > y {
 		return x - y
 	}
@@ -504,8 +504,8 @@ func (z *bint) sub(x, y *bint) {
 	(*big.Int)(z).Sub((*big.Int)(x), (*big.Int)(y))
 }
 
-// dist calculates z = |x - y|.
-func (z *bint) dist(x, y *bint) {
+// subAbs calculates z = |x - y|.
+func (z *bint) subAbs(x, y *bint) {
 	switch x.cmp(y) {
 	case 1:
 		z.sub(x, y)

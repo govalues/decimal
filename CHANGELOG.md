@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.32] - 2024-09-28
+
+- `Decimal.Pow` always correctly rounds the result.
+
 ## [0.1.31] - 2024-08-30
 
 ### Added
