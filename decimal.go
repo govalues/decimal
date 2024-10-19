@@ -1259,22 +1259,28 @@ func (d Decimal) mulBint(e Decimal, minScale int) (Decimal, error) {
 	return newFromBint(neg, dcoef, scale, minScale)
 }
 
-// Pow returns the (possibly rounded) decimal raised to the given power.
+// Deprecated: use [Decimal.PowInt] instead.
+// This method will change its signature in the v1.0 release.
+func (d Decimal) Pow(power int) (Decimal, error) {
+	return d.PowInt(power)
+}
+
+// PowInt returns the (possibly rounded) decimal raised to the given integer power.
 // If zero is raised to zero power then the result is one.
 //
-// Pow returns an error if:
+// PowInt returns an error if:
 //   - the integer part of the result has more than [MaxPrec] digits;
 //   - zero is raised to a negative power.
-func (d Decimal) Pow(power int) (Decimal, error) {
+func (d Decimal) PowInt(power int) (Decimal, error) {
 	// Special case: zero to a negative power
 	if power < 0 && d.IsZero() {
 		return Decimal{}, fmt.Errorf("computing [%v^%v]: %w", d, power, errInvalidOperation)
 	}
 
 	// General case
-	e, err := d.powFint(power)
+	e, err := d.powIntFint(power)
 	if err != nil {
-		e, err = d.powBint(power)
+		e, err = d.powIntBint(power)
 		if err != nil {
 			return Decimal{}, fmt.Errorf("computing [%v^%v]: %w", d, power, err)
 		}
@@ -1288,9 +1294,9 @@ func (d Decimal) Pow(power int) (Decimal, error) {
 	return e, nil
 }
 
-// powFint computes the power of a decimal using uint64 arithmetic.
-// powFint does not support negative powers.
-func (d Decimal) powFint(power int) (Decimal, error) {
+// powIntFint computes the integer power of a decimal using uint64 arithmetic.
+// powIntFint does not support negative powers.
+func (d Decimal) powIntFint(power int) (Decimal, error) {
 	dcoef := d.coef
 	dneg := d.IsNeg()
 	dscale := d.Scale()
@@ -1333,9 +1339,9 @@ func (d Decimal) powFint(power int) (Decimal, error) {
 	return newFromFint(eneg, ecoef, escale, 0)
 }
 
-// powBint computes the power of a decimal using *big.Int arithmetic.
-// powBint supports negative powers.
-func (d Decimal) powBint(power int) (Decimal, error) {
+// powIntBint computes the integer power of a decimal using *big.Int arithmetic.
+// powIntBint supports negative powers.
+func (d Decimal) powIntBint(power int) (Decimal, error) {
 	dcoef := getBint()
 	defer putBint(dcoef)
 	dcoef.setFint(d.coef)
@@ -1579,6 +1585,145 @@ func (d Decimal) expBint() (Decimal, error) {
 	}
 
 	return newFromBint(false, ecoef, escale, 0)
+}
+
+// Log returns the (possibly rounded) natural logarithm of a decimal.
+//
+// Log returns an error if the decimal is zero or negative.
+func (d Decimal) Log() (Decimal, error) {
+	// Special case: zero or negative
+	if !d.IsPos() {
+		return Decimal{}, fmt.Errorf("computing log(%v): %w", d, errInvalidOperation)
+	}
+
+	// Special case: one
+	if d.IsOne() {
+		return newSafe(false, 0, 0)
+	}
+
+	// General case
+	e, err := d.logBint()
+	if err != nil {
+		return Decimal{}, fmt.Errorf("computing log(%v): %w", d, err)
+	}
+
+	// Preferred scale
+	e = e.Trim(0)
+
+	return e, nil
+}
+
+// logBint computes the natural logarithm of a decimal using *big.Int arithmetic.
+func (d Decimal) logBint() (Decimal, error) {
+	dcoef := getBint()
+	defer putBint(dcoef)
+	dcoef.setFint(d.coef)
+
+	ecoef := getBint()
+	defer putBint(ecoef)
+	escale := 2 * MaxScale
+
+	fcoef := getBint()
+	defer putBint(fcoef)
+	fcoef.setFint(0)
+
+	// Alignment and sign
+	eneg := true
+	if d.WithinOne() {
+		dcoef.quo(bpow10[2*MaxScale+d.Scale()], dcoef)
+	} else {
+		dcoef.lsh(dcoef, 2*MaxScale-d.Scale())
+		eneg = false
+	}
+
+	// The initial guess is calculated as n * ln(10),
+	// where n is the position of the most significant digit.
+	n := dcoef.prec() - 2*MaxScale
+	ecoef.setBint(bnlog10[n])
+
+	Ecoef := getBint()
+	defer putBint(Ecoef)
+
+	ncoef := getBint()
+	defer putBint(ncoef)
+
+	mcoef := getBint()
+	defer putBint(mcoef)
+
+	// Halley's method
+	for range 50 {
+		Ecoef.e(ecoef)
+
+		ncoef.sub(Ecoef, dcoef)
+		ncoef.dbl(ncoef)
+
+		mcoef.add(Ecoef, dcoef)
+
+		ncoef.lsh(ncoef, 2*MaxScale)
+		ncoef.quo(ncoef, mcoef)
+
+		fcoef.sub(ecoef, ncoef)
+
+		if ecoef.cmp(fcoef) == 0 {
+			break
+		}
+
+		ecoef.setBint(fcoef)
+	}
+
+	return newFromBint(eneg, ecoef, escale, 0)
+}
+
+// e computes the exponential of a decimal using *big.Int arithmetic.
+// TODO: refactor to improve performance even more.
+func (z *bint) e(x *bint) {
+	qcoef := getBint()
+	defer putBint(qcoef)
+
+	rcoef := getBint()
+	defer putBint(rcoef)
+	rscale := 2 * MaxScale
+
+	qcoef.quoRem(x, bpow10[rscale], rcoef)
+
+	zcoef := getBint()
+	defer putBint(zcoef)
+	zcoef.setFint(0)
+
+	gcoef := getBint()
+	defer putBint(gcoef)
+	gcoef.setBint(bpow10[2*MaxScale])
+	gscale := 2 * MaxScale
+
+	hcoef := getBint()
+	defer putBint(hcoef)
+
+	// Compute f = exp(r) = r^0 / 0! + r^1 / 1! + ... + r^n / n!
+	for i := range len(bfact) {
+		// Accumulate f = f + r^i / i!
+		hcoef.quo(gcoef, bfact[i])
+		if hcoef.sign() == 0 {
+			break
+		}
+		zcoef.add(zcoef, hcoef)
+
+		// Compute g = r^(i+1)
+		gcoef.mul(gcoef, rcoef)
+		gscale = gscale + rscale
+
+		// Intermediate truncation
+		if gscale > 2*MaxScale {
+			shift := gscale - 2*MaxScale
+			gcoef.rshDown(gcoef, shift)
+			gscale = 2 * MaxScale
+		}
+	}
+
+	// nolint:gosec
+	zcoef.mul(zcoef, bexp[int(qcoef.fint())])
+	zcoef.quo(zcoef, bpow10[2*MaxScale])
+
+	z.setBint(zcoef)
 }
 
 // SubAbs returns the (possibly rounded) absolute difference between decimals d and e.

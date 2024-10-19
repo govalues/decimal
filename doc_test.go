@@ -567,13 +567,13 @@ func ExampleDecimal_AddQuoExact() {
 	// 2.7500 <nil>
 }
 
-func ExampleDecimal_Pow() {
+func ExampleDecimal_PowInt() {
 	d := decimal.MustParse("2")
-	fmt.Println(d.Pow(-2))
-	fmt.Println(d.Pow(-1))
-	fmt.Println(d.Pow(0))
-	fmt.Println(d.Pow(1))
-	fmt.Println(d.Pow(2))
+	fmt.Println(d.PowInt(-2))
+	fmt.Println(d.PowInt(-1))
+	fmt.Println(d.PowInt(0))
+	fmt.Println(d.PowInt(1))
+	fmt.Println(d.PowInt(2))
 	// Output:
 	// 0.25 <nil>
 	// 0.5 <nil>
@@ -609,6 +609,19 @@ func ExampleDecimal_Exp() {
 	// 0.1 <nil>
 	// 1 <nil>
 	// 10 <nil>
+}
+
+func ExampleDecimal_Log() {
+	d := decimal.MustParse("1")
+	e := decimal.MustParse("2.718281828459045236")
+	f := decimal.MustParse("10")
+	fmt.Println(d.Log())
+	fmt.Println(e.Log())
+	fmt.Println(f.Log())
+	// Output:
+	// 0 <nil>
+	// 1 <nil>
+	// 2.302585092994045684 <nil>
 }
 
 func ExampleDecimal_Add() {

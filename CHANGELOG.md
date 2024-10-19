@@ -2,7 +2,9 @@
 
 ## [0.1.32] - 2024-09-28
 
-- `Decimal.Pow` always correctly rounds the result.
+- Implemented `Decimal.Log`.
+- `Decimal.PowInt` always correctly rounds the result.
+- Deprecated `Decimal.Pow`.
 
 ## [0.1.31] - 2024-08-30
 
@@ -130,7 +132,7 @@
 
 ### Changed
 
-- Improved accuracy of `Decimal.Pow` for negative powers.
+- Improved accuracy of `Decimal.PowInt` for negative powers.
 - Reviewed and improved documentation.
 
 ## [0.1.11] - 2023-09-21
@@ -164,7 +166,7 @@
 
 ### Changed
 
-- Improved accuracy of `Decimal.Pow`.
+- Improved accuracy of `Decimal.PowInt`.
 
 ## [0.1.7] - 2023-08-20
 
