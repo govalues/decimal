@@ -142,6 +142,7 @@ func New(coef int64, scale int) (Decimal, error) {
 		neg = true
 		coef = -coef
 	}
+	// nolint:gosec
 	return newSafe(neg, fint(coef), scale)
 }
 

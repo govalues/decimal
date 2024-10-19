@@ -18,18 +18,16 @@ This package is designed specifically for use in transactional financial systems
 - **Banker's Rounding** - Uses [half-to-even] rounding, also known as
   "banker's rounding", to minimize cumulative rounding errors commonly seen
   in financial calculations.
-- **Accurate Artihmetic** - All arithmetic and trascendental functions are precisely
-  rounded to a 19-digit precision, ensuring results are as close as possible to
-  the true mathematical value.
+- **Accurate Artihmetic** - All methods are precisely rounded to a 19-digit
+  precision, ensuring results are as close as possible to the true mathematical value.
 - **No Panics** - All methods are panic-free, returning errors instead of crashing
   your application in cases such as overflow or division by zero.
 - **No Heap Allocations** - Optimized to avoid heap allocations,
   reducing garbage collector impact during arithmetic operations.
 - **Simple String Representation** - Decimals are represented in a strightforward
   format avoiding the complexities of scientific or engineering notations.
-- **Rigorous Testing** - All arithmetic operations and transcedental functions are
-  cross-validated against the [cockroachdb/apd] and [shopspring/decimal] packages
-  throught extensive [fuzz testing].
+- **Rigorous Testing** - All methods are cross-validated against
+  the [cockroachdb/apd] and [shopspring/decimal] packages throught extensive [fuzz testing].
 
 ## Getting Started
 
