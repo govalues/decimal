@@ -4016,9 +4016,12 @@ func FuzzDecimal_Mul(f *testing.F) {
 
 			got, err := d.mulFint(e, scale)
 			if err != nil {
-				if errors.Is(err, errDecimalOverflow) {
+				switch {
+				case errors.Is(err, errDecimalOverflow):
 					t.Skip() // Decimal overflow is an expected error in fast multiplication
-				} else {
+				case errors.Is(err, errScaleRange):
+					t.Skip() // Scale range is an expected error in fast multiplication
+				default:
 					t.Errorf("mulFint(%q, %q, %v) failed: %v", d, e, scale, err)
 				}
 				return
@@ -4068,9 +4071,12 @@ func FuzzDecimal_AddMul(f *testing.F) {
 
 			got, err := d.addMulFint(e, g, scale)
 			if err != nil {
-				if errors.Is(err, errDecimalOverflow) {
+				switch {
+				case errors.Is(err, errDecimalOverflow):
 					t.Skip() // Decimal overflow is an expected error in fast fused multiply-addition
-				} else {
+				case errors.Is(err, errScaleRange):
+					t.Skip() // Scale range is an expected error in fast fused multiply-addition
+				default:
 					t.Errorf("addMulFint(%q, %q, %q, %v) failed: %v", d, e, g, scale, err)
 				}
 				return
@@ -4203,13 +4209,16 @@ func FuzzDecimal_AddQuo(f *testing.F) {
 
 			got, err := d.addQuoFint(e, g, scale)
 			if err != nil {
-				if errors.Is(err, errDecimalOverflow) {
+				switch {
+				case errors.Is(err, errDecimalOverflow):
 					t.Skip() // Decimal overflow is an expected error in fast fused quotient-addition
-				} else if errors.Is(err, errDivisionByZero) {
+				case errors.Is(err, errDivisionByZero):
 					t.Skip() // Division by zero is an expected error in fast fused quotient-addition
-				} else if errors.Is(err, errInexactDivision) {
+				case errors.Is(err, errInexactDivision):
 					t.Skip() // Inexact division is an expected error in fast fused quotient-addition
-				} else {
+				case errors.Is(err, errScaleRange):
+					t.Skip() // Scale range is an expected error in fast fused quotient-addition
+				default:
 					t.Errorf("addQuoFint(%q, %q, %q, %v) failed: %v", d, e, g, scale, err)
 				}
 				return
@@ -4335,9 +4344,12 @@ func FuzzDecimal_Add(f *testing.F) {
 
 			got, err := d.addFint(e, scale)
 			if err != nil {
-				if errors.Is(err, errDecimalOverflow) {
+				switch {
+				case errors.Is(err, errDecimalOverflow):
 					t.Skip() // Decimal overflow is an expected error in fast addition
-				} else {
+				case errors.Is(err, errScaleRange):
+					t.Skip() // Scale range is an expected error in fast addition
+				default:
 					t.Errorf("addFint(%q, %q, %v) failed: %v", d, e, scale, err)
 				}
 				return
@@ -4387,6 +4399,8 @@ func FuzzDecimal_Quo(f *testing.F) {
 					t.Skip() // Division by zero is an expected error in fast division
 				case errors.Is(err, errInexactDivision):
 					t.Skip() // Inexact division is an expected error in fast division
+				case errors.Is(err, errScaleRange):
+					t.Skip() // Scale range is an expected error in fast division
 				default:
 					t.Errorf("quoFint(%q, %q, %v) failed: %v", d, e, scale, err)
 				}
