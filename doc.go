@@ -52,16 +52,15 @@ Special values such as [NaN], [Infinity], or [negative zeros] are not supported.
 This ensures that arithmetic operations always produce either valid decimals
 or errors.
 
-# Operations
+# Arithmetic Operations
 
-Each arithmetic operation, except for [Decimal.Sqrt] and [Decimal.Exp],
-occurs in two steps:
+Each arithmetic operation occurs in two steps:
 
  1. The operation is initially performed using uint64 arithmetic.
     If no overflow occurs, the exact result is immediately returned.
     If overflow occurs, the operation proceeds to step 2.
 
- 2. The operation is repeated with double precision using [big.Int] arithmetic.
+ 2. The operation is repeated with at least double precision using [big.Int] arithmetic.
     The result is then rounded to 19 digits.
     If no significant digits are lost during rounding, the inexact result is returned.
     If any significant digit is lost, an overflow error is returned.
@@ -74,7 +73,7 @@ The following rules determine the significance of digits during step 2:
 
   - [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.Quo], [Decimal.QuoRem], [Decimal.Inv],
     [Decimal.AddMul], [Decimal.AddQuo], [Decimal.SubMul], [Decimal.SubQuo], [Decimal.SubAbs],
-    [Decimal.Pow], [Decimal.Sqrt], [Decimal.Exp]:
+    [Decimal.PowInt]:
     All digits in the integer part are significant, while digits in the
     fractional part are considered insignificant.
   - [Decimal.AddExact], [Decimal.SubExact], [Decimal.MulExact], [Decimal.QuoExact],
@@ -83,11 +82,24 @@ The following rules determine the significance of digits during step 2:
     in the fractional part is determined by the scale argument, which is typically
     equal to the scale of the currency.
 
+# Transcendental Functions
+
+All transcendental functions are always computed with at least double precision using [big.Int] arithmetic.
+The result is then rounded to 19 digits.
+If no significant digits are lost during rounding, the inexact result is returned.
+If any significant digit is lost, an overflow error is returned.
+
+The following rules determine the significance of digits:
+
+  - [Decimal.Sqrt], [Decimal.Exp], [Decimal.Log]:
+    All digits in the integer part are significant, while digits in the
+    fractional part are considered insignificant.
+
 # Context
 
 Unlike many other decimal libraries, this package does not provide
-an explicit context.
-Instead, the [context] is implicit and can be approximately equated to
+an explicit mathematical context.
+Instead, the the mathematical [context] is implicit and can be approximately equated to
 the following settings:
 
 	| Attribute               | Value                                           |
@@ -105,15 +117,11 @@ subnormal numbers.
 
 # Rounding
 
-Implicit rounding is applied when a result exceeds 19 digits,
-rounding it to 19 digits using half-to-even rounding.
+For all operations the result is the one that would be obtained by computing
+the exact mathematical result with infinite precision and then rounding it
+to 19 digits using half-to-even rounding.
 This method ensures that rounding errors are evenly distributed between rounding up
 and down.
-
-For all arithmetic operations, except for [Decimal.Pow], the result is the one
-that would be obtained by computing the exact mathematical result with infinite
-precision and then rounding it to 19 digits.
-[Decimal.Pow] may occasionally produce a result that is off by 1 unit in the last place.
 
 In addition to implicit rounding, the package provides several methods for
 explicit rounding:
@@ -135,22 +143,23 @@ All methods are panic-free and pure.
 Errors are returned in the following cases:
 
   - Division by Zero:
-    Unlike the standard library, [Decimal.Quo], [Decimal.QuoRem], [Decimal.Inv],
+    Unlike Go's standard library, [Decimal.Quo], [Decimal.QuoRem], [Decimal.Inv],
     [Decimal.AddQuo], [Decimal.SubQuo], do not panic when dividing by 0.
     Instead, they return an error.
 
   - Invalid Operation:
-    [Decimal.Pow] returns an error if 0 is raised to a negative power.
+    [Decimal.PowInt] returns an error if 0 is raised to a negative power.
     [Decimal.Sqrt] return an error if the square root of a negative decimal is requested.
+    [Decimal.Log] returns an error when calculating the natural logarithm of a non-positive decimal.
 
   - Overflow:
-    Unlike standard integers, there is no "wrap around" for decimals at certain sizes.
-    For out-of-range values, arithmetic operations return an error.
+    Unlike standard integers, decimals do not "wrap around" when exceeding their maximum value.
+    For out-of-range values, methods return an error.
 
 Errors are not returned in the following cases:
 
   - Underflow:
-    Arithmetic operations do not return an error in case of decimal underflow.
+    Methods do not return an error for decimal underflow.
     If the result is a decimal between -0.00000000000000000005 and
     0.00000000000000000005 inclusive, it will be rounded to 0.
 

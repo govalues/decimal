@@ -18,14 +18,16 @@ This package is designed specifically for use in transactional financial systems
 - **Banker's Rounding** - Uses [half-to-even] rounding, also known as
   "banker's rounding", to minimize cumulative rounding errors commonly seen
   in financial calculations.
+- **Accurate Artihmetic** - All methods are precisely rounded to a 19-digit
+  precision, ensuring results are as close as possible to the true mathematical value.
 - **No Panics** - All methods are panic-free, returning errors instead of crashing
   your application in cases such as overflow or division by zero.
-- **Zero Heap Allocation** - Optimized to avoid heap allocations,
+- **No Heap Allocations** - Optimized to avoid heap allocations,
   reducing garbage collector impact during arithmetic operations.
 - **Simple String Representation** - Decimals are represented in a strightforward
   format avoiding the complexities of scientific or engineering notations.
-- **Correctness** - Arithmetic operations are cross-validated against the
-  [cockroachdb/apd] and [shopspring/decimal] packages throught extensive [fuzz testing].
+- **Rigorous Testing** - All methods are cross-validated against
+  the [cockroachdb/apd] and [shopspring/decimal] packages throught extensive [fuzz testing].
 
 ## Getting Started
 
@@ -57,39 +59,41 @@ func main() {
     f, _ := decimal.NewFromFloat64(2.567)   // f = 2.567
     g, _ := decimal.NewFromInt64(7, 896, 3) // g = 7.896
 
-    // Operations
-    fmt.Println(d.Add(e))          // 8 + 12.5
-    fmt.Println(d.Sub(e))          // 8 - 12.5
-    fmt.Println(d.SubAbs(e))       // abs(8 - 12.5)
+    // Arithmetic operations
+    fmt.Println(d.Add(e))        // 8 + 12.5
+    fmt.Println(d.Sub(e))        // 8 - 12.5
+    fmt.Println(d.SubAbs(e))     // abs(8 - 12.5)
 
-    fmt.Println(d.Mul(e))          // 8 * 12.5
-    fmt.Println(d.AddMul(e, f))    // 8 + 12.5 * 2.567
-    fmt.Println(d.SubMul(e, f))    // 8 - 12.5 * 2.567
+    fmt.Println(d.Mul(e))        // 8 * 12.5
+    fmt.Println(d.AddMul(e, f))  // 8 + 12.5 * 2.567
+    fmt.Println(d.SubMul(e, f))  // 8 - 12.5 * 2.567
+    fmt.Println(d.PowInt(2))     // 8²
 
-    fmt.Println(d.Quo(e))          // 8 / 12.5
-    fmt.Println(d.AddQuo(e, f))    // 8 + 12.5 / 2.567
-    fmt.Println(d.SubQuo(e, f))    // 8 - 12.5 / 2.567
-    fmt.Println(d.QuoRem(e))       // 8 div 12.5, 8 mod 12.5
-    fmt.Println(d.Inv())           // 1 / 8
+    fmt.Println(d.Quo(e))        // 8 / 12.5
+    fmt.Println(d.AddQuo(e, f))  // 8 + 12.5 / 2.567
+    fmt.Println(d.SubQuo(e, f))  // 8 - 12.5 / 2.567
+    fmt.Println(d.QuoRem(e))     // 8 div 12.5, 8 mod 12.5
+    fmt.Println(d.Inv())         // 1 / 8
 
-    fmt.Println(d.Sqrt())          // √8
-    fmt.Println(d.Exp())           // exp(8)
-    fmt.Println(d.Pow(2))          // 8²
+    // Transcendental functions
+    fmt.Println(d.Sqrt())        // √8
+    fmt.Println(d.Exp())         // exp(8)
+    fmt.Println(d.Log())         // ln(8)
 
     // Rounding to 2 decimal places
-    fmt.Println(g.Round(2))        // 7.90
-    fmt.Println(g.Ceil(2))         // 7.90
-    fmt.Println(g.Floor(2))        // 7.89
-    fmt.Println(g.Trunc(2))        // 7.89
+    fmt.Println(g.Round(2))      // 7.90
+    fmt.Println(g.Ceil(2))       // 7.90
+    fmt.Println(g.Floor(2))      // 7.89
+    fmt.Println(g.Trunc(2))      // 7.89
 
     // Conversions
-    fmt.Println(f.Int64(9))        // 2 567000000
-    fmt.Println(f.Float64())       // 2.567
-    fmt.Println(f.String())        // 2.567
+    fmt.Println(f.Int64(9))      // 2 567000000
+    fmt.Println(f.Float64())     // 2.567
+    fmt.Println(f.String())      // 2.567
 
     // Formatting
-    fmt.Printf("%.2f", f)          // 2.57
-    fmt.Printf("%.2k", f)          // 256.70%
+    fmt.Printf("%.2f", f)        // 2.57
+    fmt.Printf("%.2k", f)        // 256.70%
 }
 ```
 
@@ -104,15 +108,15 @@ For examples related to financial calculations, see the `money` package
 
 Comparison with other popular packages:
 
-| Feature          | govalues     | [cockroachdb/apd] v3.2.1 | [shopspring/decimal] v1.4.0 |
-| ---------------- | ------------ | ------------------------ | --------------------------- |
-| Speed            | High         | Medium                   | Low[^reason]                |
-| Mutability       | Immutable    | Mutable[^reason]         | Immutable                   |
-| Memory Footprint | Low          | Medium                   | High                        |
-| Panic Free       | Yes          | Yes                      | No[^divzero]                |
-| Precision        | 19 digits    | Arbitrary                | Arbitrary                   |
-| Default Rounding | Half to even | Half up                  | Half away from 0            |
-| Context          | Implicit     | Explicit                 | Implicit                    |
+| Feature           | govalues  | [cockroachdb/apd] v3.2.1 | [shopspring/decimal] v1.4.0 |
+| ----------------- | --------- | ------------------------ | --------------------------- |
+| Speed             | High      | Medium                   | Low[^reason]                |
+| Mutability        | Immutable | Mutable[^reason]         | Immutable                   |
+| Heap Allocations  | No        | Medium                   | High                        |
+| Panic Free        | Yes       | Yes                      | No[^divzero]                |
+| Precision         | 19 digits | Arbitrary                | Arbitrary                   |
+| Correctly Rounded | Yes       | No                       | No                          |
+| Context           | Implicit  | Explicit                 | Implicit                    |
 
 [^reason]: decimal package was created simply because [shopspring/decimal] was
 too slow and [cockroachdb/apd] was mutable.
@@ -134,11 +138,12 @@ cpu: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx
 | Mul       | 2 * 3                 |   16.93n |                   62.20n |                     146.00n |                +267.40% |               +762.37% |
 | Quo       | 2 / 4 (exact)         |   59.52n |                  176.95n |                     657.40n |                +197.30% |              +1004.50% |
 | Quo       | 2 / 3 (inexact)       |  391.60n |                  976.80n |                    2962.50n |                +149.39% |               +656.42% |
-| Pow       | 1.1^60                |  950.90n |                 3302.50n |                    4599.50n |                +247.32% |               +383.73% |
-| Pow       | 1.01^600              |    3.45µ |                   10.67µ |                      18.67µ |                +209.04% |               +440.89% |
-| Pow       | 1.001^6000            |    5.94µ |                   20.50µ |                     722.22µ |                +244.88% |             +12052.44% |
+| PowInt    | 1.1^60                |  950.90n |                 3302.50n |                    4599.50n |                +247.32% |               +383.73% |
+| PowInt    | 1.01^600              |    3.45µ |                   10.67µ |                      18.67µ |                +209.04% |               +440.89% |
+| PowInt    | 1.001^6000            |    5.94µ |                   20.50µ |                     722.22µ |                +244.88% |             +12052.44% |
 | Sqrt      | √2                    |    3.40µ |                    4.96µ |                    2101.86µ |                 +46.00% |             +61755.71% |
 | Exp       | exp(0.5)              |    8.35µ |                   39.28µ |                      20.06µ |                +370.58% |               +140.32% |
+| Log       | ln(0.5)               |   54.89µ |                  129.01µ |                     151.55µ |                +135.03% |               +176.10% |
 | Parse     | 1                     |   16.52n |                   76.30n |                     136.55n |                +362.00% |               +726.82% |
 | Parse     | 123.456               |   47.37n |                  176.90n |                     242.60n |                +273.44% |               +412.14% |
 | Parse     | 123456789.1234567890  |   85.49n |                  224.15n |                     497.95n |                +162.19% |               +482.47% |

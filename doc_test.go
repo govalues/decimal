@@ -99,26 +99,20 @@ func approximate(terms int) (decimal.Decimal, error) {
 }
 
 // This example demonstrates the advantage of decimals for financial calculations.
-// It computes the sum 1.1 + 1.2 + 1.3 using both decimal and float64 arithmetic.
-// In decimal arithmetic, the result is exactly 3.6, as expected.
-// In float64 arithmetic, the result is 3.5999999999999996 due to floating-point inaccuracy.
+// It computes the sum 0.1 + 0.2 using both decimal and float64 arithmetic.
+// In decimal arithmetic, the result is exactly 0.3, as expected.
+// In float64 arithmetic, the result is 0.30000000000000004 due to floating-point inaccuracy.
 func Example_floatInaccuracy() {
-	a := decimal.MustParse("1.1")
-	b := decimal.MustParse("1.2")
-	c := decimal.MustParse("1.3")
-	s := decimal.Zero
-	s, _ = s.Add(a)
-	s, _ = s.Add(b)
-	s, _ = s.Add(c)
-	fmt.Println(s)
+	a := decimal.MustParse("0.1")
+	b := decimal.MustParse("0.2")
+	fmt.Println(a.Add(b))
 
-	x := 1.1
-	y := 1.2
-	z := 1.3
-	fmt.Println(x + y + z)
+	x := 0.1
+	y := 0.2
+	fmt.Println(x + y)
 	// Output:
-	// 3.6
-	// 3.5999999999999996
+	// 0.3 <nil>
+	// 0.30000000000000004
 }
 
 func ExampleMustNew() {
@@ -573,13 +567,13 @@ func ExampleDecimal_AddQuoExact() {
 	// 2.7500 <nil>
 }
 
-func ExampleDecimal_Pow() {
+func ExampleDecimal_PowInt() {
 	d := decimal.MustParse("2")
-	fmt.Println(d.Pow(-2))
-	fmt.Println(d.Pow(-1))
-	fmt.Println(d.Pow(0))
-	fmt.Println(d.Pow(1))
-	fmt.Println(d.Pow(2))
+	fmt.Println(d.PowInt(-2))
+	fmt.Println(d.PowInt(-1))
+	fmt.Println(d.PowInt(0))
+	fmt.Println(d.PowInt(1))
+	fmt.Println(d.PowInt(2))
 	// Output:
 	// 0.25 <nil>
 	// 0.5 <nil>
@@ -615,6 +609,19 @@ func ExampleDecimal_Exp() {
 	// 0.1 <nil>
 	// 1 <nil>
 	// 10 <nil>
+}
+
+func ExampleDecimal_Log() {
+	d := decimal.MustParse("1")
+	e := decimal.MustParse("2.718281828459045236")
+	f := decimal.MustParse("10")
+	fmt.Println(d.Log())
+	fmt.Println(e.Log())
+	fmt.Println(f.Log())
+	// Output:
+	// 0 <nil>
+	// 1 <nil>
+	// 2.302585092994045684 <nil>
 }
 
 func ExampleDecimal_Add() {
