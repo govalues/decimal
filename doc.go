@@ -36,13 +36,13 @@ scales and coefficients.
 The range of a decimal is determined by its scale.
 Here are the ranges for frequently used scales:
 
-  | Example      | Scale | Minimum                              | Maximum                             |
-  | ------------ | ----- | ------------------------------------ | ----------------------------------- |
-  | Japanese Yen | 0     | -9,999,999,999,999,999,999           | 9,999,999,999,999,999,999           |
-  | US Dollar    | 2     |    -99,999,999,999,999,999.99        |    99,999,999,999,999,999.99        |
-  | Omani Rial   | 3     |     -9,999,999,999,999,999.999       |     9,999,999,999,999,999.999       |
-  | Bitcoin      | 8     |            -99,999,999,999.99999999  |            99,999,999,999.99999999  |
-  | Ethereum     | 9     |             -9,999,999,999.999999999 |             9,999,999,999.999999999 |
+	| Example      | Scale | Minimum                              | Maximum                             |
+	| ------------ | ----- | ------------------------------------ | ----------------------------------- |
+	| Japanese Yen | 0     | -9,999,999,999,999,999,999           | 9,999,999,999,999,999,999           |
+	| US Dollar    | 2     |    -99,999,999,999,999,999.99        |    99,999,999,999,999,999.99        |
+	| Omani Rial   | 3     |     -9,999,999,999,999,999.999       |     9,999,999,999,999,999.999       |
+	| Bitcoin      | 8     |            -99,999,999,999.99999999  |            99,999,999,999.99999999  |
+	| Ethereum     | 9     |             -9,999,999,999.999999999 |             9,999,999,999.999999999 |
 
 [Subnormal numbers] are not supported to ensure peak performance.
 Consequently, decimals between -0.00000000000000000005 and 0.00000000000000000005
@@ -102,15 +102,15 @@ an explicit mathematical [context].
 Instead, the [context] is implicit and can be approximately equated to
 the following settings:
 
-  | Attribute               | Value                                           |
-  | ----------------------- | ----------------------------------------------- |
-  | Precision               | 19                                              |
-  | Maximum Exponent (Emax) | 18                                              |
-  | Minimum Exponent (Emin) | -19                                             |
-  | Tiny Exponent (Etiny)   | -19                                             |
-  | Rounding Method         | Half To Even                                    |
-  | Enabled Traps           | Division by Zero, Invalid Operation, Overflow   |
-  | Disabled Traps          | Inexact, Clamped, Rounded, Subnormal, Underflow |
+	| Attribute               | Value                                           |
+	| ----------------------- | ----------------------------------------------- |
+	| Precision               | 19                                              |
+	| Maximum Exponent (Emax) | 18                                              |
+	| Minimum Exponent (Emin) | -19                                             |
+	| Tiny Exponent (Etiny)   | -19                                             |
+	| Rounding Method         | Half To Even                                    |
+	| Enabled Traps           | Division by Zero, Invalid Operation, Overflow   |
+	| Disabled Traps          | Inexact, Clamped, Rounded, Subnormal, Underflow |
 
 The equality of Etiny and Emin implies that this package does not support
 subnormal numbers.
@@ -172,19 +172,19 @@ the implementation of [encoding.TextMarshaller] and [encoding.TextUnmarshaler]
 interfaces.
 Below is an example structure:
 
-  type Object struct {
-    Number decimal.Decimal `json:"some_number"`
-    // Other fields...
-  }
+	type Object struct {
+	  Number decimal.Decimal `json:"some_number"`
+	  // Other fields...
+	}
 
 This package marshals decimals as quoted strings, ensuring the preservation of
 the exact numerical value.
 Below is an example OpenAPI schema:
 
-  Decimal:
-    type: string
-    format: decimal
-    pattern: '^(\-|\+)?((\d+(\.\d*)?)|(\.\d+))$'
+	Decimal:
+	  type: string
+	  format: decimal
+	  pattern: '^(\-|\+)?((\d+(\.\d*)?)|(\.\d+))$'
 
 B. XML
 
@@ -192,20 +192,20 @@ The package integrates with standard [encoding/xml] via the implementation of
 [encoding.TextMarshaller] and [encoding.TextUnmarshaler] interfaces.
 Below is an example structure:
 
-  type Entity struct {
-    Number decimal.Decimal `xml:"SomeNumber"`
-    // Other fields...
-  }
+	type Entity struct {
+	  Number decimal.Decimal `xml:"SomeNumber"`
+	  // Other fields...
+	}
 
 "xs:decimal" type can represent decimals in XML schema.
 It is possible to impose restrictions on the length of the decimals
 using the following type:
 
-  <xs:simpleType name="Decimal">
-    <xs:restriction base="xs:decimal">
-      <xs:totalDigits value="19"/>
-    </xs:restriction>
-  </xs:simpleType>
+	<xs:simpleType name="Decimal">
+	  <xs:restriction base="xs:decimal">
+	    <xs:totalDigits value="19"/>
+	  </xs:restriction>
+	</xs:simpleType>
 
 C. Protocol Buffers
 
@@ -215,9 +215,9 @@ The main advantage of this format is that it preserves trailing zeros.
 To convert between this format and decimals, use [Parse] and [Decimal.String].
 Below is an example of a proto definition:
 
-  message Decimal {
-    string value = 1;
-  }
+	message Decimal {
+	  string value = 1;
+	}
 
 The second format represents decimals as [a pair of integers]:
 one for the integer part and another for the fractional part.
@@ -227,10 +227,10 @@ For conversion between this format and decimals, use [NewFromInt64] and
 [Decimal.Int64] with a scale argument of "9".
 Below is an example of a proto definition:
 
-  message Decimal {
-    int64 units = 1;
-    int32 nanos = 2;
-  }
+	message Decimal {
+	  int64 units = 1;
+	  int32 nanos = 2;
+	}
 
 D. SQL
 
@@ -239,11 +239,11 @@ of [sql.Scanner] and [driver.Valuer] interfaces.
 To ensure accurate preservation of decimal scales, it is essential to choose
 appropriate column types:
 
-  | Database   | Type                          |
-  | ---------- | ----------------------------- |
-  | PostgreSQL | DECIMAL                       |
-  | SQLite     | TEXT                          |
-  | MySQL      | DECIMAL(19, d) or VARCHAR(22) |
+	| Database   | Type                          |
+	| ---------- | ----------------------------- |
+	| PostgreSQL | DECIMAL                       |
+	| SQLite     | TEXT                          |
+	| MySQL      | DECIMAL(19, d) or VARCHAR(22) |
 
 Below are the reasons for these preferences:
 

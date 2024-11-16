@@ -2041,7 +2041,7 @@ func (d Decimal) addBint(e Decimal, minScale int) (Decimal, error) {
 	} else {
 		if ecoef.cmp(dcoef) > 0 {
 			dneg = e.IsNeg()
-	}
+		}
 		dcoef.subAbs(dcoef, ecoef)
 	}
 
@@ -2209,7 +2209,7 @@ func (d Decimal) addMulBint(e, f Decimal, minScale int) (Decimal, error) {
 	} else {
 		if ecoef.cmp(dcoef) > 0 {
 			dneg = eneg
-	}
+		}
 		dcoef.subAbs(dcoef, ecoef)
 	}
 
@@ -2387,7 +2387,7 @@ func (d Decimal) addQuoBint(e, f Decimal, minScale int) (Decimal, error) {
 	} else {
 		if ecoef.cmp(dcoef) > 0 {
 			dneg = eneg
-	}
+		}
 		dcoef.subAbs(dcoef, ecoef)
 	}
 
