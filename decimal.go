@@ -2642,6 +2642,8 @@ func (d Decimal) Min(e Decimal) Decimal {
 // See also method [Decimal.CmpTotal].
 //
 // Clamp returns an error if min is greater than max numerically.
+//
+//nolint:revive
 func (d Decimal) Clamp(min, max Decimal) (Decimal, error) {
 	if min.Cmp(max) > 0 {
 		return Decimal{}, fmt.Errorf("clamping %v: invalid range", d)

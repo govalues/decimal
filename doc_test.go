@@ -878,6 +878,7 @@ func ExampleDecimal_Min() {
 	// Output: -5.67
 }
 
+//nolint:revive
 func ExampleDecimal_Clamp() {
 	min := decimal.MustParse("-20")
 	max := decimal.MustParse("20")

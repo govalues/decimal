@@ -3866,6 +3866,7 @@ func TestDecimal_Min(t *testing.T) {
 	}
 }
 
+//nolint:revive
 func TestDecimal_Clamp(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
