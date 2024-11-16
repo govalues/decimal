@@ -1759,6 +1759,103 @@ func TestDecimal_Trim(t *testing.T) {
 	}
 }
 
+func TestSum(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			d    []string
+			want string
+		}{
+			{[]string{"1", "1"}, "2"},
+			{[]string{"2", "3"}, "5"},
+			{[]string{"5.75", "3.3"}, "9.05"},
+			{[]string{"5", "-3"}, "2"},
+			{[]string{"-5", "-3"}, "-8"},
+			{[]string{"-7", "2.5"}, "-4.5"},
+			{[]string{"0.7", "0.3"}, "1.0"},
+			{[]string{"1.25", "1.25"}, "2.50"},
+			{[]string{"1.1", "0.11"}, "1.21"},
+			{[]string{"1.234567890", "1.000000000"}, "2.234567890"},
+			{[]string{"1.234567890", "1.000000110"}, "2.234568000"},
+
+			{[]string{"0.9998", "0.0000"}, "0.9998"},
+			{[]string{"0.9998", "0.0001"}, "0.9999"},
+			{[]string{"0.9998", "0.0002"}, "1.0000"},
+			{[]string{"0.9998", "0.0003"}, "1.0001"},
+
+			{[]string{"999999999999999999", "1"}, "1000000000000000000"},
+			{[]string{"99999999999999999", "1"}, "100000000000000000"},
+			{[]string{"9999999999999999", "1"}, "10000000000000000"},
+			{[]string{"999999999999999", "1"}, "1000000000000000"},
+			{[]string{"99999999999999", "1"}, "100000000000000"},
+			{[]string{"9999999999999", "1"}, "10000000000000"},
+			{[]string{"999999999999", "1"}, "1000000000000"},
+			{[]string{"99999999999", "1"}, "100000000000"},
+			{[]string{"9999999999", "1"}, "10000000000"},
+			{[]string{"999999999", "1"}, "1000000000"},
+			{[]string{"99999999", "1"}, "100000000"},
+			{[]string{"9999999", "1"}, "10000000"},
+			{[]string{"999999", "1"}, "1000000"},
+			{[]string{"99999", "1"}, "100000"},
+			{[]string{"9999", "1"}, "10000"},
+			{[]string{"999", "1"}, "1000"},
+			{[]string{"99", "1"}, "100"},
+			{[]string{"9", "1"}, "10"},
+
+			{[]string{"100000000000", "0.00000000"}, "100000000000.0000000"},
+			{[]string{"100000000000", "0.00000001"}, "100000000000.0000000"},
+
+			{[]string{"0.0", "0"}, "0.0"},
+			{[]string{"0.00", "0"}, "0.00"},
+			{[]string{"0.000", "0"}, "0.000"},
+			{[]string{"0.0000000", "0"}, "0.0000000"},
+			{[]string{"0", "0.0"}, "0.0"},
+			{[]string{"0", "0.00"}, "0.00"},
+			{[]string{"0", "0.000"}, "0.000"},
+			{[]string{"0", "0.0000000"}, "0.0000000"},
+
+			{[]string{"9999999999999999999", "0.4"}, "9999999999999999999"},
+			{[]string{"-9999999999999999999", "-0.4"}, "-9999999999999999999"},
+			{[]string{"1", "-9999999999999999999"}, "-9999999999999999998"},
+			{[]string{"9999999999999999999", "-1"}, "9999999999999999998"},
+		}
+		for _, tt := range tests {
+			d := make([]Decimal, len(tt.d))
+			for i, s := range tt.d {
+				d[i] = MustParse(s)
+			}
+			got, err := Sum(d...)
+			if err != nil {
+				t.Errorf("Sum(%v) failed: %v", d, err)
+			}
+			want := MustParse(tt.want)
+			if got != want {
+				t.Errorf("Sum(%v) = %q, want %q", d, got, want)
+			}
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		tests := map[string][]string{
+			"overflow 1": {"9999999999999999999", "1"},
+			"overflow 2": {"9999999999999999999", "0.6"},
+			"overflow 3": {"-9999999999999999999", "-1"},
+			"overflow 4": {"-9999999999999999999", "-0.6"},
+		}
+		for name, ss := range tests {
+			t.Run(name, func(t *testing.T) {
+				d := make([]Decimal, len(ss))
+				for i, s := range ss {
+					d[i] = MustParse(s)
+				}
+				_, err := Sum(d...)
+				if err == nil {
+					t.Errorf("Sum(%v) did not fail", d)
+				}
+			})
+		}
+	})
+}
+
 func TestDecimal_Add(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
@@ -1931,6 +2028,78 @@ func TestDecimal_SubAbs(t *testing.T) {
 			if err == nil {
 				t.Errorf("%q.SubAbs(%q) did not fail", d, e)
 			}
+		}
+	})
+}
+
+func TestProd(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			d    []string
+			want string
+		}{
+			{[]string{"2", "2"}, "4"},
+			{[]string{"2", "3"}, "6"},
+			{[]string{"5", "1"}, "5"},
+			{[]string{"5", "2"}, "10"},
+			{[]string{"1.20", "2"}, "2.40"},
+			{[]string{"1.20", "0"}, "0.00"},
+			{[]string{"1.20", "-2"}, "-2.40"},
+			{[]string{"-1.20", "2"}, "-2.40"},
+			{[]string{"-1.20", "0"}, "0.00"},
+			{[]string{"-1.20", "-2"}, "2.40"},
+			{[]string{"5.09", "7.1"}, "36.139"},
+			{[]string{"2.5", "4"}, "10.0"},
+			{[]string{"2.50", "4"}, "10.00"},
+			{[]string{"0.70", "1.05"}, "0.7350"},
+			{[]string{"1.000000000", "1"}, "1.000000000"},
+			{[]string{"1.23456789", "1.00000000"}, "1.2345678900000000"},
+			{[]string{"1.000000000000000000", "1.000000000000000000"}, "1.000000000000000000"},
+			{[]string{"1.000000000000000001", "1.000000000000000001"}, "1.000000000000000002"},
+			{[]string{"9.999999999999999999", "9.999999999999999999"}, "99.99999999999999998"},
+			{[]string{"0.0000000000000000001", "0.0000000000000000001"}, "0.0000000000000000000"},
+			{[]string{"0.0000000000000000001", "0.9999999999999999999"}, "0.0000000000000000001"},
+			{[]string{"0.0000000000000000003", "0.9999999999999999999"}, "0.0000000000000000003"},
+			{[]string{"0.9999999999999999999", "0.9999999999999999999"}, "0.9999999999999999998"},
+			{[]string{"6963.788300835654596", "0.001436"}, "10.00000000000000000"},
+
+			// Captured during fuzzing
+			{[]string{"92233720368547757.26", "0.0000000000000000002"}, "0.0184467440737095515"},
+			{[]string{"9223372036854775.807", "-0.0000000000000000013"}, "-0.0119903836479112085"},
+		}
+		for _, tt := range tests {
+			d := make([]Decimal, len(tt.d))
+			for i, s := range tt.d {
+				d[i] = MustParse(s)
+			}
+			got, err := Prod(d...)
+			if err != nil {
+				t.Errorf("Prod(%v) failed: %v", d, err)
+			}
+			want := MustParse(tt.want)
+			if got != want {
+				t.Errorf("Prod(%v) = %q, want %q", d, got, want)
+			}
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		tests := map[string][]string{
+			"overflow 1": {"10000000000", "1000000000"},
+			"overflow 2": {"1000000000000000000", "10"},
+			"overflow 3": {"4999999999999999995", "-2.000000000000000002"},
+		}
+		for name, ss := range tests {
+			t.Run(name, func(t *testing.T) {
+				d := make([]Decimal, len(ss))
+				for i, s := range ss {
+					d[i] = MustParse(s)
+				}
+				_, err := Prod(d...)
+				if err == nil {
+					t.Errorf("Prod(%v) did not fail", d)
+				}
+			})
 		}
 	})
 }
@@ -3697,7 +3866,6 @@ func TestDecimal_Min(t *testing.T) {
 	}
 }
 
-//nolint:predeclared
 func TestDecimal_Clamp(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
@@ -4040,6 +4208,45 @@ func FuzzDecimal_Mul(f *testing.F) {
 	)
 }
 
+func FuzzDecimal_Mul_Prod(f *testing.F) {
+	for _, d := range corpus {
+		for _, e := range corpus {
+			f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef)
+		}
+	}
+
+	f.Fuzz(
+		func(t *testing.T, dneg bool, dscale int, dcoef uint64, eneg bool, escale int, ecoef uint64) {
+			d, err := newSafe(dneg, fint(dcoef), dscale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+			e, err := newSafe(eneg, fint(ecoef), escale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			got, err := d.Mul(e)
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			want, err := Prod(d, e)
+			if err != nil {
+				t.Errorf("Prod(%q, %q) failed: %v", d, e, err)
+				return
+			}
+
+			if got.CmpTotal(want) != 0 {
+				t.Errorf("Prod(%q, %q) = %q, whereas Mul(%q, %q) = %q", d, e, want, d, e, got)
+			}
+		},
+	)
+}
+
 func FuzzDecimal_AddMul(f *testing.F) {
 	for _, d := range corpus {
 		for _, e := range corpus {
@@ -4363,6 +4570,45 @@ func FuzzDecimal_Add(f *testing.F) {
 
 			if got.Cmp(want) != 0 {
 				t.Errorf("addBint(%q, %q, %v) = %q, whereas addFint(%q, %q, %v) = %q", d, e, scale, want, d, e, scale, got)
+			}
+		},
+	)
+}
+
+func FuzzDecimal_Add_Sum(f *testing.F) {
+	for _, d := range corpus {
+		for _, e := range corpus {
+			f.Add(d.neg, d.scale, d.coef, e.neg, e.scale, e.coef)
+		}
+	}
+
+	f.Fuzz(
+		func(t *testing.T, dneg bool, dscale int, dcoef uint64, eneg bool, escale int, ecoef uint64) {
+			d, err := newSafe(dneg, fint(dcoef), dscale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+			e, err := newSafe(eneg, fint(ecoef), escale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			got, err := d.Add(e)
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			want, err := Sum(d, e)
+			if err != nil {
+				t.Errorf("Sum(%q, %q) failed: %v", d, e, err)
+				return
+			}
+
+			if got.CmpTotal(want) != 0 {
+				t.Errorf("Sum(%q, %q) = %q, whereas Add(%q, %q) = %q", d, e, want, d, e, got)
 			}
 		},
 	)

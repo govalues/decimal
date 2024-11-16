@@ -86,6 +86,12 @@ jobs:
       - name: Run fuzzing for fused multiply-addition
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Mul_AddMul$
 
+      - name: Run fuzzing for summation
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Add_Sum$
+
+      - name: Run fuzzing for product
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Mul_Prod$
+
       - name: Run fuzzing for division
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Quo$
 
