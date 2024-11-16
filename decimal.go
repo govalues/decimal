@@ -1197,6 +1197,85 @@ func (d Decimal) IsZero() bool {
 	return d.coef == 0
 }
 
+// Prod returns the (possibly rounded) product of decimals with at least
+// double precision.
+//
+// Prod returns an error if:
+//   - no arguments are provided
+//   - the integer part of the result has more than [MaxPrec] digits.
+func Prod(d ...Decimal) (Decimal, error) {
+	// Special cases
+	switch len(d) {
+	case 0:
+		return Decimal{}, fmt.Errorf("computing [prod([])]: %w: no arguments", errInvalidOperation)
+	case 1:
+		return d[0], nil
+	}
+
+	// General case
+	e, err := prodFint(d...)
+	if err != nil {
+		e, err = prodBint(d...)
+		if err != nil {
+			return Decimal{}, fmt.Errorf("computing [prod(%v)]: %w", d, err)
+		}
+	}
+
+	return e, nil
+}
+
+// prodFint computes the product of decimals using uint64 arithmetic.
+func prodFint(d ...Decimal) (Decimal, error) {
+	ecoef := One.coef
+	escale := One.Scale()
+	eneg := One.IsNeg()
+
+	for _, f := range d {
+		fcoef := f.coef
+
+		// Compute e = e * f
+		var ok bool
+		ecoef, ok = ecoef.mul(fcoef)
+		if !ok {
+			return Decimal{}, errDecimalOverflow
+		}
+		eneg = eneg != f.IsNeg()
+		escale = escale + f.Scale()
+	}
+
+	return newFromFint(eneg, ecoef, escale, 0)
+}
+
+// prodBint computes the product of decimals using *big.Int arithmetic.
+func prodBint(d ...Decimal) (Decimal, error) {
+	ecoef := getBint()
+	defer putBint(ecoef)
+	ecoef.setFint(One.coef)
+	escale := One.Scale()
+	eneg := One.IsNeg()
+
+	fcoef := getBint()
+	defer putBint(fcoef)
+
+	for _, f := range d {
+		fcoef.setFint(f.coef)
+
+		// Compute e = e * f
+		ecoef.mul(ecoef, fcoef)
+		eneg = eneg != f.IsNeg()
+		escale = escale + f.Scale()
+
+		// Intermediate truncation
+		if escale > 2*MaxScale {
+			shift := escale - 2*MaxScale
+			ecoef.rshDown(ecoef, shift)
+			escale = 2 * MaxScale
+		}
+	}
+
+	return newFromBint(eneg, ecoef, escale, 0)
+}
+
 // Mul returns the (possibly rounded) product of decimals d and e.
 //
 // Mul returns an overflow error if the integer part of the result has
@@ -1229,17 +1308,21 @@ func (d Decimal) MulExact(e Decimal, scale int) (Decimal, error) {
 
 // mulFint computes the product of two decimals using uint64 arithmetic.
 func (d Decimal) mulFint(e Decimal, minScale int) (Decimal, error) {
-	dcoef, ecoef := d.coef, e.coef
+	dcoef := d.coef
+	dscale := d.Scale()
+	dneg := d.IsNeg()
+
+	ecoef := e.coef
 
 	// Compute d = d * e
 	dcoef, ok := dcoef.mul(ecoef)
 	if !ok {
 		return Decimal{}, errDecimalOverflow
 	}
-	neg := d.IsNeg() != e.IsNeg()
-	scale := d.Scale() + e.Scale()
+	dscale = dscale + e.Scale()
+	dneg = dneg != e.IsNeg()
 
-	return newFromFint(neg, dcoef, scale, minScale)
+	return newFromFint(dneg, dcoef, dscale, minScale)
 }
 
 // mulBint computes the product of two decimals using *big.Int arithmetic.
@@ -1247,6 +1330,8 @@ func (d Decimal) mulBint(e Decimal, minScale int) (Decimal, error) {
 	dcoef := getBint()
 	defer putBint(dcoef)
 	dcoef.setFint(d.coef)
+	dscale := d.Scale()
+	dneg := d.IsNeg()
 
 	ecoef := getBint()
 	defer putBint(ecoef)
@@ -1254,10 +1339,10 @@ func (d Decimal) mulBint(e Decimal, minScale int) (Decimal, error) {
 
 	// Compute d = d * e
 	dcoef.mul(dcoef, ecoef)
-	neg := d.IsNeg() != e.IsNeg()
-	scale := d.Scale() + e.Scale()
+	dneg = dneg != e.IsNeg()
+	dscale = dscale + e.Scale()
 
-	return newFromBint(neg, dcoef, scale, minScale)
+	return newFromBint(dneg, dcoef, dscale, minScale)
 }
 
 // Deprecated: use [Decimal.PowInt] instead.
@@ -1727,6 +1812,112 @@ func (z *bint) e(x *bint) {
 	z.setBint(zcoef)
 }
 
+// Sum returns the (possibly rounded) sum of decimals without any
+// intermediate rounding.
+//
+// Sum returns an error if:
+//   - no argements are provided;
+//   - the integer part of the result has more than [MaxPrec] digits.
+func Sum(d ...Decimal) (Decimal, error) {
+	// Special cases
+	switch len(d) {
+	case 0:
+		return Decimal{}, fmt.Errorf("computing [sum([])]: %w: no arguments", errInvalidOperation)
+	case 1:
+		return d[0], nil
+	}
+
+	// General case
+	e, err := sumFint(d...)
+	if err != nil {
+		e, err = sumBint(d...)
+		if err != nil {
+			return Decimal{}, fmt.Errorf("computing [sum(%v)]: %w", d, err)
+		}
+	}
+
+	return e, nil
+}
+
+// sumFint computes the sum of decimals using uint64 arithmetic.
+func sumFint(d ...Decimal) (Decimal, error) {
+	ecoef := Zero.coef
+	escale := Zero.Scale()
+	eneg := Zero.IsNeg()
+
+	for _, f := range d {
+		fcoef := f.coef
+
+		// Alignment
+		var ok bool
+		switch {
+		case escale > f.Scale():
+			fcoef, ok = fcoef.lsh(escale - f.Scale())
+			if !ok {
+				return Decimal{}, errDecimalOverflow
+			}
+		case escale < f.Scale():
+			ecoef, ok = ecoef.lsh(f.Scale() - escale)
+			if !ok {
+				return Decimal{}, errDecimalOverflow
+			}
+			escale = f.Scale()
+		}
+
+		// Compute e = e + f
+		if eneg == f.IsNeg() {
+			ecoef, ok = ecoef.add(fcoef)
+			if !ok {
+				return Decimal{}, errDecimalOverflow
+			}
+		} else {
+			if fcoef > ecoef {
+				eneg = f.IsNeg()
+			}
+			ecoef = ecoef.subAbs(fcoef)
+		}
+	}
+
+	return newFromFint(eneg, ecoef, escale, 0)
+}
+
+// sumBint computes the sum of decimals using *big.Int arithmetic.
+func sumBint(d ...Decimal) (Decimal, error) {
+	ecoef := getBint()
+	defer putBint(ecoef)
+	ecoef.setFint(Zero.coef)
+	escale := Zero.Scale()
+	eneg := Zero.IsNeg()
+
+	fcoef := getBint()
+	defer putBint(fcoef)
+
+	for _, f := range d {
+		fcoef.setFint(f.coef)
+
+		// Alignment
+		switch {
+		case escale > f.Scale():
+			fcoef.lsh(fcoef, escale-f.Scale())
+		case escale < f.Scale():
+			ecoef.lsh(ecoef, f.Scale()-escale)
+			escale = f.Scale()
+		}
+
+		// Compute e = e + f
+		if eneg == f.IsNeg() {
+			ecoef.add(ecoef, fcoef)
+		} else {
+			if fcoef.cmp(ecoef) > 0 {
+				eneg = f.IsNeg()
+			}
+			ecoef.subAbs(ecoef, fcoef)
+		}
+	}
+
+	return newFromBint(eneg, ecoef, escale, 0)
+}
+
 // SubAbs returns the (possibly rounded) absolute difference between decimals d and e.
 //
 // SubAbs returns an error if the integer part of the result has more than [MaxPrec] digits.
@@ -1785,47 +1976,42 @@ func (d Decimal) AddExact(e Decimal, scale int) (Decimal, error) {
 
 // addFint computes the sum of two decimals using uint64 arithmetic.
 func (d Decimal) addFint(e Decimal, minScale int) (Decimal, error) {
-	dcoef, ecoef := d.coef, e.coef
+	dcoef := d.coef
+	dscale := d.Scale()
+	dneg := d.IsNeg()
 
-	// Alignment and scale
-	var scale int
+	ecoef := e.coef
+
+	// Alignment
 	var ok bool
 	switch {
-	case d.Scale() == e.Scale():
-		scale = d.Scale()
-	case d.Scale() > e.Scale():
-		scale = d.Scale()
-		ecoef, ok = ecoef.lsh(d.Scale() - e.Scale())
+	case dscale > e.Scale():
+		ecoef, ok = ecoef.lsh(dscale - e.Scale())
 		if !ok {
 			return Decimal{}, errDecimalOverflow
 		}
-	case d.Scale() < e.Scale():
-		scale = e.Scale()
-		dcoef, ok = dcoef.lsh(e.Scale() - d.Scale())
+	case dscale < e.Scale():
+		dcoef, ok = dcoef.lsh(e.Scale() - dscale)
 		if !ok {
 			return Decimal{}, errDecimalOverflow
 		}
-	}
-
-	// Sign
-	var neg bool
-	if ecoef < dcoef {
-		neg = d.IsNeg()
-	} else {
-		neg = e.IsNeg()
+		dscale = e.Scale()
 	}
 
 	// Compute d = d + e
-	if d.IsNeg() != e.IsNeg() {
-		dcoef = dcoef.subAbs(ecoef)
-	} else {
+	if dneg == e.IsNeg() {
 		dcoef, ok = dcoef.add(ecoef)
 		if !ok {
 			return Decimal{}, errDecimalOverflow
 		}
+	} else {
+		if ecoef > dcoef {
+			dneg = e.IsNeg()
+		}
+		dcoef = dcoef.subAbs(ecoef)
 	}
 
-	return newFromFint(neg, dcoef, scale, minScale)
+	return newFromFint(dneg, dcoef, dscale, minScale)
 }
 
 // addBint computes the sum of two decimals using *big.Int arithmetic.
@@ -1833,40 +2019,33 @@ func (d Decimal) addBint(e Decimal, minScale int) (Decimal, error) {
 	dcoef := getBint()
 	defer putBint(dcoef)
 	dcoef.setFint(d.coef)
+	dscale := d.Scale()
+	dneg := d.IsNeg()
 
 	ecoef := getBint()
 	defer putBint(ecoef)
 	ecoef.setFint(e.coef)
 
-	// Alignment and scale
-	var scale int
+	// Alignment
 	switch {
-	case d.Scale() == e.Scale():
-		scale = d.Scale()
-	case d.Scale() > e.Scale():
-		scale = d.Scale()
-		ecoef.lsh(ecoef, d.Scale()-e.Scale())
-	case d.Scale() < e.Scale():
-		scale = e.Scale()
-		dcoef.lsh(dcoef, e.Scale()-d.Scale())
-	}
-
-	// Sign
-	var neg bool
-	if dcoef.cmp(ecoef) > 0 {
-		neg = d.IsNeg()
-	} else {
-		neg = e.IsNeg()
+	case dscale > e.Scale():
+		ecoef.lsh(ecoef, dscale-e.Scale())
+	case dscale < e.Scale():
+		dcoef.lsh(dcoef, e.Scale()-dscale)
+		dscale = e.Scale()
 	}
 
 	// Compute d = d + e
-	if d.IsNeg() != e.IsNeg() {
-		dcoef.subAbs(dcoef, ecoef)
-	} else {
+	if dneg == e.IsNeg() {
 		dcoef.add(dcoef, ecoef)
+	} else {
+		if ecoef.cmp(dcoef) > 0 {
+			dneg = e.IsNeg()
+		}
+		dcoef.subAbs(dcoef, ecoef)
 	}
 
-	return newFromBint(neg, dcoef, scale, minScale)
+	return newFromBint(dneg, dcoef, dscale, minScale)
 }
 
 // Deprecated: use [Decimal.AddMul] instead.
@@ -1942,7 +2121,15 @@ func (d Decimal) AddMulExact(e, f Decimal, scale int) (Decimal, error) {
 
 // addMulFint computes the fused multiply-addition of three decimals using uint64 arithmetic.
 func (d Decimal) addMulFint(e, f Decimal, minScale int) (Decimal, error) {
-	dcoef, ecoef, fcoef := d.coef, e.coef, f.coef
+	dcoef := d.coef
+	dscale := d.Scale()
+	dneg := d.IsNeg()
+
+	ecoef := e.coef
+	escale := e.Scale()
+	eneg := e.IsNeg()
+
+	fcoef := f.coef
 
 	// Compute e = e * f
 	var ok bool
@@ -1950,42 +2137,38 @@ func (d Decimal) addMulFint(e, f Decimal, minScale int) (Decimal, error) {
 	if !ok {
 		return Decimal{}, errDecimalOverflow
 	}
+	escale = escale + f.Scale()
+	eneg = eneg != f.IsNeg()
 
-	// Alignment and scale
-	scale := e.Scale() + f.Scale()
+	// Alignment
 	switch {
-	case scale > d.Scale():
-		dcoef, ok = dcoef.lsh(scale - d.Scale())
+	case dscale > escale:
+		ecoef, ok = ecoef.lsh(dscale - escale)
 		if !ok {
 			return Decimal{}, errDecimalOverflow
 		}
-	case scale < d.Scale():
-		ecoef, ok = ecoef.lsh(d.Scale() - scale)
+	case dscale < escale:
+		dcoef, ok = dcoef.lsh(escale - dscale)
 		if !ok {
 			return Decimal{}, errDecimalOverflow
 		}
-		scale = d.Scale()
-	}
-
-	// Sign
-	var neg bool
-	if ecoef > dcoef {
-		neg = e.IsNeg() != f.IsNeg()
-	} else {
-		neg = d.IsNeg()
+		dscale = escale
 	}
 
 	// Compute d = d + e
-	if d.IsNeg() != (e.IsNeg() != f.IsNeg()) {
-		dcoef = dcoef.subAbs(ecoef)
-	} else {
+	if dneg == eneg {
 		dcoef, ok = dcoef.add(ecoef)
 		if !ok {
 			return Decimal{}, errDecimalOverflow
 		}
+	} else {
+		if ecoef > dcoef {
+			dneg = eneg
+		}
+		dcoef = dcoef.subAbs(ecoef)
 	}
 
-	return newFromFint(neg, dcoef, scale, minScale)
+	return newFromFint(dneg, dcoef, dscale, minScale)
 }
 
 // addMulBint computes the fused multiply-addition of three decimals using *big.Int arithmetic.
@@ -1993,10 +2176,14 @@ func (d Decimal) addMulBint(e, f Decimal, minScale int) (Decimal, error) {
 	dcoef := getBint()
 	defer putBint(dcoef)
 	dcoef.setFint(d.coef)
+	dscale := d.Scale()
+	dneg := d.IsNeg()
 
 	ecoef := getBint()
 	defer putBint(ecoef)
 	ecoef.setFint(e.coef)
+	escale := e.Scale()
+	eneg := e.IsNeg()
 
 	fcoef := getBint()
 	defer putBint(fcoef)
@@ -2004,33 +2191,29 @@ func (d Decimal) addMulBint(e, f Decimal, minScale int) (Decimal, error) {
 
 	// Compute e = e * f
 	ecoef.mul(ecoef, fcoef)
+	escale = escale + f.Scale()
+	eneg = eneg != f.IsNeg()
 
-	// Alignment and scale
-	scale := e.Scale() + f.Scale()
+	// Alignment
 	switch {
-	case scale > d.Scale():
-		dcoef.lsh(dcoef, scale-d.Scale())
-	case scale < d.Scale():
-		ecoef.lsh(ecoef, d.Scale()-scale)
-		scale = d.Scale()
-	}
-
-	// Sign
-	var neg bool
-	if ecoef.cmp(dcoef) > 0 {
-		neg = e.IsNeg() != f.IsNeg()
-	} else {
-		neg = d.IsNeg()
+	case dscale > escale:
+		ecoef.lsh(ecoef, dscale-escale)
+	case dscale < escale:
+		dcoef.lsh(dcoef, escale-d.Scale())
+		dscale = escale
 	}
 
 	// Compute d = d + e
-	if d.IsNeg() != (e.IsNeg() != f.IsNeg()) {
-		dcoef.subAbs(dcoef, ecoef)
-	} else {
+	if dneg == eneg {
 		dcoef.add(dcoef, ecoef)
+	} else {
+		if ecoef.cmp(dcoef) > 0 {
+			dneg = eneg
+		}
+		dcoef.subAbs(dcoef, ecoef)
 	}
 
-	return newFromBint(neg, dcoef, scale, minScale)
+	return newFromBint(dneg, dcoef, dscale, minScale)
 }
 
 // SubQuo returns the (possibly rounded) fused quotient-subtraction of decimals d, e, and f.
@@ -2105,10 +2288,15 @@ func (d Decimal) AddQuoExact(e, f Decimal, scale int) (Decimal, error) {
 
 // addQuoFint computes the fused quotient-addition of three decimals using uint64 arithmetic.
 func (d Decimal) addQuoFint(e, f Decimal, minScale int) (Decimal, error) {
-	dcoef, ecoef, fcoef := d.coef, e.coef, f.coef
+	dcoef := d.coef
+	dscale := d.Scale()
+	dneg := d.IsNeg()
 
-	// Scale
-	scale := e.Scale() - f.Scale()
+	ecoef := e.coef
+	escale := e.Scale()
+	eneg := e.IsNeg()
+
+	fcoef := f.coef
 
 	// Alignment
 	var ok bool
@@ -2117,11 +2305,11 @@ func (d Decimal) addQuoFint(e, f Decimal, minScale int) (Decimal, error) {
 		if !ok {
 			return Decimal{}, errDecimalOverflow // Should never happen
 		}
-		scale = scale + shift
+		escale = escale + shift
 	}
 	if shift := fcoef.ntz(); shift > 0 {
 		fcoef = fcoef.rshDown(shift)
-		scale = scale + shift
+		escale = escale + shift
 	}
 
 	// Compute e = e / f
@@ -2129,45 +2317,42 @@ func (d Decimal) addQuoFint(e, f Decimal, minScale int) (Decimal, error) {
 	if !ok {
 		return Decimal{}, errInexactDivision
 	}
+	escale = escale - f.Scale()
+	eneg = eneg != f.IsNeg()
 
-	// Alignment and scale
+	// Alignment
 	switch {
-	case scale > d.Scale():
-		if shift := min(scale-d.Scale(), scale-(e.Scale()-f.Scale()), ecoef.ntz()); shift > 0 {
+	case dscale > escale:
+		ecoef, ok = ecoef.lsh(dscale - escale)
+		if !ok {
+			return Decimal{}, errDecimalOverflow
+		}
+	case dscale < escale:
+		if shift := min(escale-e.Scale()+f.Scale(), escale-dscale, ecoef.ntz()); shift > 0 {
 			ecoef = ecoef.rshDown(shift)
-			scale = scale - shift
+			escale = escale - shift
 		}
-		dcoef, ok = dcoef.lsh(scale - d.Scale())
+		dcoef, ok = dcoef.lsh(escale - dscale)
 		if !ok {
 			return Decimal{}, errDecimalOverflow
 		}
-	case scale < d.Scale():
-		ecoef, ok = ecoef.lsh(d.Scale() - scale)
-		if !ok {
-			return Decimal{}, errDecimalOverflow
-		}
-		scale = d.Scale()
-	}
-
-	// Sign
-	var neg bool
-	if ecoef > dcoef {
-		neg = e.IsNeg() != f.IsNeg()
-	} else {
-		neg = d.IsNeg()
+		dscale = escale
 	}
 
 	// Compute d = d + e
-	if d.IsNeg() != (e.IsNeg() != f.IsNeg()) {
-		dcoef = dcoef.subAbs(ecoef)
-	} else {
+	if dneg == eneg {
 		dcoef, ok = dcoef.add(ecoef)
 		if !ok {
 			return Decimal{}, errDecimalOverflow
 		}
+	} else {
+		if ecoef > dcoef {
+			dneg = eneg
+		}
+		dcoef = dcoef.subAbs(ecoef)
 	}
 
-	return newFromFint(neg, dcoef, scale, minScale)
+	return newFromFint(dneg, dcoef, dscale, minScale)
 }
 
 // addQuoBint computes the fused quotient-addition of three decimals using *big.Int arithmetic.
@@ -2175,39 +2360,38 @@ func (d Decimal) addQuoBint(e, f Decimal, minScale int) (Decimal, error) {
 	dcoef := getBint()
 	defer putBint(dcoef)
 	dcoef.setFint(d.coef)
+	dneg := d.IsNeg()
 
 	ecoef := getBint()
 	defer putBint(ecoef)
 	ecoef.setFint(e.coef)
+	eneg := e.IsNeg()
 
 	fcoef := getBint()
 	defer putBint(fcoef)
 	fcoef.setFint(f.coef)
 
+	// Alignment
+	ecoef.lsh(ecoef, 2*MaxScale-e.Scale()+f.Scale())
+
 	// Compute e = ⌊e / f⌋
-	scale := 2 * MaxScale
-	ecoef.lsh(ecoef, scale+f.Scale()-e.Scale())
 	ecoef.quo(ecoef, fcoef)
+	eneg = eneg != f.IsNeg()
 
 	// Alignment
-	dcoef.lsh(dcoef, scale-d.Scale())
-
-	// Sign
-	var neg bool
-	if ecoef.cmp(dcoef) > 0 {
-		neg = e.IsNeg() != f.IsNeg()
-	} else {
-		neg = d.IsNeg()
-	}
+	dcoef.lsh(dcoef, 2*MaxScale-d.Scale())
 
 	// Compute d = d + e
-	if d.IsNeg() != (e.IsNeg() != f.IsNeg()) {
-		dcoef.subAbs(dcoef, ecoef)
-	} else {
+	if dneg == eneg {
 		dcoef.add(dcoef, ecoef)
+	} else {
+		if ecoef.cmp(dcoef) > 0 {
+			dneg = eneg
+		}
+		dcoef.subAbs(dcoef, ecoef)
 	}
 
-	return newFromBint(neg, dcoef, scale, minScale)
+	return newFromBint(dneg, dcoef, 2*MaxScale, minScale)
 }
 
 // Inv returns the (possibly rounded) inverse of the decimal.
@@ -2271,10 +2455,11 @@ func (d Decimal) QuoExact(e Decimal, scale int) (Decimal, error) {
 
 // quoFint computes the quotient of two decimals using uint64 arithmetic.
 func (d Decimal) quoFint(e Decimal, minScale int) (Decimal, error) {
-	dcoef, ecoef := d.coef, e.coef
+	dcoef := d.coef
+	dscale := d.Scale()
+	dneg := d.IsNeg()
 
-	// Scale
-	scale := d.Scale() - e.Scale()
+	ecoef := e.coef
 
 	// Alignment
 	var ok bool
@@ -2283,12 +2468,11 @@ func (d Decimal) quoFint(e Decimal, minScale int) (Decimal, error) {
 		if !ok {
 			return Decimal{}, errDecimalOverflow // Should never happen
 		}
-		scale = scale + shift
+		dscale = dscale + shift
 	}
-
 	if shift := ecoef.ntz(); shift > 0 {
 		ecoef = ecoef.rshDown(shift)
-		scale = scale + shift
+		dscale = dscale + shift
 	}
 
 	// Compute d = d / e
@@ -2296,11 +2480,10 @@ func (d Decimal) quoFint(e Decimal, minScale int) (Decimal, error) {
 	if !ok {
 		return Decimal{}, errInexactDivision
 	}
+	dscale = dscale - e.Scale()
+	dneg = dneg != e.IsNeg()
 
-	// Sign
-	neg := d.IsNeg() != e.IsNeg()
-
-	return newFromFint(neg, dcoef, scale, minScale)
+	return newFromFint(dneg, dcoef, dscale, minScale)
 }
 
 // quoBint computes the quotient of two decimals using *big.Int arithmetic.
@@ -2308,24 +2491,20 @@ func (d Decimal) quoBint(e Decimal, minScale int) (Decimal, error) {
 	dcoef := getBint()
 	defer putBint(dcoef)
 	dcoef.setFint(d.coef)
+	dneg := d.IsNeg()
 
 	ecoef := getBint()
 	defer putBint(ecoef)
 	ecoef.setFint(e.coef)
 
-	// Scale
-	scale := 2 * MaxScale
-
 	// Alignment
-	dcoef.lsh(dcoef, scale+e.Scale()-d.Scale())
+	dcoef.lsh(dcoef, 2*MaxScale+e.Scale()-d.Scale())
 
 	// Compute d = ⌊d / e⌋
 	dcoef.quo(dcoef, ecoef)
+	dneg = dneg != e.IsNeg()
 
-	// Sign
-	neg := d.IsNeg() != e.IsNeg()
-
-	return newFromBint(neg, dcoef, scale, minScale)
+	return newFromBint(dneg, dcoef, 2*MaxScale, minScale)
 }
 
 // QuoRem returns the quotient q and remainder r of decimals d and e
@@ -2355,26 +2534,24 @@ func (d Decimal) QuoRem(e Decimal) (q, r Decimal, err error) {
 
 // quoRemFint computes the quotient and remainder of two decimals using uint64 arithmetic.
 func (d Decimal) quoRemFint(e Decimal) (q, r Decimal, err error) {
-	dcoef, ecoef := d.coef, e.coef
+	dcoef := d.coef
+	ecoef := e.coef
+	rscale := d.Scale()
 
-	// Alignment and rscale
-	var rscale int
+	// Alignment
 	var ok bool
 	switch {
-	case d.Scale() == e.Scale():
-		rscale = d.Scale()
 	case d.Scale() > e.Scale():
-		rscale = d.Scale()
 		ecoef, ok = ecoef.lsh(d.Scale() - e.Scale())
 		if !ok {
 			return Decimal{}, Decimal{}, errDecimalOverflow
 		}
 	case d.Scale() < e.Scale():
-		rscale = e.Scale()
 		dcoef, ok = dcoef.lsh(e.Scale() - d.Scale())
 		if !ok {
 			return Decimal{}, Decimal{}, errDecimalOverflow
 		}
+		rscale = e.Scale()
 	}
 
 	// Compute q = ⌊d / e⌋, r = d - e * q
@@ -2382,8 +2559,6 @@ func (d Decimal) quoRemFint(e Decimal) (q, r Decimal, err error) {
 	if !ok {
 		return Decimal{}, Decimal{}, errDivisionByZero // Should never happen
 	}
-
-	// Signs
 	qsign := d.IsNeg() != e.IsNeg()
 	rsign := d.IsNeg()
 
@@ -2413,24 +2588,19 @@ func (d Decimal) quoRemBint(e Decimal) (q, r Decimal, err error) {
 
 	rcoef := getBint()
 	defer putBint(rcoef)
+	rscale := d.Scale()
 
-	// Alignment and scale
-	var rscale int
+	// Alignment
 	switch {
-	case d.Scale() == e.Scale():
-		rscale = d.Scale()
 	case d.Scale() > e.Scale():
-		rscale = d.Scale()
 		ecoef.lsh(ecoef, d.Scale()-e.Scale())
 	case d.Scale() < e.Scale():
-		rscale = e.Scale()
 		dcoef.lsh(dcoef, e.Scale()-d.Scale())
+		rscale = e.Scale()
 	}
 
 	// Compute q = ⌊d / e⌋, r = d - e * q
 	qcoef.quoRem(dcoef, ecoef, rcoef)
-
-	// Signs
 	qsign := d.IsNeg() != e.IsNeg()
 	rsign := d.IsNeg()
 
@@ -2472,7 +2642,8 @@ func (d Decimal) Min(e Decimal) Decimal {
 // See also method [Decimal.CmpTotal].
 //
 // Clamp returns an error if min is greater than max numerically.
-// nolint:predeclared
+//
+//nolint:revive
 func (d Decimal) Clamp(min, max Decimal) (Decimal, error) {
 	if min.Cmp(max) > 0 {
 		return Decimal{}, fmt.Errorf("clamping %v: invalid range", d)
@@ -2574,7 +2745,8 @@ func (d Decimal) Cmp(e Decimal) int {
 
 // cmpFint compares decimals using uint64 arithmetic.
 func (d Decimal) cmpFint(e Decimal) (int, error) {
-	dcoef, ecoef := d.coef, e.coef
+	dcoef := d.coef
+	ecoef := e.coef
 
 	// Alignment
 	var ok bool

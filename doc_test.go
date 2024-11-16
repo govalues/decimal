@@ -115,6 +115,22 @@ func Example_floatInaccuracy() {
 	// 0.30000000000000004
 }
 
+func ExampleSum() {
+	d := decimal.MustParse("5.67")
+	e := decimal.MustParse("-8")
+	f := decimal.MustParse("23")
+	fmt.Println(decimal.Sum(d, e, f))
+	// Output: 20.67 <nil>
+}
+
+func ExampleProd() {
+	d := decimal.MustParse("5.67")
+	e := decimal.MustParse("-8")
+	f := decimal.MustParse("23")
+	fmt.Println(decimal.Prod(d, e, f))
+	// Output: -1043.28 <nil>
+}
+
 func ExampleMustNew() {
 	fmt.Println(decimal.MustNew(567, 0))
 	fmt.Println(decimal.MustNew(567, 1))
@@ -862,7 +878,7 @@ func ExampleDecimal_Min() {
 	// Output: -5.67
 }
 
-//nolint:predeclared
+//nolint:revive
 func ExampleDecimal_Clamp() {
 	min := decimal.MustParse("-20")
 	max := decimal.MustParse("20")

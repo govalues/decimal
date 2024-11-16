@@ -1,10 +1,20 @@
 # Changelog
 
+## [0.1.33] - 2024-11-16
+
+### Added
+
+- Implemented `Sum`, `Prod`.
+
 ## [0.1.32] - 2024-09-28
 
+### Added
+
 - Implemented `Decimal.Log`.
+
+### Changed
+
 - `Decimal.PowInt` always correctly rounds the result.
-- Deprecated `Decimal.Pow`.
 
 ## [0.1.31] - 2024-08-30
 

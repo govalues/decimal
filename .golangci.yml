@@ -13,7 +13,6 @@ linters:
     - misspell
     - stylecheck
     - revive
-    - predeclared
     - staticcheck
     - typecheck
     - unused

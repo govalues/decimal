@@ -3,7 +3,7 @@ Package decimal implements immutable decimal floating-point numbers.
 It is specifically designed for transactional financial systems
 and adheres to the principles set by [ANSI X3.274-1996].
 
-# Representation
+# Internal Representation
 
 Decimal is a struct with three fields:
 
@@ -31,7 +31,7 @@ This approach allows the same numeric value to have multiple representations,
 for example, 1, 1.0, and 1.00, which represent the same value but have different
 scales and coefficients.
 
-# Constraints
+# Constraints Overview
 
 The range of a decimal is determined by its scale.
 Here are the ranges for frequently used scales:
@@ -95,11 +95,11 @@ The following rules determine the significance of digits:
     All digits in the integer part are significant, while digits in the
     fractional part are considered insignificant.
 
-# Context
+# Mathematical Context
 
 Unlike many other decimal libraries, this package does not provide
-an explicit mathematical context.
-Instead, the the mathematical [context] is implicit and can be approximately equated to
+an explicit mathematical [context].
+Instead, the [context] is implicit and can be approximately equated to
 the following settings:
 
 	| Attribute               | Value                                           |
@@ -115,7 +115,7 @@ the following settings:
 The equality of Etiny and Emin implies that this package does not support
 subnormal numbers.
 
-# Rounding
+# Rounding Methods
 
 For all operations the result is the one that would be obtained by computing
 the exact mathematical result with infinite precision and then rounding it
@@ -137,7 +137,7 @@ explicit rounding:
 
 See the documentation for each method for more details.
 
-# Errors
+# Error Handling
 
 All methods are panic-free and pure.
 Errors are returned in the following cases:
@@ -163,7 +163,7 @@ Errors are not returned in the following cases:
     If the result is a decimal between -0.00000000000000000005 and
     0.00000000000000000005 inclusive, it will be rounded to 0.
 
-# Conversions
+# Data Conversion
 
 A. JSON
 
@@ -209,17 +209,19 @@ using the following type:
 
 C. Protocol Buffers
 
-Protocol Buffers can represent decimals as numerical strings, preserving trailing zeros.
-To convert between numerical strings and decimals, use [Parse] and [Decimal.String].
+Protocol Buffers provide two formats to represent decimals.
+The first format represents decimals as [numerical strings].
+The main advantage of this format is that it preserves trailing zeros.
+To convert between this format and decimals, use [Parse] and [Decimal.String].
 Below is an example of a proto definition:
 
 	message Decimal {
 	  string value = 1;
 	}
 
-Alternatively, decimals can be represented as two integers:
+The second format represents decimals as [a pair of integers]:
 one for the integer part and another for the fractional part.
-However, this format does not preserve trailing zeros and rounds decimals
+This format does not preserve trailing zeros and rounds decimals
 with more than nine digits in the fractional part.
 For conversion between this format and decimals, use [NewFromInt64] and
 [Decimal.Int64] with a scale argument of "9".
@@ -271,5 +273,7 @@ Below are the reasons for these preferences:
 [sql.Scanner]: https://pkg.go.dev/database/sql#Scanner
 [negative zeros]: https://en.wikipedia.org/wiki/Signed_zero
 [context]: https://speleotrove.com/decimal/damodel.html
+[numerical strings]: https://github.com/googleapis/googleapis/blob/master/google/type/decimal.proto
+[a pair of integers]: https://github.com/googleapis/googleapis/blob/master/google/type/money.proto
 */
 package decimal
