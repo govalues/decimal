@@ -18,16 +18,17 @@ This package is designed specifically for use in transactional financial systems
 - **Banker's Rounding** - Uses [half-to-even] rounding, also known as
   "banker's rounding", to minimize cumulative rounding errors commonly seen
   in financial calculations.
-- **Accurate Artihmetic** - All methods are precisely rounded to a 19-digit
-  precision, ensuring results are as close as possible to the true mathematical value.
+- **Accurate Arithmetic** - For all methods, the result is the one that would
+  be obtained if the true mathematical value were rounded to 19 digits of
+  precision using the half-to-even rounding.
 - **No Panics** - All methods are panic-free, returning errors instead of crashing
   your application in cases such as overflow or division by zero.
 - **No Heap Allocations** - Optimized to avoid heap allocations,
   reducing garbage collector impact during arithmetic operations.
-- **Simple String Representation** - Decimals are represented in a strightforward
+- **Simple String Representation** - Decimals are represented in a straightforward
   format avoiding the complexities of scientific or engineering notations.
 - **Rigorous Testing** - All methods are cross-validated against
-  the [cockroachdb/apd] and [shopspring/decimal] packages throught extensive [fuzz testing].
+  the [cockroachdb/apd] and [shopspring/decimal] packages through extensive [fuzz testing].
 
 ## Getting Started
 
@@ -76,12 +77,16 @@ func main() {
     fmt.Println(d.Inv())               // 1 / 8
 
     fmt.Println(decimal.Sum(d, e, f))  // 8 + 12.5 + 2.567
+    fmt.Println(decimal.Mean(d, e, f)) // (8 + 12.5 + 2.567) / 3
     fmt.Println(decimal.Prod(d, e, f)) // 8 * 12.5 * 2.567
 
     // Transcendental functions
     fmt.Println(e.Sqrt())              // √12.5
     fmt.Println(e.Exp())               // exp(12.5)
     fmt.Println(e.Log())               // ln(12.5)
+    fmt.Println(e.Log2())              // log₂(12.5)
+    fmt.Println(e.Log10())             // log₁₀(12.5)
+    fmt.Println(e.Pow(d))              // 12.5⁸
 
     // Rounding to 2 decimal places
     fmt.Println(g.Round(2))            // 7.90
