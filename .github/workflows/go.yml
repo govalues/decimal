@@ -56,14 +56,14 @@ jobs:
       - name: Run fuzzing for string parsing
         run: go test -fuzztime 20s -fuzz ^FuzzParse$
 
-      - name: Run fuzzing for binary parsing
-        run: go test -fuzztime 20s -fuzz ^FuzzBCD$
-
       - name: Run fuzzing for string conversion
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_String_Parse$
 
-      - name: Run fuzzing for binary conversion
-        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_BCD_ParseBCD$
+      - name: Run fuzzing for binary-text interoperability
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Binary_Text$
+
+      - name: Run fuzzing for text-binary interoperability
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Text_Binary$
 
       - name: Run fuzzing for float64 conversion
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Float64_NewFromFloat64$
@@ -107,11 +107,20 @@ jobs:
       - name: Run fuzzing for integer division and remainder
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_QuoRem$
 
-      - name: Run fuzzing for square root
+      - name: Run fuzzing for square root and integer power
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Sqrt_PowInt$
 
+      - name: Run fuzzing for square root and power
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Sqrt_Pow$
+
+      - name: Run fuzzing for power and integer power
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Pow_PowInt$
+
+      - name: Run fuzzing for exponential and power
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Exp_Pow$
+
       - name: Run fuzzing for exponential and logarithm
-        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Log_Exp$
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Exp_Log$
 
       - name: Run fuzzing for comparison
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Cmp$

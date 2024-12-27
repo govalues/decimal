@@ -1,6 +1,8 @@
 package decimal_test
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -121,6 +123,14 @@ func ExampleSum() {
 	f := decimal.MustParse("23")
 	fmt.Println(decimal.Sum(d, e, f))
 	// Output: 20.67 <nil>
+}
+
+func ExampleMean() {
+	d := decimal.MustParse("5.67")
+	e := decimal.MustParse("-8")
+	f := decimal.MustParse("23")
+	fmt.Println(decimal.Mean(d, e, f))
+	// Output: 6.89 <nil>
 }
 
 func ExampleProd() {
@@ -256,35 +266,50 @@ func ExampleDecimal_String() {
 	// Output: 1234567890.123456789
 }
 
-func unmarshalBytes(b []byte) (decimal.Decimal, error) {
+func unmarshalGOB(b []byte) (decimal.Decimal, error) {
 	var d decimal.Decimal
-	err := d.UnmarshalBinary(b)
-	return d, err
+	dec := gob.NewDecoder(bytes.NewReader(b))
+	err := dec.Decode(&d)
+	if err != nil {
+		return decimal.Decimal{}, err
+	}
+	return d, nil
 }
 
-func marshalBytes(s string) ([]byte, error) {
+func marshalGOB(s string) ([]byte, error) {
 	d, err := decimal.Parse(s)
 	if err != nil {
 		return nil, err
 	}
-	bcd, err := d.MarshalBinary()
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err = enc.Encode(d)
 	if err != nil {
 		return nil, err
 	}
-	return bcd, nil
+	return buf.Bytes(), nil
 }
 
-func ExampleDecimal_UnmarshalBinary() {
-	fmt.Println(unmarshalBytes([]byte{0x56, 0x7c, 0x02}))
+func ExampleDecimal_UnmarshalBinary_gob() {
+	data := []byte{
+		0x12, 0x7f, 0x06, 0x01,
+		0x01, 0x07, 0x44, 0x65,
+		0x63, 0x69, 0x6d, 0x61,
+		0x6c, 0x01, 0xff, 0x80,
+		0x00, 0x00, 0x00, 0x08,
+		0xff, 0x80, 0x00, 0x04,
+		0x35, 0x2e, 0x36, 0x37,
+	}
+	fmt.Println(unmarshalGOB(data))
 	// Output:
 	// 5.67 <nil>
 }
 
-func ExampleDecimal_MarshalBinary() {
-	bcd, err := marshalBytes("5.67")
+func ExampleDecimal_MarshalBinary_gob() {
+	bcd, err := marshalGOB("5.67")
 	fmt.Printf("% x %v\n", bcd, err)
 	// Output:
-	// 56 7c 02 <nil>
+	// 12 7f 06 01 01 07 44 65 63 69 6d 61 6c 01 ff 80 00 00 00 08 ff 80 00 04 35 2e 36 37 <nil>
 }
 
 func ExampleDecimal_Float64() {
@@ -583,6 +608,17 @@ func ExampleDecimal_AddQuoExact() {
 	// 2.7500 <nil>
 }
 
+func ExampleDecimal_Pow() {
+	d := decimal.MustParse("4")
+	e := decimal.MustParse("0.5")
+	f := decimal.MustParse("-0.5")
+	fmt.Println(d.Pow(e))
+	fmt.Println(d.Pow(f))
+	// Output:
+	// 2.000000000000000000 <nil>
+	// 0.5000000000000000000 <nil>
+}
+
 func ExampleDecimal_PowInt() {
 	d := decimal.MustParse("2")
 	fmt.Println(d.PowInt(-2))
@@ -622,22 +658,57 @@ func ExampleDecimal_Exp() {
 	fmt.Println(e.Exp())
 	fmt.Println(f.Exp())
 	// Output:
-	// 0.1 <nil>
+	// 0.1000000000000000000 <nil>
 	// 1 <nil>
-	// 10 <nil>
+	// 10.00000000000000000 <nil>
 }
 
 func ExampleDecimal_Log() {
 	d := decimal.MustParse("1")
-	e := decimal.MustParse("2.718281828459045236")
-	f := decimal.MustParse("10")
+	e := decimal.MustParse("2")
+	f := decimal.MustParse("2.718281828459045236")
+	g := decimal.MustParse("10")
 	fmt.Println(d.Log())
 	fmt.Println(e.Log())
 	fmt.Println(f.Log())
+	fmt.Println(g.Log())
+	// Output:
+	// 0 <nil>
+	// 0.6931471805599453094 <nil>
+	// 1.000000000000000000 <nil>
+	// 2.302585092994045684 <nil>
+}
+
+func ExampleDecimal_Log2() {
+	d := decimal.MustParse("1")
+	e := decimal.MustParse("2")
+	f := decimal.MustParse("2.718281828459045236")
+	g := decimal.MustParse("10")
+	fmt.Println(d.Log2())
+	fmt.Println(e.Log2())
+	fmt.Println(f.Log2())
+	fmt.Println(g.Log2())
 	// Output:
 	// 0 <nil>
 	// 1 <nil>
-	// 2.302585092994045684 <nil>
+	// 1.442695040888963408 <nil>
+	// 3.321928094887362348 <nil>
+}
+
+func ExampleDecimal_Log10() {
+	d := decimal.MustParse("1")
+	e := decimal.MustParse("2")
+	f := decimal.MustParse("2.718281828459045236")
+	g := decimal.MustParse("10")
+	fmt.Println(d.Log10())
+	fmt.Println(e.Log10())
+	fmt.Println(f.Log10())
+	fmt.Println(g.Log10())
+	// Output:
+	// 0 <nil>
+	// 0.3010299956639811952 <nil>
+	// 0.4342944819032518278 <nil>
+	// 1 <nil>
 }
 
 func ExampleDecimal_Add() {

@@ -65,18 +65,18 @@ Each arithmetic operation occurs in two steps:
     If no significant digits are lost during rounding, the inexact result is returned.
     If any significant digit is lost, an overflow error is returned.
 
-Step 1 improves performance by avoiding performance impact associated with [big.Int] arithmetic.
+Step 1 improves performance by avoiding the performance impact associated with [big.Int] arithmetic.
 It is expected that, in transactional financial systems, most arithmetic operations
 will compute an exact result during step 1.
 
 The following rules determine the significance of digits during step 2:
 
-  - [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.Quo], [Decimal.QuoRem], [Decimal.Inv],
+  - For [Decimal.Add], [Decimal.Sub], [Decimal.Mul], [Decimal.Quo], [Decimal.QuoRem], [Decimal.Inv],
     [Decimal.AddMul], [Decimal.AddQuo], [Decimal.SubMul], [Decimal.SubQuo], [Decimal.SubAbs],
-    [Decimal.PowInt]:
+    [Decimal.PowInt], [Sum], [Mean], [Prod]:
     All digits in the integer part are significant, while digits in the
     fractional part are considered insignificant.
-  - [Decimal.AddExact], [Decimal.SubExact], [Decimal.MulExact], [Decimal.QuoExact],
+  - For [Decimal.AddExact], [Decimal.SubExact], [Decimal.MulExact], [Decimal.QuoExact],
     [Decimal.AddMulExact], [Decimal.AddQuoExact], [Decimal.SubMulExact], [Decimal.SubQuoExact]:
     All digits in the integer part are significant. The significance of digits
     in the fractional part is determined by the scale argument, which is typically
@@ -91,7 +91,7 @@ If any significant digit is lost, an overflow error is returned.
 
 The following rules determine the significance of digits:
 
-  - [Decimal.Sqrt], [Decimal.Exp], [Decimal.Log]:
+  - For [Decimal.Sqrt], [Decimal.Exp], [Decimal.Log], [Decimal.Log2], [Decimal.Log10], [Decimal.Pow]:
     All digits in the integer part are significant, while digits in the
     fractional part are considered insignificant.
 
@@ -117,11 +117,12 @@ subnormal numbers.
 
 # Rounding Methods
 
-For all operations the result is the one that would be obtained by computing
-the exact mathematical result with infinite precision and then rounding it
-to 19 digits using half-to-even rounding.
-This method ensures that rounding errors are evenly distributed between rounding up
-and down.
+For all operations, the result is the one that would be obtained by computing
+the exact result with infinite precision and then rounding it to 19 digits
+using half-to-even rounding.
+This method ensures that the result is as close as possible to the true
+mathematical value and that rounding errors are evenly distributed between
+rounding up and down.
 
 In addition to implicit rounding, the package provides several methods for
 explicit rounding:
@@ -148,9 +149,11 @@ Errors are returned in the following cases:
     Instead, they return an error.
 
   - Invalid Operation:
+    [Sum], [Mean] and [Prod] return an error if no arguments are provided.
     [Decimal.PowInt] returns an error if 0 is raised to a negative power.
-    [Decimal.Sqrt] return an error if the square root of a negative decimal is requested.
-    [Decimal.Log] returns an error when calculating the natural logarithm of a non-positive decimal.
+    [Decimal.Sqrt] returns an error if the square root of a negative decimal is requested.
+    [Decimal.Log], [Decimal.Log2], [Decimal.Log10] return an error when calculating the natural logarithm of a non-positive decimal.
+    [Decimal.Pow] returns an error if 0 is raised to a negative powere or a negative decimal is raised to a fractional power.
 
   - Overflow:
     Unlike standard integers, decimals do not "wrap around" when exceeding their maximum value.
