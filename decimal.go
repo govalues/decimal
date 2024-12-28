@@ -530,6 +530,108 @@ func (d Decimal) String() string {
 	return string(buf[pos+1:])
 }
 
+// ParseBCD converts a [packed BCD] representation to a decimal.
+//
+// [packed BCD]: https://en.wikipedia.org/wiki/Binary-coded_decimal#Packed_BCD
+func ParseBCD(b []byte) (Decimal, error) {
+	var pos int
+	width := len(b)
+
+	// Coefficient and sign
+	var neg bool
+	var coef fint
+	var ok bool
+	for pos < width {
+		hi := b[pos] >> 4
+		lo := b[pos] & 0x0f
+
+		if hi > 9 {
+			return Decimal{}, fmt.Errorf("%w: invalid high nibble \"%x\"", errInvalidDecimal, b[pos])
+		}
+		coef, ok = coef.fsa(1, hi)
+		if !ok {
+			return Decimal{}, errDecimalOverflow
+		}
+
+		if lo > 9 {
+			if lo == 0x0d {
+				neg = true
+			} else if lo != 0x0c {
+				return Decimal{}, fmt.Errorf("%w: invalid low nibble \"%x\"", errInvalidDecimal, b[pos])
+			}
+			pos++
+			break
+		}
+		coef, ok = coef.fsa(1, lo)
+		if !ok {
+			return Decimal{}, errDecimalOverflow
+		}
+		pos++
+	}
+
+	// Scale
+	var scale int
+	var hasScale bool
+	if pos < width {
+		hi := b[pos] >> 4
+		lo := b[pos] & 0x0f
+		hasScale = true
+
+		if hi > 1 {
+			return Decimal{}, fmt.Errorf("%w: invalid high nibble \"%x\"", errInvalidDecimal, b[pos])
+		}
+		scale = int(hi) * 10
+
+		if lo > 9 {
+			return Decimal{}, fmt.Errorf("%w: invalid low nibble \"%x\"", errInvalidDecimal, b[pos])
+		}
+		scale += int(lo)
+
+		pos++
+	}
+
+	if pos != width {
+		return Decimal{}, fmt.Errorf("%w: unexpected byte \"%x\"", errInvalidDecimal, b[pos])
+	}
+	if !hasScale {
+		return Decimal{}, fmt.Errorf("%w: no scale", errInvalidDecimal)
+	}
+
+	return newSafe(neg, coef, scale)
+}
+
+// BCD returns a [packed BCD] representation of a decimal.
+//
+// [packed BCD]: https://en.wikipedia.org/wiki/Binary-coded_decimal#Packed_BCD
+func (d Decimal) BCD() []byte {
+	var buf [11]byte
+	pos := len(buf) - 1
+	coef := d.Coef()
+	scale := d.Scale()
+
+	// Scale
+	buf[pos] = byte(scale/10)<<4 | byte(scale%10)
+	pos--
+
+	// Sign and first digit
+	if d.IsNeg() {
+		buf[pos] = byte(coef%10)<<4 | 0x0d
+	} else {
+		buf[pos] = byte(coef%10)<<4 | 0x0c
+	}
+	pos--
+	coef /= 10
+
+	// Coefficient
+	for coef > 0 {
+		buf[pos] = byte(coef/10%10)<<4 | byte(coef%10)
+		pos--
+		coef /= 100
+	}
+
+	return buf[pos+1:]
+}
+
 // Float64 returns the nearest binary floating-point number rounded
 // using [rounding half to even] (banker's rounding).
 // See also constructor [NewFromFloat64].
