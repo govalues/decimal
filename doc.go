@@ -152,7 +152,7 @@ Errors are returned in the following cases:
     [Sum], [Mean] and [Prod] return an error if no arguments are provided.
     [Decimal.PowInt] returns an error if 0 is raised to a negative power.
     [Decimal.Sqrt] returns an error if the square root of a negative decimal is requested.
-    [Decimal.Log], [Decimal.Log2], [Decimal.Log10] return an error when calculating the natural logarithm of a non-positive decimal.
+    [Decimal.Log], [Decimal.Log2], [Decimal.Log10] return an error when calculating a logarithm of a non-positive decimal.
     [Decimal.Pow] returns an error if 0 is raised to a negative powere or a negative decimal is raised to a fractional power.
 
   - Overflow:
@@ -170,7 +170,7 @@ Errors are not returned in the following cases:
 
 A. JSON
 
-The package integrates seamlessly with standard [encoding/json] through
+The package integrates with standard [encoding/json] through
 the implementation of [encoding.TextMarshaller] and [encoding.TextUnmarshaler]
 interfaces.
 Below is an example structure:
@@ -189,7 +189,14 @@ Below is an example OpenAPI schema:
 	  format: decimal
 	  pattern: '^(\-|\+)?((\d+(\.\d*)?)|(\.\d+))$'
 
-B. XML
+B. BSON
+
+The package integrates with [mongo-driver/v2/bson] via the implementation of
+[bson.ValueMarshaler] and [bson.ValueUnmarshaler] interfaces.
+This package marshals decimals as Decimal128, ensuring the preservation of
+the exact numerical value.
+
+C. XML
 
 The package integrates with standard [encoding/xml] via the implementation of
 [encoding.TextMarshaller] and [encoding.TextUnmarshaler] interfaces.
@@ -210,7 +217,7 @@ using the following type:
 	  </xs:restriction>
 	</xs:simpleType>
 
-C. Protocol Buffers
+D. Protocol Buffers
 
 Protocol Buffers provide two formats to represent decimals.
 The first format represents decimals as [numerical strings].
@@ -235,7 +242,7 @@ Below is an example of a proto definition:
 	  int32 nanos = 2;
 	}
 
-D. SQL
+E. SQL
 
 The package integrates with the standard [database/sql] via the implementation
 of [sql.Scanner] and [driver.Valuer] interfaces.
@@ -278,5 +285,8 @@ Below are the reasons for these preferences:
 [context]: https://speleotrove.com/decimal/damodel.html
 [numerical strings]: https://github.com/googleapis/googleapis/blob/master/google/type/decimal.proto
 [a pair of integers]: https://github.com/googleapis/googleapis/blob/master/google/type/money.proto
+[mongo-driver/v2/bson]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson
+[bson.ValueMarshaler]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson#ValueMarshaler
+[bson.ValueUnmarshaler]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson#ValueUnmarshaler
 */
 package decimal
