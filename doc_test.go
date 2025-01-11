@@ -266,9 +266,9 @@ func ExampleDecimal_String() {
 	// Output: 1234567890.123456789
 }
 
-func unmarshalGOB(b []byte) (decimal.Decimal, error) {
+func unmarshalGOB(data []byte) (decimal.Decimal, error) {
 	var d decimal.Decimal
-	dec := gob.NewDecoder(bytes.NewReader(b))
+	dec := gob.NewDecoder(bytes.NewReader(data))
 	err := dec.Decode(&d)
 	if err != nil {
 		return decimal.Decimal{}, err
@@ -281,13 +281,13 @@ func marshalGOB(s string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
+	var data bytes.Buffer
+	enc := gob.NewEncoder(&data)
 	err = enc.Encode(d)
 	if err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	return data.Bytes(), nil
 }
 
 func ExampleDecimal_UnmarshalBinary_gob() {
@@ -306,10 +306,10 @@ func ExampleDecimal_UnmarshalBinary_gob() {
 }
 
 func ExampleDecimal_MarshalBinary_gob() {
-	bcd, err := marshalGOB("5.67")
-	fmt.Printf("% x %v\n", bcd, err)
+	data, err := marshalGOB("5.67")
+	fmt.Printf("[% x] %v\n", data, err)
 	// Output:
-	// 12 7f 06 01 01 07 44 65 63 69 6d 61 6c 01 ff 80 00 00 00 08 ff 80 00 04 35 2e 36 37 <nil>
+	// [12 7f 06 01 01 07 44 65 63 69 6d 61 6c 01 ff 80 00 00 00 08 ff 80 00 04 35 2e 36 37] <nil>
 }
 
 func ExampleDecimal_Float64() {
@@ -340,6 +340,29 @@ func ExampleDecimal_Int64() {
 	// 5 6700 true
 }
 
+func ExampleDecimal_UnmarshalBSONValue_bson() {
+	data := []byte{
+		0x37, 0x02, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x3c, 0x30,
+	}
+
+	var d decimal.Decimal
+	err := d.UnmarshalBSONValue(19, data)
+	fmt.Println(d, err)
+	// Output:
+	// 5.67 <nil>
+}
+
+func ExampleDecimal_MarshalBSONValue_bson() {
+	d := decimal.MustParse("5.67")
+	t, data, err := d.MarshalBSONValue()
+	fmt.Printf("%v [% x] %v\n", t, data, err)
+	// Output:
+	// 19 [37 02 00 00 00 00 00 00 00 00 00 00 00 00 3c 30] <nil>
+}
+
 type Object struct {
 	Number decimal.Decimal `json:"number"`
 }
@@ -358,19 +381,18 @@ func marshalJSON(s string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	v := Object{Number: d}
-	b, err := json.Marshal(v)
+	data, err := json.Marshal(Object{Number: d})
 	if err != nil {
 		return "", err
 	}
-	return string(b), nil
+	return string(data), nil
 }
 
-func ExampleDecimal_UnmarshalText_json() {
+func ExampleDecimal_UnmarshalJSON_json() {
 	fmt.Println(unmarshalJSON(`{"number":"5.67"}`))
 	fmt.Println(unmarshalJSON(`{"number":"-5.67"}`))
-	fmt.Println(unmarshalJSON(`{"number":"5.67e-5"}`))
-	fmt.Println(unmarshalJSON(`{"number":"5.67e5"}`))
+	fmt.Println(unmarshalJSON(`{"number":5.67e-5}`))
+	fmt.Println(unmarshalJSON(`{"number":5.67e5}`))
 	// Output:
 	// {5.67} <nil>
 	// {-5.67} <nil>
@@ -378,16 +400,12 @@ func ExampleDecimal_UnmarshalText_json() {
 	// {567000} <nil>
 }
 
-func ExampleDecimal_MarshalText_json() {
+func ExampleDecimal_MarshalJSON_json() {
 	fmt.Println(marshalJSON("5.67"))
 	fmt.Println(marshalJSON("-5.67"))
-	fmt.Println(marshalJSON("5.67e-5"))
-	fmt.Println(marshalJSON("5.67e5"))
 	// Output:
 	// {"number":"5.67"} <nil>
 	// {"number":"-5.67"} <nil>
-	// {"number":"0.0000567"} <nil>
-	// {"number":"567000"} <nil>
 }
 
 type Entity struct {
@@ -405,12 +423,11 @@ func marshalXML(s string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	v := Entity{Number: d}
-	b, err := xml.Marshal(v)
+	data, err := xml.Marshal(Entity{Number: d})
 	if err != nil {
 		return "", err
 	}
-	return string(b), nil
+	return string(data), nil
 }
 
 func ExampleDecimal_UnmarshalText_xml() {
@@ -1316,28 +1333,98 @@ func ExampleDecimal_WithinOne_slices() {
 }
 
 func ExampleNullDecimal_Scan() {
-	var n, m decimal.NullDecimal
-	_ = n.Scan("5.67")
-	_ = m.Scan(nil)
+	var n decimal.NullDecimal
+	_ = n.Scan(nil)
 	fmt.Println(n)
+
+	var m decimal.NullDecimal
+	_ = m.Scan("5.67")
 	fmt.Println(m)
 	// Output:
-	// {5.67 true}
 	// {0 false}
+	// {5.67 true}
 }
 
 func ExampleNullDecimal_Value() {
 	n := decimal.NullDecimal{
+		Valid: false,
+	}
+	fmt.Println(n.Value())
+
+	m := decimal.NullDecimal{
 		Decimal: decimal.MustParse("5.67"),
 		Valid:   true,
 	}
-	m := decimal.NullDecimal{
-		Decimal: decimal.MustParse("0"),
-		Valid:   false,
-	}
-	fmt.Println(n.Value())
 	fmt.Println(m.Value())
 	// Output:
-	// 5.67 <nil>
 	// <nil> <nil>
+	// 5.67 <nil>
+}
+
+func ExampleNullDecimal_UnmarshalJSON_json() {
+	var n decimal.NullDecimal
+	_ = json.Unmarshal([]byte(`null`), &n)
+	fmt.Println(n)
+
+	var m decimal.NullDecimal
+	_ = json.Unmarshal([]byte(`"5.67"`), &m)
+	fmt.Println(m)
+	// Output:
+	// {0 false}
+	// {5.67 true}
+}
+
+func ExampleNullDecimal_MarshalJSON_json() {
+	n := decimal.NullDecimal{
+		Valid: false,
+	}
+	data, _ := json.Marshal(n)
+	fmt.Println(string(data))
+
+	m := decimal.NullDecimal{
+		Decimal: decimal.MustParse("5.67"),
+		Valid:   true,
+	}
+	data, _ = json.Marshal(m)
+	fmt.Println(string(data))
+	// Output:
+	// null
+	// "5.67"
+}
+
+func ExampleNullDecimal_UnmarshalBSONValue_bson() {
+	var n decimal.NullDecimal
+	_ = n.UnmarshalBSONValue(10, nil)
+	fmt.Println(n)
+
+	data := []byte{
+		0x37, 0x02, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x3c, 0x30,
+	}
+	var m decimal.NullDecimal
+	_ = m.UnmarshalBSONValue(19, data)
+	fmt.Println(m)
+	// Output:
+	// {0 false}
+	// {5.67 true}
+}
+
+func ExampleNullDecimal_MarshalBSONValue_bson() {
+	n := decimal.NullDecimal{
+		Valid: false,
+	}
+	t, data, _ := n.MarshalBSONValue()
+	fmt.Printf("%v [% x]\n", t, data)
+
+	m := decimal.NullDecimal{
+		Decimal: decimal.MustParse("5.67"),
+		Valid:   true,
+	}
+	t, data, _ = m.MarshalBSONValue()
+	fmt.Printf("%v [% x]\n", t, data)
+	// Output:
+	// 10 []
+	// 19 [37 02 00 00 00 00 00 00 00 00 00 00 00 00 3c 30]
 }

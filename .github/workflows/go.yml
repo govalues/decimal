@@ -56,8 +56,14 @@ jobs:
       - name: Run fuzzing for string parsing
         run: go test -fuzztime 20s -fuzz ^FuzzParse$
 
+      - name: Run fuzzing from BSON unmarshaling
+        run: go test -fuzztime 20s -fuzz ^FuzzBSON$
+
       - name: Run fuzzing for string conversion
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_String_Parse$
+
+      - name: Run fuzzing for IEEE 754-2008 conversion
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_IEEE_ParseIEEE$
 
       - name: Run fuzzing for binary-text interoperability
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Binary_Text$
