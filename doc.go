@@ -1,7 +1,7 @@
 /*
-Package decimal implements immutable decimal floating-point numbers.
-It is specifically designed for transactional financial systems
-and adheres to the principles set by [ANSI X3.274-1996].
+Package decimal implements decimal floating-point numbers with correct rounding.
+It is specifically designed for transactional financial systems and adheres
+to the principles set by [ANSI X3.274-1996].
 
 # Internal Representation
 
@@ -91,29 +91,10 @@ If any significant digit is lost, an overflow error is returned.
 
 The following rules determine the significance of digits:
 
-  - For [Decimal.Sqrt], [Decimal.Exp], [Decimal.Log], [Decimal.Log2], [Decimal.Log10], [Decimal.Pow]:
+  - For [Decimal.Sqrt], [Decimal.Pow], [Decimal.Exp], [Decimal.Log],
+    [Decimal.Log2], [Decimal.Log10], [Decimal.Expm1], [Decimal.Log1p]:
     All digits in the integer part are significant, while digits in the
     fractional part are considered insignificant.
-
-# Mathematical Context
-
-Unlike many other decimal libraries, this package does not provide
-an explicit mathematical [context].
-Instead, the [context] is implicit and can be approximately equated to
-the following settings:
-
-	| Attribute               | Value                                           |
-	| ----------------------- | ----------------------------------------------- |
-	| Precision               | 19                                              |
-	| Maximum Exponent (Emax) | 18                                              |
-	| Minimum Exponent (Emin) | -19                                             |
-	| Tiny Exponent (Etiny)   | -19                                             |
-	| Rounding Method         | Half To Even                                    |
-	| Enabled Traps           | Division by Zero, Invalid Operation, Overflow   |
-	| Disabled Traps          | Inexact, Clamped, Rounded, Subnormal, Underflow |
-
-The equality of Etiny and Emin implies that this package does not support
-subnormal numbers.
 
 # Rounding Methods
 
@@ -153,6 +134,7 @@ Errors are returned in the following cases:
     [Decimal.PowInt] returns an error if 0 is raised to a negative power.
     [Decimal.Sqrt] returns an error if the square root of a negative decimal is requested.
     [Decimal.Log], [Decimal.Log2], [Decimal.Log10] return an error when calculating a logarithm of a non-positive decimal.
+    [Decimal.Log1p] returns an error when calculating a logarithm of a decimal equal to or less than negative one.
     [Decimal.Pow] returns an error if 0 is raised to a negative powere or a negative decimal is raised to a fractional power.
 
   - Overflow:
@@ -171,8 +153,7 @@ Errors are not returned in the following cases:
 A. JSON
 
 The package integrates with standard [encoding/json] through
-the implementation of [encoding.TextMarshaller] and [encoding.TextUnmarshaler]
-interfaces.
+the implementation of [json.Marshaler] and [json.Unmarshaler] interfaces.
 Below is an example structure:
 
 	type Object struct {
@@ -191,9 +172,16 @@ Below is an example OpenAPI schema:
 
 B. BSON
 
-The package integrates with [mongo-driver/v2/bson] via the implementation of
-[bson.ValueMarshaler] and [bson.ValueUnmarshaler] interfaces.
-This package marshals decimals as Decimal128, ensuring the preservation of
+The package integrates with [mongo-driver/bson] via the implementation of
+[v2/bson.ValueMarshaler] and [v2/bson.ValueUnmarshaler] interfaces.
+Below is an example structure:
+
+	type Record struct {
+	  Number decimal.Decimal `bson:"some_number"`
+	  // Other fields...
+	}
+
+This package marshals decimals as [Decimal128], ensuring the preservation of
 the exact numerical value.
 
 C. XML
@@ -275,6 +263,26 @@ Below are the reasons for these preferences:
     To prevent automatic rescaling, consider using VARCHAR(22), which accurately
     preserves the scale of decimals.
 
+# Mathematical Context
+
+Unlike many other decimal libraries, this package does not provide
+an explicit mathematical [context].
+Instead, the [context] is implicit and can be approximately equated to
+the following settings:
+
+	| Attribute               | Value                                           |
+	| ----------------------- | ----------------------------------------------- |
+	| Precision               | 19                                              |
+	| Maximum Exponent (Emax) | 18                                              |
+	| Minimum Exponent (Emin) | -19                                             |
+	| Tiny Exponent (Etiny)   | -19                                             |
+	| Rounding Method         | Half To Even                                    |
+	| Enabled Traps           | Division by Zero, Invalid Operation, Overflow   |
+	| Disabled Traps          | Inexact, Clamped, Rounded, Subnormal, Underflow |
+
+The equality of Etiny and Emin implies that this package does not support
+subnormal numbers.
+
 [Infinity]: https://en.wikipedia.org/wiki/Infinity#Computing
 [Subnormal numbers]: https://en.wikipedia.org/wiki/Subnormal_number
 [NaN]: https://en.wikipedia.org/wiki/NaN
@@ -285,8 +293,11 @@ Below are the reasons for these preferences:
 [context]: https://speleotrove.com/decimal/damodel.html
 [numerical strings]: https://github.com/googleapis/googleapis/blob/master/google/type/decimal.proto
 [a pair of integers]: https://github.com/googleapis/googleapis/blob/master/google/type/money.proto
-[mongo-driver/v2/bson]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson
-[bson.ValueMarshaler]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson#ValueMarshaler
-[bson.ValueUnmarshaler]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson#ValueUnmarshaler
+[json.Marshaler]: https://pkg.go.dev/encoding/json#Marshaler
+[json.Unmarshaler]: https://pkg.go.dev/encoding/json#Unmarshaler
+[mongo-driver/bson]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson
+[Decimal128]: https://github.com/mongodb/specifications/blob/master/source/bson-decimal128/decimal128.md
+[v2/bson.ValueMarshaler]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson#ValueMarshaler
+[v2/bson.ValueUnmarshaler]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson#ValueUnmarshaler
 */
 package decimal

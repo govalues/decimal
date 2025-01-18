@@ -117,16 +117,22 @@ jobs:
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Sqrt_PowInt$
 
       - name: Run fuzzing for square root and power
-        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Sqrt_Pow$
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Pow_Sqrt$
 
       - name: Run fuzzing for power and integer power
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Pow_PowInt$
 
       - name: Run fuzzing for exponential and power
-        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Exp_Pow$
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Pow_Exp$
 
       - name: Run fuzzing for exponential and logarithm
-        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Exp_Log$
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimalp_Log_Exp$
+
+      - name: Run fuzzing for shifted exponential and exponential
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Expm1_Exp$
+
+      - name: Run fuzzing for shifted logarithm and logarithm
+        run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Log1p_Log$
 
       - name: Run fuzzing for comparison
         run: go test -fuzztime 20s -fuzz ^FuzzDecimal_Cmp$

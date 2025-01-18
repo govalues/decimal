@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"unsafe"
 )
 
 // Decimal represents a finite floating-point decimal number.
@@ -257,9 +258,11 @@ func NewFromFloat64(f float64) (Decimal, error) {
 	if math.IsNaN(f) || math.IsInf(f, 0) {
 		return Decimal{}, fmt.Errorf("converting float: special value %v", f)
 	}
-	s := strconv.FormatFloat(f, 'f', -1, 64)
+	text := make([]byte, 0, 32)
+	text = strconv.AppendFloat(text, f, 'f', -1, 64)
+
 	// Decimal
-	d, err := Parse(s)
+	d, err := parse(text)
 	if err != nil {
 		return Decimal{}, fmt.Errorf("converting float: %w", err)
 	}
@@ -320,7 +323,12 @@ func MustParse(s string) Decimal {
 //   - the string does not represent a valid decimal number;
 //   - the integer part of the result has more than [MaxPrec] digits.
 func Parse(s string) (Decimal, error) {
-	return ParseExact(s, 0)
+	text := unsafe.Slice(unsafe.StringData(s), len(s))
+	return parseExact(text, 0)
+}
+
+func parse(text []byte) (Decimal, error) {
+	return parseExact(text, 0)
 }
 
 // ParseExact is similar to [Parse], but it allows you to specify how many digits
@@ -329,15 +337,20 @@ func Parse(s string) (Decimal, error) {
 // This method is useful for parsing monetary amounts, where the scale should be
 // equal to or greater than the currency's scale.
 func ParseExact(s string, scale int) (Decimal, error) {
-	if len(s) > 330 {
+	text := unsafe.Slice(unsafe.StringData(s), len(s))
+	return parseExact(text, scale)
+}
+
+func parseExact(text []byte, scale int) (Decimal, error) {
+	if len(text) > 330 {
 		return Decimal{}, fmt.Errorf("parsing decimal: %w", errInvalidDecimal)
 	}
 	if scale < MinScale || scale > MaxScale {
 		return Decimal{}, fmt.Errorf("parsing decimal: %w", errScaleRange)
 	}
-	d, err := parseFint(s, scale)
+	d, err := parseFint(text, scale)
 	if err != nil {
-		d, err = parseBint(s, scale)
+		d, err = parseBint(text, scale)
 		if err != nil {
 			return Decimal{}, fmt.Errorf("parsing decimal: %w", err)
 		}
@@ -349,19 +362,19 @@ func ParseExact(s string, scale int) (Decimal, error) {
 // parseFint does not support exponential notation to make it as fast as possible.
 //
 //nolint:gocyclo
-func parseFint(s string, minScale int) (Decimal, error) {
+func parseFint(text []byte, minScale int) (Decimal, error) {
 	var pos int
-	width := len(s)
+	width := len(text)
 
 	// Sign
 	var neg bool
 	switch {
 	case pos == width:
 		// skip
-	case s[pos] == '-':
+	case text[pos] == '-':
 		neg = true
 		pos++
-	case s[pos] == '+':
+	case text[pos] == '+':
 		pos++
 	}
 
@@ -371,8 +384,8 @@ func parseFint(s string, minScale int) (Decimal, error) {
 	var hasCoef, ok bool
 
 	// Integer
-	for pos < width && s[pos] >= '0' && s[pos] <= '9' {
-		coef, ok = coef.fsa(1, s[pos]-'0')
+	for pos < width && text[pos] >= '0' && text[pos] <= '9' {
+		coef, ok = coef.fsa(1, text[pos]-'0')
 		if !ok {
 			return Decimal{}, errDecimalOverflow
 		}
@@ -381,10 +394,10 @@ func parseFint(s string, minScale int) (Decimal, error) {
 	}
 
 	// Fraction
-	if pos < width && s[pos] == '.' {
+	if pos < width && text[pos] == '.' {
 		pos++
-		for pos < width && s[pos] >= '0' && s[pos] <= '9' {
-			coef, ok = coef.fsa(1, s[pos]-'0')
+		for pos < width && text[pos] >= '0' && text[pos] <= '9' {
+			coef, ok = coef.fsa(1, text[pos]-'0')
 			if !ok {
 				return Decimal{}, errDecimalOverflow
 			}
@@ -395,7 +408,7 @@ func parseFint(s string, minScale int) (Decimal, error) {
 	}
 
 	if pos != width {
-		return Decimal{}, fmt.Errorf("%w: unexpected character %q", errInvalidDecimal, s[pos])
+		return Decimal{}, fmt.Errorf("%w: unexpected character %q", errInvalidDecimal, text[pos])
 	}
 	if !hasCoef {
 		return Decimal{}, fmt.Errorf("%w: no coefficient", errInvalidDecimal)
@@ -407,19 +420,19 @@ func parseFint(s string, minScale int) (Decimal, error) {
 // parseBint supports exponential notation.
 //
 //nolint:gocyclo
-func parseBint(s string, minScale int) (Decimal, error) {
+func parseBint(text []byte, minScale int) (Decimal, error) {
 	var pos int
-	width := len(s)
+	width := len(text)
 
 	// Sign
 	var neg bool
 	switch {
 	case pos == width:
 		// skip
-	case s[pos] == '-':
+	case text[pos] == '-':
 		neg = true
 		pos++
-	case s[pos] == '+':
+	case text[pos] == '+':
 		pos++
 	}
 
@@ -439,8 +452,8 @@ func parseBint(s string, minScale int) (Decimal, error) {
 	// 	3. Repeat until all digits are processed.
 
 	// Integer
-	for pos < width && s[pos] >= '0' && s[pos] <= '9' {
-		fcoef, ok = fcoef.fsa(1, s[pos]-'0')
+	for pos < width && text[pos] >= '0' && text[pos] <= '9' {
+		fcoef, ok = fcoef.fsa(1, text[pos]-'0')
 		if !ok {
 			return Decimal{}, errDecimalOverflow // Should never happen
 		}
@@ -454,10 +467,10 @@ func parseBint(s string, minScale int) (Decimal, error) {
 	}
 
 	// Fraction
-	if pos < width && s[pos] == '.' {
+	if pos < width && text[pos] == '.' {
 		pos++
-		for pos < width && s[pos] >= '0' && s[pos] <= '9' {
-			fcoef, ok = fcoef.fsa(1, s[pos]-'0')
+		for pos < width && text[pos] >= '0' && text[pos] <= '9' {
+			fcoef, ok = fcoef.fsa(1, text[pos]-'0')
 			if !ok {
 				return Decimal{}, errDecimalOverflow // Should never happen
 			}
@@ -478,22 +491,22 @@ func parseBint(s string, minScale int) (Decimal, error) {
 	// Exponent
 	var exp int
 	var eneg, hasExp, hasE bool
-	if pos < width && (s[pos] == 'e' || s[pos] == 'E') {
+	if pos < width && (text[pos] == 'e' || text[pos] == 'E') {
 		pos++
 		hasE = true
 		// Sign
 		switch {
 		case pos == width:
 			// skip
-		case s[pos] == '-':
+		case text[pos] == '-':
 			eneg = true
 			pos++
-		case s[pos] == '+':
+		case text[pos] == '+':
 			pos++
 		}
 		// Integer
-		for pos < width && s[pos] >= '0' && s[pos] <= '9' {
-			exp = exp*10 + int(s[pos]-'0')
+		for pos < width && text[pos] >= '0' && text[pos] <= '9' {
+			exp = exp*10 + int(text[pos]-'0')
 			if exp > 330 {
 				return Decimal{}, errInvalidDecimal
 			}
@@ -503,7 +516,7 @@ func parseBint(s string, minScale int) (Decimal, error) {
 	}
 
 	if pos != width {
-		return Decimal{}, fmt.Errorf("%w: unexpected character %q", errInvalidDecimal, s[pos])
+		return Decimal{}, fmt.Errorf("%w: unexpected character %q", errInvalidDecimal, text[pos])
 	}
 	if !hasCoef {
 		return Decimal{}, fmt.Errorf("%w: no coefficient", errInvalidDecimal)
@@ -535,6 +548,17 @@ func parseBint(s string, minScale int) (Decimal, error) {
 //
 // [fmt.Stringer]: https://pkg.go.dev/fmt#Stringer
 func (d Decimal) String() string {
+	return string(d.bytes())
+}
+
+// bytes returns a string representation of the decimal as a byte slice.
+func (d Decimal) bytes() []byte {
+	text := make([]byte, 0, 24)
+	return d.append(text)
+}
+
+// append appends a string representation of the decimal to the byte slice.
+func (d Decimal) append(text []byte) []byte {
 	var buf [24]byte
 	pos := len(buf) - 1
 	coef := d.Coef()
@@ -569,13 +593,15 @@ func (d Decimal) String() string {
 		pos--
 	}
 
-	return string(buf[pos+1:])
+	return append(text, buf[pos+1:]...)
 }
 
 // UnmarshalJSON implements the [json.Unmarshaler] interface.
-// UnmarshalJSON supports the following JSON types: number and numeric string.
+// UnmarshalJSON supports the following types: [number] and [numeric string].
 // See also constructor [Parse].
 //
+// [number]: https://datatracker.ietf.org/doc/html/rfc8259#section-6
+// [numeric string]: https://datatracker.ietf.org/doc/html/rfc8259#section-7
 // [json.Unmarshaler]: https://pkg.go.dev/encoding/json#Unmarshaler
 func (d *Decimal) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
@@ -585,7 +611,7 @@ func (d *Decimal) UnmarshalJSON(data []byte) error {
 		data = data[1 : len(data)-1]
 	}
 	var err error
-	*d, err = Parse(string(data))
+	*d, err = parse(data)
 	if err != nil {
 		return fmt.Errorf("unmarshaling %T: %w", Decimal{}, err)
 	}
@@ -593,31 +619,40 @@ func (d *Decimal) UnmarshalJSON(data []byte) error {
 }
 
 // MarshalJSON implements the [json.Marshaler] interface.
-// MarshalJSON always returns a numeric string.
+// MarshalJSON always returns a [numeric string].
 // See also method [Decimal.String].
 //
+// [numeric string]: https://datatracker.ietf.org/doc/html/rfc8259#section-7
 // [json.Marshaler]: https://pkg.go.dev/encoding/json#Marshaler
 func (d Decimal) MarshalJSON() ([]byte, error) {
-	s := d.String()
-	b := make([]byte, 0, len(s)+2)
-	b = append(b, '"')
-	b = append(b, s...)
-	b = append(b, '"')
-	return b, nil
+	text := make([]byte, 0, 26)
+	text = append(text, '"')
+	text = d.append(text)
+	text = append(text, '"')
+	return text, nil
 }
 
 // UnmarshalText implements the [encoding.TextUnmarshaler] interface.
-// UnmarshalBinary supports only numeric strings.
+// UnmarshalText supports only numeric strings.
 // See also constructor [Parse].
 //
 // [encoding.TextUnmarshaler]: https://pkg.go.dev/encoding#TextUnmarshaler
 func (d *Decimal) UnmarshalText(text []byte) error {
 	var err error
-	*d, err = Parse(string(text))
+	*d, err = parse(text)
 	if err != nil {
 		return fmt.Errorf("unmarshaling %T: %w", Decimal{}, err)
 	}
 	return nil
+}
+
+// AppendText implements the [encoding.TextAppender] interface.
+// AppendText always appends a numeric string.
+// See also method [Decimal.String].
+//
+// [encoding.TextAppender]: https://pkg.go.dev/encoding#TextAppender
+func (d Decimal) AppendText(text []byte) ([]byte, error) {
+	return d.append(text), nil
 }
 
 // MarshalText implements the [encoding.TextMarshaler] interface.
@@ -626,7 +661,7 @@ func (d *Decimal) UnmarshalText(text []byte) error {
 //
 // [encoding.TextMarshaler]: https://pkg.go.dev/encoding#TextMarshaler
 func (d Decimal) MarshalText() ([]byte, error) {
-	return []byte(d.String()), nil
+	return d.bytes(), nil
 }
 
 // UnmarshalBinary implements the [encoding.BinaryUnmarshaler] interface.
@@ -636,11 +671,20 @@ func (d Decimal) MarshalText() ([]byte, error) {
 // [encoding.BinaryUnmarshaler]: https://pkg.go.dev/encoding#BinaryUnmarshaler
 func (d *Decimal) UnmarshalBinary(data []byte) error {
 	var err error
-	*d, err = Parse(string(data))
+	*d, err = parse(data)
 	if err != nil {
 		return fmt.Errorf("unmarshaling %T: %w", Decimal{}, err)
 	}
 	return nil
+}
+
+// AppendBinary implements the [encoding.BinaryAppender] interface.
+// AppendBinary always appends a numeric string.
+// See also method [Decimal.String].
+//
+// [encoding.BinaryAppender]: https://pkg.go.dev/encoding#BinaryAppender
+func (d Decimal) AppendBinary(data []byte) ([]byte, error) {
+	return d.append(data), nil
 }
 
 // MarshalBinary implements the [encoding.BinaryMarshaler] interface.
@@ -649,14 +693,15 @@ func (d *Decimal) UnmarshalBinary(data []byte) error {
 //
 // [encoding.BinaryMarshaler]: https://pkg.go.dev/encoding#BinaryMarshaler
 func (d Decimal) MarshalBinary() ([]byte, error) {
-	return []byte(d.String()), nil
+	return d.bytes(), nil
 }
 
-// UnmarshalBSONValue implements the v2 [bson.ValueUnmarshaler] interface.
-// UnmarshalBSONValue supports the following [BSON types]: double, string, int32, int64, and decimal128.
+// UnmarshalBSONValue implements the [v2/bson.ValueUnmarshaler] interface.
+// UnmarshalBSONValue supports the following [types]: Double, String, 32-bit Integer, 64-bit Integer, and [Decimal128].
 //
-// [bson.ValueUnmarshaler]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson#ValueUnmarshaler
-// [BSON types]: https://bsonspec.org/spec.html
+// [v2/bson.ValueUnmarshaler]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson#ValueUnmarshaler
+// [types]: https://bsonspec.org/spec.html
+// [Decimal128]: https://github.com/mongodb/specifications/blob/master/source/bson-decimal128/decimal128.md
 func (d *Decimal) UnmarshalBSONValue(typ byte, data []byte) error {
 	// constants are from https://bsonspec.org/spec.html
 	var err error
@@ -682,16 +727,17 @@ func (d *Decimal) UnmarshalBSONValue(typ byte, data []byte) error {
 	return err
 }
 
-// MarshalBSONValue implements the v2 [bson.ValueMarshaler] interface.
-// MarshalBSONValue always returns [decimal128].
+// MarshalBSONValue implements the [v2/bson.ValueMarshaler] interface.
+// MarshalBSONValue always returns [Decimal128].
 //
-// [bson.ValueMarshaler]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson#ValueMarshaler
-// [decimal128]: https://bsonspec.org/spec.html
+// [v2/bson.ValueMarshaler]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson#ValueMarshaler
+// [Decimal128]: https://github.com/mongodb/specifications/blob/master/source/bson-decimal128/decimal128.md
 func (d Decimal) MarshalBSONValue() (typ byte, data []byte, err error) {
 	return 19, d.ieeeDecimal128(), nil
 }
 
 // parseBSONInt32 parses a BSON int32 to a decimal.
+// The byte order of the input data must be little-endian.
 func parseBSONInt32(data []byte) (Decimal, error) {
 	if len(data) != 4 {
 		return Decimal{}, fmt.Errorf("%w: invalid data length %v", errInvalidDecimal, len(data))
@@ -855,7 +901,7 @@ func (d *Decimal) Scan(value any) error {
 		*d, err = NewFromFloat64(value)
 	case []byte:
 		// Special case: MySQL driver sends DECIMAL as []byte
-		*d, err = Parse(string(value))
+		*d, err = parse(value)
 	case float32:
 		// Special case: MySQL driver sends FLOAT as float32
 		*d, err = NewFromFloat64(float64(value))
@@ -2089,6 +2135,57 @@ func (d Decimal) log10Bint() (Decimal, error) {
 	return newFromBint(eneg, ecoef, bscale, 0)
 }
 
+// Log1p returns the (possibly rounded) shifted natural logarithm of a decimal.
+//
+// Log1p returns an error if the decimal is equal to or less than negative one.
+func (d Decimal) Log1p() (Decimal, error) {
+	if d.IsNeg() && d.Cmp(NegOne) <= 0 {
+		return Decimal{}, fmt.Errorf("computing log1p(%v): %w: logarithm of a decimal less than or equal to -1", d, errInvalidOperation)
+	}
+
+	// Special case: zero
+	if d.IsZero() {
+		return newSafe(false, 0, 0)
+	}
+
+	// General case
+	e, err := d.log1pBint()
+	if err != nil {
+		return Decimal{}, fmt.Errorf("computing log1p(%v): %w", d, err)
+	}
+
+	return e, nil
+}
+
+// log1pBint computes the shifted natural logarithm of a decimal using *big.Int arithmetic.
+func (d Decimal) log1pBint() (Decimal, error) {
+	dcoef := getBint()
+	defer putBint(dcoef)
+
+	ecoef := getBint()
+	defer putBint(ecoef)
+
+	dcoef.setFint(d.coef)
+	eneg := false
+
+	// Alignment
+	if d.IsNeg() {
+		// Compute d = ⌊1 / (d + 1)⌋
+		dcoef.subAbs(dcoef, bpow10[d.Scale()])
+		dcoef.quo(bpow10[bscale+d.Scale()], dcoef)
+		eneg = true
+	} else {
+		// Compute d = d + 1
+		dcoef.add(dcoef, bpow10[d.Scale()])
+		dcoef.lsh(dcoef, bscale-d.Scale())
+	}
+
+	// Compute e = log(d)
+	ecoef.log(dcoef)
+
+	return newFromBint(eneg, ecoef, bscale, 0)
+}
+
 // Log returns the (possibly rounded) natural logarithm of a decimal.
 //
 // Log returns an error if the decimal is zero or negative.
@@ -2140,8 +2237,8 @@ func (d Decimal) logBint() (Decimal, error) {
 
 // log calculates z = log(x) using Halley's method.
 // The argument x must satisfy x >= 1, otherwise the result is undefined.
-// x must be represented as a big integer: round(x * 10^40).
-// The result z is represented as a big integer: round(z * 10^40).
+// x must be represented as a big integer: round(x * 10^41).
+// The result z is represented as a big integer: round(z * 10^41).
 func (z *bint) log(x *bint) {
 	zcoef := getBint()
 	defer putBint(zcoef)
@@ -2195,7 +2292,7 @@ func (d Decimal) Exp() (Decimal, error) {
 	// Special case: overflow
 	if d.CmpAbs(Hundred) >= 0 {
 		if !d.IsNeg() {
-			return Decimal{}, unknownOverflowError()
+			return Decimal{}, fmt.Errorf("computing exp(%v): %w", d, unknownOverflowError())
 		}
 		return newSafe(false, 0, MaxScale)
 	}
@@ -2236,10 +2333,70 @@ func (d Decimal) expBint() (Decimal, error) {
 	return newFromBint(false, ecoef, bscale, 0)
 }
 
+// Expm1 returns the (possibly rounded) shifted exponential of a decimal.
+//
+// Expm1 returns an error if the integer part of the result has more than [MaxPrec] digits.
+func (d Decimal) Expm1() (Decimal, error) {
+	// Special case: zero
+	if d.IsZero() {
+		return newSafe(false, 0, 0)
+	}
+
+	// Special case: overflow
+	if d.CmpAbs(Hundred) >= 0 {
+		if !d.IsNeg() {
+			return Decimal{}, fmt.Errorf("computing expm1(%v): %w", d, unknownOverflowError())
+		}
+		return newSafe(true, pow10[MaxScale-1], MaxScale-1)
+	}
+
+	// General case
+	e, err := d.expm1Bint()
+	if err != nil {
+		return Decimal{}, fmt.Errorf("computing expm1(%v): %w", d, err)
+	}
+
+	return e, nil
+}
+
+// expm1Bint computes shifted exponential of a decimal using *big.Int arithmetic.
+func (d Decimal) expm1Bint() (Decimal, error) {
+	dcoef := getBint()
+	defer putBint(dcoef)
+
+	ecoef := getBint()
+	defer putBint(ecoef)
+
+	dcoef.setFint(d.coef)
+
+	// Alignment
+	dcoef.lsh(dcoef, bscale-d.Scale())
+
+	// Compute e = exp(d)
+	ecoef.exp(dcoef)
+
+	if d.IsNeg() {
+		if ecoef.sign() == 0 {
+			return Decimal{}, unknownOverflowError()
+		}
+		// Compute e = ⌊1 / e⌋
+		ecoef.quo(bpow10[2*bscale], ecoef)
+	}
+
+	// Compute e = e - 1
+	eneg := false
+	if ecoef.cmp(bpow10[bscale]) < 0 {
+		eneg = true
+	}
+	ecoef.subAbs(ecoef, bpow10[bscale])
+
+	return newFromBint(eneg, ecoef, bscale, 0)
+}
+
 // exp calculates z = exp(x) using Taylor series expansion.
 // The argument x must satisfy 0 <= x < 100, otherwise the result is undefined.
-// The argument x must be represented as a big integer: round(x * 10^40).
-// The result z is represented as a big integer: round(z * 10^40).
+// The argument x must be represented as a big integer: round(x * 10^41).
+// The result z is represented as a big integer: round(z * 10^41).
 func (z *bint) exp(x *bint) {
 	qcoef := getBint()
 	defer putBint(qcoef)
@@ -2250,7 +2407,7 @@ func (z *bint) exp(x *bint) {
 	// Split x into integer part q and fractional part r
 	qcoef.quoRem(x, bpow10[bscale], rcoef)
 
-	// Compute z = exp(q) from precomputed cache
+	// Retrieve z = exp(q) from precomputed cache
 	z.setBint(bexp[int(qcoef.fint())]) //nolint:gosec
 
 	if rcoef.sign() == 0 {
@@ -3324,12 +3481,13 @@ func (n NullDecimal) MarshalJSON() ([]byte, error) {
 	return n.Decimal.MarshalJSON()
 }
 
-// UnmarshalBSONValue implements the v2 [bson.ValueUnmarshaler] interface.
-// UnmarshalBSONValue supports the following [BSON types]: double, string, null, int32, int64, and decimal128.
+// UnmarshalBSONValue implements the [v2/bson.ValueUnmarshaler] interface.
+// UnmarshalBSONValue supports the following [types]: Null, Double, String, 32-bit Integer, 64-bit Integer, and [Decimal128].
 // See also method [Decimal.UnmarshalBSONValue].
 //
-// [bson.ValueUnmarshaler]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson#ValueUnmarshaler
-// [BSON types]: https://bsonspec.org/spec.html
+// [v2/bson.ValueUnmarshaler]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson#ValueUnmarshaler
+// [types]: https://bsonspec.org/spec.html
+// [Decimal128]: https://github.com/mongodb/specifications/blob/master/source/bson-decimal128/decimal128.md
 func (n *NullDecimal) UnmarshalBSONValue(typ byte, data []byte) error {
 	// constants are from https://bsonspec.org/spec.html
 	if typ == 10 {
@@ -3341,12 +3499,13 @@ func (n *NullDecimal) UnmarshalBSONValue(typ byte, data []byte) error {
 	return n.Decimal.UnmarshalBSONValue(typ, data)
 }
 
-// MarshalBSONValue implements the v2 [bson.ValueMarshaler] interface.
-// MarshalBSONValue always returns the following [BSON types]: decimal128 or null.
+// MarshalBSONValue implements the [v2/bson.ValueMarshaler] interface.
+// MarshalBSONValue returns [Null] or [Decimal128].
 // See also method [Decimal.MarshalBSONValue].
 //
-// [bson.ValueMarshaler]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson#ValueMarshaler
-// [BSON types]: https://bsonspec.org/spec.html
+// [v2/bson.ValueMarshaler]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson#ValueMarshaler
+// [Null]: https://bsonspec.org/spec.html
+// [Decimal128]: https://github.com/mongodb/specifications/blob/master/source/bson-decimal128/decimal128.md
 func (n NullDecimal) MarshalBSONValue() (typ byte, data []byte, err error) {
 	// constants are from https://bsonspec.org/spec.html
 	if !n.Valid {
