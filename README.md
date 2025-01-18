@@ -8,23 +8,22 @@
 [![versionb]][version]
 [![awesomeb]][awesome]
 
-Package decimal implements immutable decimal floating-point numbers for Go.
+Package decimal implements correctly rounded decimal floating-point numbers for Go.
 This package is designed specifically for use in transactional financial systems.
 
 ## Key Features
 
-- **Immutability** - Once set, a decimal remains constant,
-  ensuring safe concurrent access across goroutines.
-- **Banker's Rounding** - Uses [half-to-even] rounding, also known as
-  "banker's rounding", to minimize cumulative rounding errors commonly seen
-  in financial calculations.
-- **Accurate Arithmetic** - For all methods, the result is the one that would
+- **BSON, JSON, XML, SQL** - Implements the necessary interfaces for direct compatibility
+  with the [mongo-driver/bson], [encoding/json], [encoding/xml], and [database/sql] packages.
+- **No Heap Allocations** - Optimized to avoid heap allocations,
+  preventing garbage collector impact during arithmetic operations.
+- **Correct Rounding** - For all methods, the result is the one that would
   be obtained if the true mathematical value were rounded to 19 digits of
-  precision using the half-to-even rounding.
+  precision using the [half-to-even] rounding (a.k.a. "banker's rounding").
 - **No Panics** - All methods are panic-free, returning errors instead of crashing
   your application in cases such as overflow or division by zero.
-- **No Heap Allocations** - Optimized to avoid heap allocations,
-  reducing garbage collector impact during arithmetic operations.
+- **Immutability** - Once set, a decimal remains constant,
+  ensuring safe concurrent access across goroutines.
 - **Simple String Representation** - Decimals are represented in a straightforward
   format avoiding the complexities of scientific or engineering notations.
 - **Rigorous Testing** - All methods are cross-validated against
@@ -83,7 +82,9 @@ func main() {
     // Transcendental functions
     fmt.Println(e.Sqrt())              // √12.5
     fmt.Println(e.Exp())               // exp(12.5)
+    fmt.Println(e.Expm1())             // exp(12.5) - 1
     fmt.Println(e.Log())               // ln(12.5)
+    fmt.Println(e.Log1p())             // ln(12.5 + 1)
     fmt.Println(e.Log2())              // log₂(12.5)
     fmt.Println(e.Log10())             // log₁₀(12.5)
     fmt.Println(e.Pow(d))              // 12.5⁸
@@ -118,12 +119,12 @@ Comparison with other popular packages:
 
 | Feature              | govalues  | [cockroachdb/apd] v3.2.1 | [shopspring/decimal] v1.4.0 |
 | -------------------- | --------- | ------------------------ | --------------------------- |
-| Speed                | High      | Medium                   | Low[^reason]                |
-| Mutability           | Immutable | Mutable[^reason]         | Immutable                   |
-| Heap Allocations     | No        | Medium                   | High                        |
-| Panic Free           | Yes       | Yes                      | No[^divzero]                |
-| Precision            | 19 digits | Arbitrary                | Arbitrary                   |
 | Correctly Rounded    | Yes       | No                       | No                          |
+| Speed                | High      | Medium                   | Low[^reason]                |
+| Heap Allocations     | No        | Medium                   | High                        |
+| Precision            | 19 digits | Arbitrary                | Arbitrary                   |
+| Panic Free           | Yes       | Yes                      | No[^divzero]                |
+| Mutability           | Immutable | Mutable[^reason]         | Immutable                   |
 | Mathematical Context | Implicit  | Explicit                 | Implicit                    |
 
 [^reason]: decimal package was created simply because [shopspring/decimal] was
@@ -178,6 +179,10 @@ The benchmark results shown in the table are provided for informational purposes
 [awesomeb]: https://awesome.re/mentioned-badge.svg
 [cockroachdb/apd]: https://pkg.go.dev/github.com/cockroachdb/apd
 [shopspring/decimal]: https://pkg.go.dev/github.com/shopspring/decimal
+[mongo-driver/bson]: https://pkg.go.dev/go.mongodb.org/mongo-driver/v2/bson#ValueUnmarshaler
+[encoding/json]: https://pkg.go.dev/encoding/json#Unmarshaler
+[encoding/xml]: https://pkg.go.dev/encoding#TextUnmarshaler
+[database/sql]: https://pkg.go.dev/database/sql#Scanner
 [specification]: https://speleotrove.com/decimal/telcoSpec.html
 [fuzz testing]: https://github.com/govalues/decimal-tests
 [half-to-even]: https://en.wikipedia.org/wiki/Rounding#Rounding_half_to_even

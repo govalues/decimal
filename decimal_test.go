@@ -6,7 +6,6 @@ import (
 	"database/sql/driver"
 	"encoding"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -55,6 +54,15 @@ func TestDecimal_Interfaces(t *testing.T) {
 	if !ok {
 		t.Errorf("%T does not implement encoding.BinaryMarshaler", d)
 	}
+	// Uncomment when Go 1.24 is minimum supported version.
+	// _, ok = d.(encoding.TextAppender)
+	// if !ok {
+	// 	t.Errorf("%T does not implement encoding.TextAppender", d)
+	// }
+	// _, ok = d.(encoding.BinaryAppender)
+	// if !ok {
+	// 	t.Errorf("%T does not implement encoding.BinaryAppender", d)
+	// }
 	_, ok = d.(driver.Valuer)
 	if !ok {
 		t.Errorf("%T does not implement driver.Valuer", d)
@@ -4268,29 +4276,9 @@ func TestDecimal_Exp(t *testing.T) {
 			{"1.01", "2.745601015016916494"},
 			{"1.1", "3.004166023946433112"},
 
-			// Powers of ten
-			{"0.0000000000000000001", "1.000000000000000000"},
-			{"0.000000000000000001", "1.000000000000000001"},
-			{"0.00000000000000001", "1.000000000000000010"},
-			{"0.0000000000000001", "1.000000000000000100"},
-			{"0.000000000000001", "1.000000000000001000"},
-			{"0.00000000000001", "1.000000000000010000"},
-			{"0.0000000000001", "1.000000000000100000"},
-			{"0.000000000001", "1.000000000001000000"},
-			{"0.00000000001", "1.000000000010000000"},
-			{"0.0000000001", "1.000000000100000000"},
-			{"0.000000001", "1.000000001000000001"},
-			{"0.00000001", "1.000000010000000050"},
-			{"0.0000001", "1.000000100000005000"},
-			{"0.000001", "1.000001000000500000"},
-			{"0.00001", "1.000010000050000167"},
-			{"0.0001", "1.000100005000166671"},
-			{"0.001", "1.001000500166708342"},
-			{"0.01", "1.010050167084168058"},
-			{"0.1", "1.105170918075647625"},
-			{"1", E.String()},
-			{"10", "22026.46579480671652"},
-
+			// Negated powers of ten
+			{"-10000", "0.0000000000000000000"},
+			{"-1000", "0.0000000000000000000"},
 			{"-100", "0.0000000000000000000"},
 			{"-10", "0.00004539992976248489"},
 			{"-1", "0.3678794411714423216"},
@@ -4313,6 +4301,29 @@ func TestDecimal_Exp(t *testing.T) {
 			{"-0.00000000000000001", "0.9999999999999999900"},
 			{"-0.000000000000000001", "0.9999999999999999990"},
 			{"-0.0000000000000000001", "0.9999999999999999999"},
+
+			// Powers of ten
+			{"0.0000000000000000001", "1.000000000000000000"},
+			{"0.000000000000000001", "1.000000000000000001"},
+			{"0.00000000000000001", "1.000000000000000010"},
+			{"0.0000000000000001", "1.000000000000000100"},
+			{"0.000000000000001", "1.000000000000001000"},
+			{"0.00000000000001", "1.000000000000010000"},
+			{"0.0000000000001", "1.000000000000100000"},
+			{"0.000000000001", "1.000000000001000000"},
+			{"0.00000000001", "1.000000000010000000"},
+			{"0.0000000001", "1.000000000100000000"},
+			{"0.000000001", "1.000000001000000001"},
+			{"0.00000001", "1.000000010000000050"},
+			{"0.0000001", "1.000000100000005000"},
+			{"0.000001", "1.000001000000500000"},
+			{"0.00001", "1.000010000050000167"},
+			{"0.0001", "1.000100005000166671"},
+			{"0.001", "1.001000500166708342"},
+			{"0.01", "1.010050167084168058"},
+			{"0.1", "1.105170918075647625"},
+			{"1", E.String()},
+			{"10", "22026.46579480671652"},
 
 			// Logarithms of powers of ten
 			{"-50.65687204586900505", "0.0000000000000000000"},
@@ -4357,6 +4368,15 @@ func TestDecimal_Exp(t *testing.T) {
 			{"39.14394658089877663", "100000000000000000.2"},
 			{"41.44653167389282231", "999999999999999997.7"},
 			{"43.74911676688686799", "9999999999999999937"},
+
+			// Negative numbers
+			{"-101", "0.0000000000000000000"},
+			{"-100", "0.0000000000000000000"},
+			{"-99", "0.0000000000000000000"},
+			{"-50", "0.0000000000000000000"},
+			{"-45", "0.0000000000000000000"},
+			{"-44", "0.0000000000000000001"},
+			{"-43", "0.0000000000000000002"},
 
 			// Natural numbers
 			{"1", E.String()},
@@ -4431,6 +4451,281 @@ func TestDecimal_Exp(t *testing.T) {
 				_, err := d.Exp()
 				if err == nil {
 					t.Errorf("%q.Exp() did not fail", d)
+				}
+			})
+		}
+	})
+}
+
+func TestDecimal_Expm1(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			d, want string
+		}{
+			// Zeros
+			{"0", "0"},
+			{"0.0", "0"},
+			{"0.00", "0"},
+			{"0.000", "0"},
+			{"0.0000", "0"},
+			{"0.00000", "0"},
+
+			// Ones
+			{"1", "1.718281828459045235"},
+			{"1.0", "1.718281828459045235"},
+			{"1.00", "1.718281828459045235"},
+			{"1.000", "1.718281828459045235"},
+			{"1.0000", "1.718281828459045235"},
+			{"1.00000", "1.718281828459045235"},
+
+			// Closer and closer to negative one
+			{"-0.9", "-0.5934303402594008881"},
+			{"-0.99", "-0.6284233089779543095"},
+			{"-0.999", "-0.6317524953863370788"},
+			{"-0.9999", "-0.6320837690449820135"},
+			{"-0.99999", "-0.6321168800157519306"},
+			{"-0.999999", "-0.6321201909489325672"},
+			{"-0.9999999", "-0.6321205220406117219"},
+			{"-0.99999999", "-0.6321205551497632483"},
+			{"-0.999999999", "-0.6321205584606782370"},
+			{"-0.9999999999", "-0.6321205587917697343"},
+			{"-0.99999999999", "-0.6321205588248788840"},
+			{"-0.999999999999", "-0.6321205588281897990"},
+			{"-0.9999999999999", "-0.6321205588285208905"},
+			{"-0.99999999999999", "-0.6321205588285539996"},
+			{"-0.999999999999999", "-0.6321205588285573105"},
+			{"-0.9999999999999999", "-0.6321205588285576416"},
+			{"-0.99999999999999999", "-0.6321205588285576747"},
+			{"-0.999999999999999999", "-0.6321205588285576780"},
+			{"-1", "-0.6321205588285576784"},
+			{"-1.000000000000000001", "-0.6321205588285576788"},
+			{"-1.00000000000000001", "-0.6321205588285576821"},
+			{"-1.0000000000000001", "-0.6321205588285577152"},
+			{"-1.000000000000001", "-0.6321205588285580463"},
+			{"-1.00000000000001", "-0.6321205588285613572"},
+			{"-1.0000000000001", "-0.6321205588285944663"},
+			{"-1.000000000001", "-0.6321205588289255578"},
+			{"-1.00000000001", "-0.6321205588322364728"},
+			{"-1.0000000001", "-0.6321205588653456225"},
+			{"-1.000000001", "-0.6321205591964371194"},
+			{"-1.00000001", "-0.6321205625073520717"},
+			{"-1.0000001", "-0.6321205956164999562"},
+			{"-1.000001", "-0.6321209267078149102"},
+			{"-1.00001", "-0.6321242376045754821"},
+			{"-1.0001", "-0.6321573449333389285"},
+			{"-1.001", "-0.6324882543913064500"},
+			{"-1.01", "-0.6357810204284766802"},
+			{"-1.1", "-0.6671289163019204467"},
+
+			// Closer and closer to zero
+			{"-0.1", "-0.0951625819640404268"},
+			{"-0.01", "-0.0099501662508319464"},
+			{"-0.001", "-0.0009995001666250083"},
+			{"-0.0001", "-0.0000999950001666625"},
+			{"-0.00001", "-0.0000099999500001667"},
+			{"-0.000001", "-0.0000009999995000002"},
+			{"-0.0000001", "-0.0000000999999950000"},
+			{"-0.00000001", "-0.0000000099999999500"},
+			{"-0.000000001", "-0.0000000009999999995"},
+			{"-0.0000000001", "-0.0000000001000000000"},
+			{"-0.00000000001", "-0.0000000000100000000"},
+			{"-0.000000000001", "-0.0000000000010000000"},
+			{"-0.0000000000001", "-0.0000000000001000000"},
+			{"-0.00000000000001", "-0.0000000000000100000"},
+			{"-0.000000000000001", "-0.0000000000000010000"},
+			{"-0.0000000000000001", "-0.0000000000000001000"},
+			{"-0.00000000000000001", "-0.0000000000000000100"},
+			{"-0.000000000000000001", "-0.0000000000000000010"},
+			{"-0.0000000000000000001", "-0.0000000000000000001"},
+			{"0", "0"},
+			{"0.0000000000000000001", "0.0000000000000000001"},
+			{"0.000000000000000001", "0.0000000000000000010"},
+			{"0.00000000000000001", "0.0000000000000000100"},
+			{"0.0000000000000001", "0.0000000000000001000"},
+			{"0.000000000000001", "0.0000000000000010000"},
+			{"0.00000000000001", "0.0000000000000100000"},
+			{"0.0000000000001", "0.0000000000001000000"},
+			{"0.000000000001", "0.0000000000010000000"},
+			{"0.00000000001", "0.0000000000100000000"},
+			{"0.0000000001", "0.0000000001000000000"},
+			{"0.000000001", "0.0000000010000000005"},
+			{"0.00000001", "0.0000000100000000500"},
+			{"0.0000001", "0.0000001000000050000"},
+			{"0.000001", "0.0000010000005000002"},
+			{"0.00001", "0.0000100000500001667"},
+			{"0.0001", "0.0001000050001666708"},
+			{"0.001", "0.0010005001667083417"},
+			{"0.01", "0.0100501670841680575"},
+			{"0.1", "0.1051709180756476248"},
+
+			// Closer and closer to one
+			{"0.9", "1.459603111156949664"},
+			{"0.99", "1.691234472349262289"},
+			{"0.999", "1.715564905318566687"},
+			{"0.9999", "1.718010013867155437"},
+			{"0.99999", "1.718254645776674283"},
+			{"0.999999", "1.718279110178575917"},
+			{"0.9999999", "1.718281556630875981"},
+			{"0.99999999", "1.718281801276227087"},
+			{"0.999999999", "1.718281825740763408"},
+			{"0.9999999999", "1.718281828187217053"},
+			{"0.99999999999", "1.718281828431862417"},
+			{"0.999999999999", "1.718281828456326954"},
+			{"0.9999999999999", "1.718281828458773407"},
+			{"0.99999999999999", "1.718281828459018053"},
+			{"0.999999999999999", "1.718281828459042517"},
+			{"0.9999999999999999", "1.718281828459044964"},
+			{"0.99999999999999999", "1.718281828459045208"},
+			{"0.999999999999999999", "1.718281828459045233"},
+			{"0.9999999999999999999", "1.718281828459045235"},
+			{"1", "1.718281828459045235"},
+			{"1.000000000000000001", "1.718281828459045238"},
+			{"1.00000000000000001", "1.718281828459045263"},
+			{"1.0000000000000001", "1.718281828459045507"},
+			{"1.000000000000001", "1.718281828459047954"},
+			{"1.00000000000001", "1.718281828459072418"},
+			{"1.0000000000001", "1.718281828459317064"},
+			{"1.000000000001", "1.718281828461763517"},
+			{"1.00000000001", "1.718281828486228054"},
+			{"1.0000000001", "1.718281828730873418"},
+			{"1.000000001", "1.718281831177327065"},
+			{"1.00000001", "1.718281855641863656"},
+			{"1.0000001", "1.718282100287241673"},
+			{"1.000001", "1.718284546742232836"},
+			{"1.00001", "1.718309011413244370"},
+			{"1.0001", "1.718553670233753340"},
+			{"1.001", "1.721001469881578766"},
+			{"1.01", "1.745601015016916494"},
+			{"1.1", "2.004166023946433112"},
+
+			// Negated powers of ten
+			{"-10000", "-1.000000000000000000"},
+			{"-1000", "-1.000000000000000000"},
+			{"-100", "-1.000000000000000000"},
+			{"-10", "-0.9999546000702375151"},
+			{"-1", "-0.6321205588285576784"},
+			{"-0.1", "-0.0951625819640404268"},
+			{"-0.01", "-0.0099501662508319464"},
+			{"-0.001", "-0.0009995001666250083"},
+			{"-0.0001", "-0.0000999950001666625"},
+			{"-0.00001", "-0.0000099999500001667"},
+			{"-0.000001", "-0.0000009999995000002"},
+			{"-0.0000001", "-0.0000000999999950000"},
+			{"-0.00000001", "-0.0000000099999999500"},
+			{"-0.000000001", "-0.0000000009999999995"},
+			{"-0.0000000001", "-0.0000000001000000000"},
+			{"-0.00000000001", "-0.0000000000100000000"},
+			{"-0.000000000001", "-0.0000000000010000000"},
+			{"-0.0000000000001", "-0.0000000000001000000"},
+			{"-0.00000000000001", "-0.0000000000000100000"},
+			{"-0.000000000000001", "-0.0000000000000010000"},
+			{"-0.0000000000000001", "-0.0000000000000001000"},
+			{"-0.00000000000000001", "-0.0000000000000000100"},
+			{"-0.000000000000000001", "-0.0000000000000000010"},
+			{"-0.0000000000000000001", "-0.0000000000000000001"},
+
+			// Powers of ten
+			{"0.0000000000000000001", "0.0000000000000000001"},
+			{"0.000000000000000001", "0.0000000000000000010"},
+			{"0.00000000000000001", "0.0000000000000000100"},
+			{"0.0000000000000001", "0.0000000000000001000"},
+			{"0.000000000000001", "0.0000000000000010000"},
+			{"0.00000000000001", "0.0000000000000100000"},
+			{"0.0000000000001", "0.0000000000001000000"},
+			{"0.000000000001", "0.0000000000010000000"},
+			{"0.00000000001", "0.0000000000100000000"},
+			{"0.0000000001", "0.0000000001000000000"},
+			{"0.000000001", "0.0000000010000000005"},
+			{"0.00000001", "0.0000000100000000500"},
+			{"0.0000001", "0.0000001000000050000"},
+			{"0.000001", "0.0000010000005000002"},
+			{"0.00001", "0.0000100000500001667"},
+			{"0.0001", "0.0001000050001666708"},
+			{"0.001", "0.0010005001667083417"},
+			{"0.01", "0.0100501670841680575"},
+			{"0.1", "0.1051709180756476248"},
+			{"1", "1.718281828459045235"},
+			{"10", "22025.46579480671652"},
+
+			// Negative numbers
+			{"-101", "-1.000000000000000000"},
+			{"-100", "-1.000000000000000000"},
+			{"-99", "-1.000000000000000000"},
+			{"-50", "-1.000000000000000000"},
+			{"-45", "-1.000000000000000000"},
+			{"-44", "-0.9999999999999999999"},
+			{"-43", "-0.9999999999999999998"},
+
+			// Natural numbers
+			{"1", "1.718281828459045235"},
+			{"2", "6.389056098930650227"},
+			{"3", "19.08553692318766774"},
+			{"4", "53.59815003314423908"},
+			{"5", "147.4131591025766034"},
+			{"6", "402.4287934927351226"},
+			{"7", "1095.633158428458599"},
+			{"8", "2979.957987041728275"},
+			{"9", "8102.083927575384008"},
+			{"10", "22025.46579480671652"},
+			{"11", "59873.14171519781846"},
+			{"12", "162753.7914190039208"},
+			{"13", "442412.3920089205033"},
+			{"14", "1202603.284164776778"},
+			{"15", "3269016.372472110639"},
+			{"16", "8886109.520507872637"},
+			{"17", "24154951.75357529821"},
+			{"18", "65659968.13733051114"},
+			{"19", "178482299.9631872608"},
+			{"20", "485165194.4097902780"},
+			{"21", "1318815733.483214697"},
+			{"22", "3584912845.131591562"},
+			{"23", "9744803445.248902600"},
+			{"24", "26489122128.84347229"},
+			{"25", "72004899336.38587252"},
+			{"26", "195729609427.8387643"},
+			{"27", "532048240600.7986167"},
+			{"28", "1446257064290.475174"},
+			{"29", "3931334297143.042074"},
+			{"30", "10686474581523.46215"},
+			{"31", "29048849665246.42523"},
+			{"32", "78962960182679.69516"},
+			{"33", "214643579785915.0646"},
+			{"34", "583461742527453.8814"},
+			{"35", "1586013452313429.728"},
+			{"36", "4311231547115194.227"},
+			{"37", "11719142372802610.31"},
+			{"38", "31855931757113755.22"},
+			{"39", "86593400423993745.95"},
+			{"40", "235385266837019984.4"},
+			{"41", "639843493530054948.2"},
+			{"42", "1739274941520501046"},
+			{"43", "4727839468229346560"},
+		}
+		for _, tt := range tests {
+			d := MustParse(tt.d)
+			got, err := d.Expm1()
+			if err != nil {
+				t.Errorf("%q.Expm1() failed: %v", d, err)
+				continue
+			}
+			want := MustParse(tt.want)
+			if got != want {
+				t.Errorf("%q.Expm1() = %q, want %q", d, got, want)
+			}
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		tests := map[string]string{
+			"overflow 1": "49",
+			"overflow 2": "50",
+		}
+		for name, d := range tests {
+			t.Run(name, func(t *testing.T) {
+				d := MustParse(d)
+				_, err := d.Expm1()
+				if err == nil {
+					t.Errorf("%q.Expm1() did not fail", d)
 				}
 			})
 		}
@@ -4580,6 +4875,7 @@ func TestDecimal_Log(t *testing.T) {
 			{"0.9", "-0.1053605156578263012"},
 			{"0.99", "-0.0100503358535014412"},
 			{"0.999", "-0.0010005003335835335"},
+			{"0.9999", "-0.0001000050003333583"},
 			{"0.99999", "-0.0000100000500003333"},
 			{"0.999999", "-0.0000010000005000003"},
 			{"0.9999999", "-0.0000001000000050000"},
@@ -4614,6 +4910,27 @@ func TestDecimal_Log(t *testing.T) {
 			{"1.001", "0.0009995003330835332"},
 			{"1.01", "0.0099503308531680828"},
 			{"1.1", "0.0953101798043248600"},
+
+			// Closer and closer to zero
+			{"0.0000000000000000001", "-43.74911676688686800"},
+			{"0.000000000000000001", "-41.44653167389282231"},
+			{"0.00000000000000001", "-39.14394658089877663"},
+			{"0.0000000000000001", "-36.84136148790473094"},
+			{"0.000000000000001", "-34.53877639491068526"},
+			{"0.00000000000001", "-32.23619130191663958"},
+			{"0.0000000000001", "-29.93360620892259389"},
+			{"0.000000000001", "-27.63102111592854821"},
+			{"0.00000000001", "-25.32843602293450252"},
+			{"0.0000000001", "-23.02585092994045684"},
+			{"0.000000001", "-20.72326583694641116"},
+			{"0.00000001", "-18.42068074395236547"},
+			{"0.0000001", "-16.11809565095831979"},
+			{"0.000001", "-13.81551055796427410"},
+			{"0.00001", "-11.51292546497022842"},
+			{"0.0001", "-9.210340371976182736"},
+			{"0.001", "-6.907755278982137052"},
+			{"0.01", "-4.605170185988091368"},
+			{"0.1", "-2.302585092994045684"},
 
 			// Natural numbers
 			{"1", "0"},
@@ -4673,6 +4990,183 @@ func TestDecimal_Log(t *testing.T) {
 				_, err := d.Log()
 				if err == nil {
 					t.Errorf("%q.Log() did not fail", d)
+				}
+			})
+		}
+	})
+}
+
+func TestDecimal_Log1p(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			d, want string
+		}{
+			// Zeros
+			{"0", "0"},
+			{"0.0", "0"},
+			{"0.00", "0"},
+			{"0.000", "0"},
+
+			// Ones
+			{"1", "0.6931471805599453094"},
+			{"1.0", "0.6931471805599453094"},
+			{"1.00", "0.6931471805599453094"},
+			{"1.000", "0.6931471805599453094"},
+
+			// Closer and closer to one
+			{"0.9", "0.6418538861723947760"},
+			{"0.99", "0.6881346387364010274"},
+			{"0.999", "0.6926470555182630115"},
+			{"0.9999", "0.6930971793099036412"},
+			{"0.99999", "0.6931421805474452678"},
+			{"0.999999", "0.6931466805598203094"},
+			{"0.9999999", "0.6931471305599440594"},
+			{"0.99999999", "0.6931471755599452969"},
+			{"0.999999999", "0.6931471800599453093"},
+			{"0.9999999999", "0.6931471805099453094"},
+			{"0.99999999999", "0.6931471805549453094"},
+			{"0.999999999999", "0.6931471805594453094"},
+			{"0.9999999999999", "0.6931471805598953094"},
+			{"0.99999999999999", "0.6931471805599403094"},
+			{"0.999999999999999", "0.6931471805599448094"},
+			{"0.9999999999999999", "0.6931471805599452594"},
+			{"0.99999999999999999", "0.6931471805599453044"},
+			{"0.999999999999999999", "0.6931471805599453089"},
+			{"0.9999999999999999999", "0.6931471805599453094"},
+			{"1", "0.6931471805599453094"},
+			{"1.000000000000000001", "0.6931471805599453099"},
+			{"1.00000000000000001", "0.6931471805599453144"},
+			{"1.0000000000000001", "0.6931471805599453594"},
+			{"1.000000000000001", "0.6931471805599458094"},
+			{"1.00000000000001", "0.6931471805599503094"},
+			{"1.0000000000001", "0.6931471805599953094"},
+			{"1.000000000001", "0.6931471805604453094"},
+			{"1.00000000001", "0.6931471805649453094"},
+			{"1.0000000001", "0.6931471806099453094"},
+			{"1.000000001", "0.6931471810599453093"},
+			{"1.00000001", "0.6931471855599452969"},
+			{"1.0000001", "0.6931472305599440594"},
+			{"1.000001", "0.6931476805598203095"},
+			{"1.00001", "0.6931521805474453511"},
+			{"1.0001", "0.6931971793099869745"},
+			{"1.001", "0.6936470556015963573"},
+			{"1.01", "0.6981347220709843830"},
+			{"1.1", "0.7419373447293773125"},
+
+			// Closer and closer to zero
+			{"-0.1", "-0.1053605156578263012"},
+			{"-0.01", "-0.0100503358535014412"},
+			{"-0.001", "-0.0010005003335835335"},
+			{"-0.0001", "-0.0001000050003333583"},
+			{"-0.00001", "-0.0000100000500003333"},
+			{"-0.000001", "-0.0000010000005000003"},
+			{"-0.0000001", "-0.0000001000000050000"},
+			{"-0.00000001", "-0.0000000100000000500"},
+			{"-0.000000001", "-0.0000000010000000005"},
+			{"-0.0000000001", "-0.0000000001000000000"},
+			{"-0.00000000001", "-0.0000000000100000000"},
+			{"-0.000000000001", "-0.0000000000010000000"},
+			{"-0.0000000000001", "-0.0000000000001000000"},
+			{"-0.00000000000001", "-0.0000000000000100000"},
+			{"-0.000000000000001", "-0.0000000000000010000"},
+			{"-0.0000000000000001", "-0.0000000000000001000"},
+			{"-0.00000000000000001", "-0.0000000000000000100"},
+			{"-0.000000000000000001", "-0.0000000000000000010"},
+			{"-0.0000000000000000001", "-0.0000000000000000001"},
+			{"0", "0"},
+			{"0.0000000000000000001", "0.0000000000000000001"},
+			{"0.000000000000000001", "0.0000000000000000010"},
+			{"0.00000000000000001", "0.0000000000000000100"},
+			{"0.0000000000000001", "0.0000000000000001000"},
+			{"0.000000000000001", "0.0000000000000010000"},
+			{"0.00000000000001", "0.0000000000000100000"},
+			{"0.0000000000001", "0.0000000000001000000"},
+			{"0.000000000001", "0.0000000000010000000"},
+			{"0.00000000001", "0.0000000000100000000"},
+			{"0.0000000001", "0.0000000001000000000"},
+			{"0.000000001", "0.0000000009999999995"},
+			{"0.00000001", "0.0000000099999999500"},
+			{"0.0000001", "0.0000000999999950000"},
+			{"0.000001", "0.0000009999995000003"},
+			{"0.00001", "0.0000099999500003333"},
+			{"0.0001", "0.0000999950003333083"},
+			{"0.001", "0.0009995003330835332"},
+			{"0.01", "0.0099503308531680828"},
+			{"0.1", "0.0953101798043248600"},
+
+			// Closer and closer to negative one
+			{"-0.9999999999999999999", "-43.74911676688686800"},
+			{"-0.999999999999999999", "-41.44653167389282231"},
+			{"-0.99999999999999999", "-39.14394658089877663"},
+			{"-0.9999999999999999", "-36.84136148790473094"},
+			{"-0.999999999999999", "-34.53877639491068526"},
+			{"-0.99999999999999", "-32.23619130191663958"},
+			{"-0.9999999999999", "-29.93360620892259389"},
+			{"-0.999999999999", "-27.63102111592854821"},
+			{"-0.99999999999", "-25.32843602293450252"},
+			{"-0.9999999999", "-23.02585092994045684"},
+			{"-0.999999999", "-20.72326583694641116"},
+			{"-0.99999999", "-18.42068074395236547"},
+			{"-0.9999999", "-16.11809565095831979"},
+			{"-0.999999", "-13.81551055796427410"},
+			{"-0.99999", "-11.51292546497022842"},
+			{"-0.9999", "-9.210340371976182736"},
+			{"-0.999", "-6.907755278982137052"},
+			{"-0.99", "-4.605170185988091368"},
+			{"-0.9", "-2.302585092994045684"},
+
+			// Natural numbers
+			{"0", "0"},
+			{"1", "0.6931471805599453094"},
+			{"2", "1.098612288668109691"},
+			{"3", "1.386294361119890619"},
+			{"4", "1.609437912434100375"},
+			{"5", "1.791759469228055001"},
+			{"6", "1.945910149055313305"},
+			{"7", "2.079441541679835928"},
+			{"8", "2.197224577336219383"},
+			{"9", "2.302585092994045684"},
+			{"10", "2.397895272798370544"},
+			{"11", "2.484906649788000310"},
+			{"12", "2.564949357461536736"},
+			{"13", "2.639057329615258615"},
+			{"14", "2.708050201102210066"},
+			{"15", "2.772588722239781238"},
+			{"16", "2.833213344056216080"},
+			{"17", "2.890371757896164692"},
+			{"18", "2.944438979166440460"},
+			{"19", "2.995732273553990993"},
+			{"20", "3.044522437723422997"},
+
+			// Smallest and largest numbers
+			{"0.0000000000000000001", "0.0000000000000000001"},
+			{"9999999999999999999", "43.74911676688686800"},
+		}
+
+		for _, tt := range tests {
+			d := MustParse(tt.d)
+			got, err := d.Log1p()
+			if err != nil {
+				t.Errorf("%q.Log1p() failed: %v", d, err)
+				continue
+			}
+			want := MustParse(tt.want)
+			if got != want {
+				t.Errorf("%q.Log1p() = %q, want %q", d, got, want)
+			}
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		tests := map[string]string{
+			"negative": "-1",
+		}
+		for name, d := range tests {
+			t.Run(name, func(t *testing.T) {
+				d := MustParse(d)
+				_, err := d.Log1p()
+				if err == nil {
+					t.Errorf("%q.Log1p() did not fail", d)
 				}
 			})
 		}
@@ -4859,6 +5353,7 @@ func TestDecimal_Log2(t *testing.T) {
 			{"0.9", "-0.1520030934450499850"},
 			{"0.99", "-0.0144995696951150766"},
 			{"0.999", "-0.0014434168696687174"},
+			{"0.9999", "-0.0001442767180450352"},
 			{"0.99999", "-0.0000144270225441226"},
 			{"0.999999", "-0.0000014426957622370"},
 			{"0.9999999", "-0.0000001442695113024"},
@@ -5048,6 +5543,7 @@ func TestDecimal_Log10(t *testing.T) {
 			{"0.9", "-0.0457574905606751254"},
 			{"0.99", "-0.0043648054024500847"},
 			{"0.999", "-0.0004345117740176913"},
+			{"0.9999", "-0.0000434316198075104"},
 			{"0.99999", "-0.0000043429665339014"},
 			{"0.999999", "-0.0000004342946990506"},
 			{"0.9999999", "-0.0000000434294503618"},
@@ -5828,26 +6324,26 @@ func FuzzParse(f *testing.F) {
 			if err != nil {
 				continue
 			}
-			f.Add(d.String(), s)
+			f.Add(d.bytes(), s)
 		}
 	}
 
 	f.Fuzz(
-		func(t *testing.T, num string, scale int) {
-			got, err := parseFint(num, scale)
+		func(t *testing.T, text []byte, scale int) {
+			got, err := parseFint(text, scale)
 			if err != nil {
 				t.Skip()
 				return
 			}
 
-			want, err := parseBint(num, scale)
+			want, err := parseBint(text, scale)
 			if err != nil {
-				t.Errorf("parseBint(%q) failed: %v", num, err)
+				t.Errorf("parseBint(%q) failed: %v", text, err)
 				return
 			}
 
 			if got.CmpTotal(want) != 0 {
-				t.Errorf("parseBint(%q) = %q, whereas parseFint(%q) = %q", num, want, num, got)
+				t.Errorf("parseBint(%q) = %q, whereas parseFint(%q) = %q", text, want, text, got)
 			}
 		},
 	)
@@ -5873,18 +6369,20 @@ func FuzzDecimal_String_Parse(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, neg bool, scale int, coef uint64) {
-			want, err := newSafe(neg, fint(coef), scale)
+			d, err := newSafe(neg, fint(coef), scale)
 			if err != nil {
 				t.Skip()
 				return
 			}
 
-			s := want.String()
+			s := d.String()
 			got, err := Parse(s)
 			if err != nil {
 				t.Errorf("Parse(%q) failed: %v", s, err)
 				return
 			}
+
+			want := d
 
 			if got.CmpTotal(want) != 0 {
 				t.Errorf("Parse(%q) = %v, want %v", s, got, want)
@@ -5901,21 +6399,25 @@ func FuzzDecimal_IEEE_ParseIEEE(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, neg bool, scale int, coef uint64) {
-			want, err := newSafe(neg, fint(coef), scale)
+			d, err := newSafe(neg, fint(coef), scale)
 			if err != nil {
 				t.Skip()
 				return
 			}
 
-			data := want.ieeeDecimal128()
-			got, err := parseIEEEDecimal128(data)
+			b := d.ieeeDecimal128()
+			got, err := parseIEEEDecimal128(b)
 			if err != nil {
-				t.Errorf("parseIEEEDecimal128(% x) failed: %v", data, err)
+				t.Logf("%q.ieeeDecimal128() = % x", d, b)
+				t.Errorf("parseIEEEDecimal128(% x) failed: %v", b, err)
 				return
 			}
 
+			want := d
+
 			if got.CmpTotal(want) != 0 {
-				t.Errorf("parseIEEEDecimal128(% x) = %v, want %v", data, got, want)
+				t.Logf("%q.ieeeDecimal128() = % x", d, b)
+				t.Errorf("parseIEEEDecimal128(% x) = %v, want %v", b, got, want)
 				return
 			}
 		},
@@ -5929,26 +6431,30 @@ func FuzzDecimal_Binary_Text(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, neg bool, scale int, coef uint64) {
-			want, err := newSafe(neg, fint(coef), scale)
+			d, err := newSafe(neg, fint(coef), scale)
 			if err != nil {
 				t.Skip()
 				return
 			}
 
-			b, err := want.MarshalBinary()
+			b, err := d.MarshalBinary()
 			if err != nil {
-				t.Errorf("%q.MarshalBinary() failed: %v", want, err)
+				t.Errorf("%q.MarshalBinary() failed: %v", d, err)
 				return
 			}
 
 			var got Decimal
 			err = got.UnmarshalText(b)
 			if err != nil {
+				t.Logf("%q.MarshalBinary() = % x", d, b)
 				t.Errorf("UnmarshalText(% x) failed: %v", b, err)
 				return
 			}
 
+			want := d
+
 			if got.CmpTotal(want) != 0 {
+				t.Logf("%q.MarshalBinary() = % x", d, b)
 				t.Errorf("UnmarshalText(% x) = %v, want %v", b, got, want)
 				return
 			}
@@ -5963,26 +6469,30 @@ func FuzzDecimal_Text_Binary(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, neg bool, scale int, coef uint64) {
-			want, err := newSafe(neg, fint(coef), scale)
+			d, err := newSafe(neg, fint(coef), scale)
 			if err != nil {
 				t.Skip()
 				return
 			}
 
-			b, err := want.MarshalText()
+			b, err := d.MarshalText()
 			if err != nil {
-				t.Errorf("%q.MarshalText() failed: %v", want, err)
+				t.Errorf("%q.MarshalText() failed: %v", d, err)
 				return
 			}
 
 			var got Decimal
 			err = got.UnmarshalBinary(b)
 			if err != nil {
+				t.Logf("%q.MarshalText() = % x", d, b)
 				t.Errorf("UnmarshalBinary(% x) failed: %v", b, err)
 				return
 			}
 
+			want := d
+
 			if got.CmpTotal(want) != 0 {
+				t.Logf("%q.MarshalText() = % x", d, b)
 				t.Errorf("UnmarshalBinary(% x) = %v, want %v", b, got, want)
 				return
 			}
@@ -5999,25 +6509,28 @@ func FuzzDecimal_Int64_NewFromInt64(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, dneg bool, dscale int, dcoef uint64, scale int) {
-			want, err := newSafe(dneg, fint(dcoef), dscale)
+			d, err := newSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
 			}
 
-			w, f, ok := want.Int64(scale)
+			w, f, ok := d.Int64(scale)
 			if !ok {
 				t.Skip()
 				return
 			}
 			got, err := NewFromInt64(w, f, scale)
 			if err != nil {
+				t.Logf("%q.Int64(%v) = (%v, %v)", d, scale, w, f)
 				t.Errorf("NewFromInt64(%v, %v, %v) failed: %v", w, f, scale, err)
 				return
 			}
 
-			want = want.Round(scale)
+			want := d.Round(scale)
+
 			if got.Cmp(want) != 0 {
+				t.Logf("%q.Int64(%v) = (%v, %v)", d, scale, w, f)
 				t.Errorf("NewFromInt64(%v, %v, %v) = %v, want %v", w, f, scale, got, want)
 				return
 			}
@@ -6032,23 +6545,25 @@ func FuzzDecimal_Float64_NewFromFloat64(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, dneg bool, dscale int, dcoef uint64) {
-			want, err := newSafe(dneg, fint(dcoef), dscale)
-			if err != nil || want.Prec() > 17 {
+			d, err := newSafe(dneg, fint(dcoef), dscale)
+			if err != nil || d.Prec() > 17 {
 				t.Skip()
 				return
 			}
 
-			f, ok := want.Float64()
+			f, ok := d.Float64()
 			if !ok {
-				t.Errorf("%q.Float64() failed", want)
+				t.Errorf("%q.Float64() failed", d)
 				return
 			}
 			got, err := NewFromFloat64(f)
 			if err != nil {
-				t.Logf("%q.Float64() = %v", want, f)
+				t.Logf("%q.Float64() = %v", d, f)
 				t.Errorf("NewFromFloat64(%v) failed: %v", f, err)
 				return
 			}
+
+			want := d
 
 			if got.Cmp(want) != 0 {
 				t.Errorf("NewFromFloat64(%v) = %v, want %v", f, got, want)
@@ -6082,14 +6597,7 @@ func FuzzDecimal_Mul(f *testing.F) {
 
 			got, err := d.mulFint(e, scale)
 			if err != nil {
-				switch {
-				case errors.Is(err, errDecimalOverflow):
-					t.Skip() // Decimal overflow is an expected error in fast multiplication
-				case errors.Is(err, errScaleRange):
-					t.Skip() // Scale range is an expected error in fast multiplication
-				default:
-					t.Errorf("mulFint(%q, %q, %v) failed: %v", d, e, scale, err)
-				}
+				t.Skip()
 				return
 			}
 
@@ -6176,14 +6684,7 @@ func FuzzDecimal_AddMul(f *testing.F) {
 
 			got, err := d.addMulFint(e, g, scale)
 			if err != nil {
-				switch {
-				case errors.Is(err, errDecimalOverflow):
-					t.Skip() // Decimal overflow is an expected error in fast fused multiply-addition
-				case errors.Is(err, errScaleRange):
-					t.Skip() // Scale range is an expected error in fast fused multiply-addition
-				default:
-					t.Errorf("addMulFint(%q, %q, %q, %v) failed: %v", d, e, g, scale, err)
-				}
+				t.Skip()
 				return
 			}
 
@@ -6314,18 +6815,7 @@ func FuzzDecimal_AddQuo(f *testing.F) {
 
 			got, err := d.addQuoFint(e, g, scale)
 			if err != nil {
-				switch {
-				case errors.Is(err, errDecimalOverflow):
-					t.Skip() // Decimal overflow is an expected error in fast fused quotient-addition
-				case errors.Is(err, errDivisionByZero):
-					t.Skip() // Division by zero is an expected error in fast fused quotient-addition
-				case errors.Is(err, errInexactDivision):
-					t.Skip() // Inexact division is an expected error in fast fused quotient-addition
-				case errors.Is(err, errScaleRange):
-					t.Skip() // Scale range is an expected error in fast fused quotient-addition
-				default:
-					t.Errorf("addQuoFint(%q, %q, %q, %v) failed: %v", d, e, g, scale, err)
-				}
+				t.Skip()
 				return
 			}
 
@@ -6449,14 +6939,7 @@ func FuzzDecimal_Add(f *testing.F) {
 
 			got, err := d.addFint(e, scale)
 			if err != nil {
-				switch {
-				case errors.Is(err, errDecimalOverflow):
-					t.Skip() // Decimal overflow is an expected error in fast addition
-				case errors.Is(err, errScaleRange):
-					t.Skip() // Scale range is an expected error in fast addition
-				default:
-					t.Errorf("addFint(%q, %q, %v) failed: %v", d, e, scale, err)
-				}
+				t.Skip()
 				return
 			}
 
@@ -6536,18 +7019,7 @@ func FuzzDecimal_Quo(f *testing.F) {
 
 			got, err := d.quoFint(e, scale)
 			if err != nil {
-				switch {
-				case errors.Is(err, errDecimalOverflow):
-					t.Skip() // Decimal overflow is an expected error in fast division
-				case errors.Is(err, errDivisionByZero):
-					t.Skip() // Division by zero is an expected error in fast division
-				case errors.Is(err, errInexactDivision):
-					t.Skip() // Inexact division is an expected error in fast division
-				case errors.Is(err, errScaleRange):
-					t.Skip() // Scale range is an expected error in fast division
-				default:
-					t.Errorf("quoFint(%q, %q, %v) failed: %v", d, e, scale, err)
-				}
+				t.Skip()
 				return
 			}
 
@@ -6586,14 +7058,7 @@ func FuzzDecimal_QuoRem(f *testing.F) {
 
 			gotQuo, gotRem, err := d.quoRemFint(e)
 			if err != nil {
-				switch {
-				case errors.Is(err, errDecimalOverflow):
-					t.Skip() // Decimal overflow is an expected error in fast division
-				case errors.Is(err, errDivisionByZero):
-					t.Skip() // Division by zero is an expected error in fast division
-				default:
-					t.Errorf("quoRemFint(%q, %q) failed: %v", d, e, err)
-				}
+				t.Skip()
 				return
 			}
 			if gotQuo.Scale() != 0 {
@@ -6641,11 +7106,7 @@ func FuzzDecimal_Cmp(f *testing.F) {
 
 			got, err := d.cmpFint(e)
 			if err != nil {
-				if errors.Is(err, errDecimalOverflow) {
-					t.Skip() // Decimal overflow is an expected error in fast comparison
-				} else {
-					t.Errorf("cmpFint(%q, %q) failed: %v", d, e, err)
-				}
+				t.Skip()
 				return
 			}
 
@@ -6666,22 +7127,24 @@ func FuzzDecimal_Sqrt_PowInt(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, neg bool, scale int, coef uint64) {
-			want, err := newSafe(neg, fint(coef), scale)
+			d, err := newSafe(neg, fint(coef), scale)
 			if err != nil {
 				t.Skip()
 				return
 			}
 
-			d, err := want.Sqrt()
+			got, err := d.Sqrt()
 			if err != nil {
 				t.Skip()
 				return
 			}
-			got, err := d.PowInt(2)
+			got, err = got.PowInt(2)
 			if err != nil {
 				t.Skip()
 				return
 			}
+
+			want := d
 
 			if cmp, err := cmpULP(got, want, 3); err != nil {
 				t.Errorf("cmpULP(%q, %q) failed: %v", got, want, err)
@@ -6693,7 +7156,7 @@ func FuzzDecimal_Sqrt_PowInt(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Sqrt_Pow(f *testing.F) {
+func FuzzDecimal_Pow_Sqrt(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -6706,20 +7169,21 @@ func FuzzDecimal_Sqrt_Pow(f *testing.F) {
 				return
 			}
 
-			want, err := d.Sqrt()
+			half := MustNew(5, 1)
+			got, err := d.Pow(half)
 			if err != nil {
 				t.Skip()
 				return
 			}
-			power := MustNew(5, 1)
-			got, err := d.Pow(power)
+
+			want, err := d.Sqrt()
 			if err != nil {
-				t.Errorf("%q.Pow(%v) failed: %v", d, power, err)
+				t.Errorf("%q.Sqrt() failed: %v", d, err)
 				return
 			}
 
 			if got.Cmp(want) != 0 {
-				t.Errorf("%q.Pow(%v) = %q, whereas %q.Sqrt() = %q", d, power, got, d, want)
+				t.Errorf("%q.Pow(%v) = %q, whereas %q.Sqrt() = %q", d, half, got, d, want)
 				return
 			}
 		},
@@ -6746,14 +7210,15 @@ func FuzzDecimal_Pow_PowInt(f *testing.F) {
 				return
 			}
 
-			want, err := d.PowInt(power)
+			got, err := d.Pow(e)
 			if err != nil {
 				t.Skip()
 				return
 			}
-			got, err := d.Pow(e)
+
+			want, err := d.PowInt(power)
 			if err != nil {
-				t.Errorf("%q.Pow(%v) failed: %v", d, power, err)
+				t.Errorf("%q.PowInt(%v) failed: %v", d, power, err)
 				return
 			}
 
@@ -6765,7 +7230,7 @@ func FuzzDecimal_Pow_PowInt(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Exp_Pow(f *testing.F) {
+func FuzzDecimal_Pow_Exp(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
@@ -6778,14 +7243,15 @@ func FuzzDecimal_Exp_Pow(f *testing.F) {
 				return
 			}
 
-			want, err := d.Exp()
+			got, err := E.Pow(d)
 			if err != nil {
 				t.Skip()
 				return
 			}
-			got, err := E.Pow(d)
+
+			want, err := d.Exp()
 			if err != nil {
-				t.Errorf("%v.Pow(%q) failed: %v", E, d, err)
+				t.Errorf("%q.Exp() failed: %v", d, err)
 				return
 			}
 
@@ -6799,35 +7265,119 @@ func FuzzDecimal_Exp_Pow(f *testing.F) {
 	)
 }
 
-func FuzzDecimal_Exp_Log(f *testing.F) {
+func FuzzDecimal_Log_Exp(f *testing.F) {
 	for _, d := range corpus {
 		f.Add(d.neg, d.scale, d.coef)
 	}
 
 	f.Fuzz(
 		func(t *testing.T, neg bool, scale int, coef uint64) {
-			want, err := newSafe(neg, fint(coef), scale)
+			d, err := newSafe(neg, fint(coef), scale)
 			if err != nil {
 				t.Skip()
 				return
 			}
 
-			d, err := want.Log()
+			got, err := d.Log()
 			if err != nil {
 				t.Skip()
 				return
 			}
-			got, err := d.Exp()
+			got, err = got.Exp()
 			if err != nil {
 				t.Skip()
 				return
 			}
+
+			want := d
 
 			if cmp, err := cmpULP(got, want, 70); err != nil {
 				t.Errorf("cmpULP(%q, %q) failed: %v", got, want, err)
 				return
 			} else if cmp != 0 {
 				t.Errorf("%q.Log().Exp() = %q, want %q", want, got, want)
+				return
+			}
+		},
+	)
+}
+
+func FuzzDecimal_Expm1_Exp(f *testing.F) {
+	for _, d := range corpus {
+		f.Add(d.neg, d.scale, d.coef)
+	}
+
+	f.Fuzz(
+		func(t *testing.T, neg bool, scale int, coef uint64) {
+			d, err := newSafe(neg, fint(coef), scale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			got, err := d.Exp()
+			if err != nil {
+				t.Skip()
+				return
+			}
+			got, err = got.Sub(One)
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			want, err := d.Expm1()
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			if cmp, err := cmpULP(got, want, 5); err != nil {
+				t.Errorf("cmpULP(%q, %q) failed: %v", got, want, err)
+				return
+			} else if cmp != 0 {
+				t.Errorf("%q.Exp().Sub(1) = %q, whereas %q.Expm1() = %q", d, got, d, want)
+				return
+			}
+		},
+	)
+}
+
+func FuzzDecimal_Log1p_Log(f *testing.F) {
+	for _, d := range corpus {
+		f.Add(d.neg, d.scale, d.coef)
+	}
+
+	f.Fuzz(
+		func(t *testing.T, neg bool, scale int, coef uint64) {
+			d, err := newSafe(neg, fint(coef), scale)
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			got, err := d.Add(One)
+			if err != nil {
+				t.Skip()
+				return
+			}
+			got, err = got.Log()
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			want, err := d.Log1p()
+			if err != nil {
+				t.Skip()
+				return
+			}
+
+			if cmp, err := cmpULP(got, want, 5); err != nil {
+				t.Errorf("cmpULP(%q, %q) failed: %v", got, want, err)
+				return
+			} else if cmp != 0 {
+				t.Errorf("%q.Add(1).Log() = %q, whereas %q.Log1p() = %q", d, got, d, want)
 				return
 			}
 		},
@@ -6877,11 +7427,7 @@ func FuzzDecimal_Sub_Cmp(f *testing.F) {
 
 			f, err := d.Sub(e)
 			if err != nil {
-				if errors.Is(err, errDecimalOverflow) {
-					t.Skip() // Decimal overflow is an expected error in subtraction
-				} else {
-					t.Errorf("%q.Sub(%q) failed: %v", d, e, err)
-				}
+				t.Skip()
 				return
 			}
 			got := f.Sign()
@@ -6937,20 +7483,22 @@ func FuzzDecimal_Pad(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, dneg bool, dscale int, dcoef uint64, scale int) {
-			want, err := newSafe(dneg, fint(dcoef), dscale)
+			d, err := newSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
 			}
 
-			got := want.Pad(scale)
+			got := d.Pad(scale)
+
+			want := d
 
 			if got.Cmp(want) != 0 {
-				t.Errorf("%q.Pad(%v) = %q", want, scale, got)
+				t.Errorf("%q.Pad(%v) = %q", d, scale, got)
 				return
 			}
 			if got.Scale() > MaxScale {
-				t.Errorf("%q.Pad(%v).Scale() = %v", want, scale, got.Scale())
+				t.Errorf("%q.Pad(%v).Scale() = %v", d, scale, got.Scale())
 				return
 			}
 		},
@@ -6966,20 +7514,22 @@ func FuzzDecimal_Trim(f *testing.F) {
 
 	f.Fuzz(
 		func(t *testing.T, dneg bool, dscale int, dcoef uint64, scale int) {
-			want, err := newSafe(dneg, fint(dcoef), dscale)
+			d, err := newSafe(dneg, fint(dcoef), dscale)
 			if err != nil {
 				t.Skip()
 				return
 			}
 
-			got := want.Trim(scale)
+			got := d.Trim(scale)
+
+			want := d
 
 			if got.Cmp(want) != 0 {
-				t.Errorf("%q.Trim(%v) = %q", want, scale, got)
+				t.Errorf("%q.Trim(%v) = %q", d, scale, got)
 				return
 			}
 			if got.Scale() < MinScale {
-				t.Errorf("%q.Trim(%v).Scale() = %v", want, scale, got.Scale())
+				t.Errorf("%q.Trim(%v).Scale() = %v", d, scale, got.Scale())
 				return
 			}
 		},

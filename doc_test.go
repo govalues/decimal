@@ -266,30 +266,6 @@ func ExampleDecimal_String() {
 	// Output: 1234567890.123456789
 }
 
-func unmarshalGOB(data []byte) (decimal.Decimal, error) {
-	var d decimal.Decimal
-	dec := gob.NewDecoder(bytes.NewReader(data))
-	err := dec.Decode(&d)
-	if err != nil {
-		return decimal.Decimal{}, err
-	}
-	return d, nil
-}
-
-func marshalGOB(s string) ([]byte, error) {
-	d, err := decimal.Parse(s)
-	if err != nil {
-		return nil, err
-	}
-	var data bytes.Buffer
-	enc := gob.NewEncoder(&data)
-	err = enc.Encode(d)
-	if err != nil {
-		return nil, err
-	}
-	return data.Bytes(), nil
-}
-
 func ExampleDecimal_UnmarshalBinary_gob() {
 	data := []byte{
 		0x12, 0x7f, 0x06, 0x01,
@@ -305,11 +281,46 @@ func ExampleDecimal_UnmarshalBinary_gob() {
 	// 5.67 <nil>
 }
 
+func unmarshalGOB(data []byte) (decimal.Decimal, error) {
+	var d decimal.Decimal
+	dec := gob.NewDecoder(bytes.NewReader(data))
+	err := dec.Decode(&d)
+	if err != nil {
+		return decimal.Decimal{}, err
+	}
+	return d, nil
+}
+
+func ExampleDecimal_AppendBinary() {
+	d := decimal.MustParse("5.67")
+	var data []byte
+	data = append(data, 0x04)
+	data, err := d.AppendBinary(data)
+	data = append(data, 0x00)
+	fmt.Printf("% x %v\n", data, err)
+	// Output:
+	// 04 35 2e 36 37 00 <nil>
+}
+
 func ExampleDecimal_MarshalBinary_gob() {
 	data, err := marshalGOB("5.67")
 	fmt.Printf("[% x] %v\n", data, err)
 	// Output:
 	// [12 7f 06 01 01 07 44 65 63 69 6d 61 6c 01 ff 80 00 00 00 08 ff 80 00 04 35 2e 36 37] <nil>
+}
+
+func marshalGOB(s string) ([]byte, error) {
+	d, err := decimal.Parse(s)
+	if err != nil {
+		return nil, err
+	}
+	var data bytes.Buffer
+	enc := gob.NewEncoder(&data)
+	err = enc.Encode(d)
+	if err != nil {
+		return nil, err
+	}
+	return data.Bytes(), nil
 }
 
 func ExampleDecimal_Float64() {
@@ -363,17 +374,37 @@ func ExampleDecimal_MarshalBSONValue_bson() {
 	// 19 [37 02 00 00 00 00 00 00 00 00 00 00 00 00 3c 30] <nil>
 }
 
-type Object struct {
-	Number decimal.Decimal `json:"number"`
+type Account struct {
+	Balance decimal.Decimal `json:"balance"`
 }
 
-func unmarshalJSON(s string) (Object, error) {
-	var o Object
-	err := json.Unmarshal([]byte(s), &o)
+func ExampleDecimal_UnmarshalJSON_json() {
+	fmt.Println(unmarshalJSON(`{"balance":"5.67"}`))
+	fmt.Println(unmarshalJSON(`{"balance":"-5.67"}`))
+	fmt.Println(unmarshalJSON(`{"balance":5.67e-5}`))
+	fmt.Println(unmarshalJSON(`{"balance":5.67e5}`))
+	// Output:
+	// {5.67} <nil>
+	// {-5.67} <nil>
+	// {0.0000567} <nil>
+	// {567000} <nil>
+}
+
+func unmarshalJSON(s string) (Account, error) {
+	var a Account
+	err := json.Unmarshal([]byte(s), &a)
 	if err != nil {
-		return Object{}, err
+		return Account{}, err
 	}
-	return o, nil
+	return a, nil
+}
+
+func ExampleDecimal_MarshalJSON_json() {
+	fmt.Println(marshalJSON("5.67"))
+	fmt.Println(marshalJSON("-5.67"))
+	// Output:
+	// {"balance":"5.67"} <nil>
+	// {"balance":"-5.67"} <nil>
 }
 
 func marshalJSON(s string) (string, error) {
@@ -381,65 +412,44 @@ func marshalJSON(s string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	data, err := json.Marshal(Object{Number: d})
+	data, err := json.Marshal(Account{Balance: d})
 	if err != nil {
 		return "", err
 	}
 	return string(data), nil
 }
 
-func ExampleDecimal_UnmarshalJSON_json() {
-	fmt.Println(unmarshalJSON(`{"number":"5.67"}`))
-	fmt.Println(unmarshalJSON(`{"number":"-5.67"}`))
-	fmt.Println(unmarshalJSON(`{"number":5.67e-5}`))
-	fmt.Println(unmarshalJSON(`{"number":5.67e5}`))
-	// Output:
-	// {5.67} <nil>
-	// {-5.67} <nil>
-	// {0.0000567} <nil>
-	// {567000} <nil>
-}
-
-func ExampleDecimal_MarshalJSON_json() {
-	fmt.Println(marshalJSON("5.67"))
-	fmt.Println(marshalJSON("-5.67"))
-	// Output:
-	// {"number":"5.67"} <nil>
-	// {"number":"-5.67"} <nil>
-}
-
-type Entity struct {
-	Number decimal.Decimal `xml:"Number"`
-}
-
-func unmarshalXML(s string) (Entity, error) {
-	var e Entity
-	err := xml.Unmarshal([]byte(s), &e)
-	return e, err
-}
-
-func marshalXML(s string) (string, error) {
-	d, err := decimal.Parse(s)
-	if err != nil {
-		return "", err
-	}
-	data, err := xml.Marshal(Entity{Number: d})
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
+type Transaction struct {
+	Amount decimal.Decimal `xml:"Amount"`
 }
 
 func ExampleDecimal_UnmarshalText_xml() {
-	fmt.Println(unmarshalXML(`<Entity><Number>5.67</Number></Entity>`))
-	fmt.Println(unmarshalXML(`<Entity><Number>-5.67</Number></Entity>`))
-	fmt.Println(unmarshalXML(`<Entity><Number>5.67e-5</Number></Entity>`))
-	fmt.Println(unmarshalXML(`<Entity><Number>5.67e5</Number></Entity>`))
+	fmt.Println(unmarshalXML(`<Transaction><Amount>5.67</Amount></Transaction>`))
+	fmt.Println(unmarshalXML(`<Transaction><Amount>-5.67</Amount></Transaction>`))
+	fmt.Println(unmarshalXML(`<Transaction><Amount>5.67e-5</Amount></Transaction>`))
+	fmt.Println(unmarshalXML(`<Transaction><Amount>5.67e5</Amount></Transaction>`))
 	// Output:
 	// {5.67} <nil>
 	// {-5.67} <nil>
 	// {0.0000567} <nil>
 	// {567000} <nil>
+}
+
+func unmarshalXML(s string) (Transaction, error) {
+	var t Transaction
+	err := xml.Unmarshal([]byte(s), &t)
+	return t, err
+}
+
+func ExampleDecimal_AppendText() {
+	var text []byte
+	d := decimal.MustParse("5.67")
+	text = append(text, "<Decimal>"...)
+	text, err := d.AppendText(text)
+	text = append(text, "</Decimal>"...)
+	fmt.Printf("%s %v\n", text, err)
+	// Output:
+	// <Decimal>5.67</Decimal> <nil>
 }
 
 func ExampleDecimal_MarshalText_xml() {
@@ -448,10 +458,22 @@ func ExampleDecimal_MarshalText_xml() {
 	fmt.Println(marshalXML("5.67e-5"))
 	fmt.Println(marshalXML("5.67e5"))
 	// Output:
-	// <Entity><Number>5.67</Number></Entity> <nil>
-	// <Entity><Number>-5.67</Number></Entity> <nil>
-	// <Entity><Number>0.0000567</Number></Entity> <nil>
-	// <Entity><Number>567000</Number></Entity> <nil>
+	// <Transaction><Amount>5.67</Amount></Transaction> <nil>
+	// <Transaction><Amount>-5.67</Amount></Transaction> <nil>
+	// <Transaction><Amount>0.0000567</Amount></Transaction> <nil>
+	// <Transaction><Amount>567000</Amount></Transaction> <nil>
+}
+
+func marshalXML(s string) (string, error) {
+	d, err := decimal.Parse(s)
+	if err != nil {
+		return "", err
+	}
+	data, err := xml.Marshal(Transaction{Amount: d})
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 func ExampleDecimal_Scan() {
@@ -680,6 +702,19 @@ func ExampleDecimal_Exp() {
 	// 10.00000000000000000 <nil>
 }
 
+func ExampleDecimal_Expm1() {
+	d := decimal.MustParse("-2.302585092994045684")
+	e := decimal.MustParse("0")
+	f := decimal.MustParse("2.302585092994045684")
+	fmt.Println(d.Expm1())
+	fmt.Println(e.Expm1())
+	fmt.Println(f.Expm1())
+	// Output:
+	// -0.9000000000000000000 <nil>
+	// 0 <nil>
+	// 9.000000000000000000 <nil>
+}
+
 func ExampleDecimal_Log() {
 	d := decimal.MustParse("1")
 	e := decimal.MustParse("2")
@@ -694,6 +729,22 @@ func ExampleDecimal_Log() {
 	// 0.6931471805599453094 <nil>
 	// 1.000000000000000000 <nil>
 	// 2.302585092994045684 <nil>
+}
+
+func ExampleDecimal_Log1p() {
+	d := decimal.MustParse("1")
+	e := decimal.MustParse("2")
+	f := decimal.MustParse("2.718281828459045236")
+	g := decimal.MustParse("10")
+	fmt.Println(d.Log1p())
+	fmt.Println(e.Log1p())
+	fmt.Println(f.Log1p())
+	fmt.Println(g.Log1p())
+	// Output:
+	// 0.6931471805599453094 <nil>
+	// 1.098612288668109691 <nil>
+	// 1.313261687518222834 <nil>
+	// 2.397895272798370544 <nil>
 }
 
 func ExampleDecimal_Log2() {
@@ -755,14 +806,20 @@ func ExampleDecimal_Sub() {
 	d := decimal.MustParse("-5.67")
 	e := decimal.MustParse("8")
 	fmt.Println(d.Sub(e))
-	// Output: -13.67 <nil>
+	fmt.Println(e.Sub(d))
+	// Output:
+	// -13.67 <nil>
+	// 13.67 <nil>
 }
 
 func ExampleDecimal_SubAbs() {
 	d := decimal.MustParse("-5.67")
 	e := decimal.MustParse("8")
 	fmt.Println(d.SubAbs(e))
-	// Output: 13.67 <nil>
+	fmt.Println(e.SubAbs(d))
+	// Output:
+	// 13.67 <nil>
+	// 13.67 <nil>
 }
 
 func ExampleDecimal_SubExact() {
