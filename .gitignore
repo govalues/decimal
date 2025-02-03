@@ -6,3 +6,7 @@
 *.test
 *.out
 coverage.txt
+
+# IntelliJ
+.idea/
+*.iml
