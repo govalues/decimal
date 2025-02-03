@@ -26,21 +26,22 @@ const (
 )
 
 var (
-	NegOne              = MustNew(-1, 0)                         // NegOne represents the decimal value of -1.
-	Zero                = MustNew(0, 0)                          // Zero represents the decimal value of 0. For comparison purposes, use the IsZero method.
-	One                 = MustNew(1, 0)                          // One represents the decimal value of 1.
-	Two                 = MustNew(2, 0)                          // Two represents the decimal value of 2.
-	Ten                 = MustNew(10, 0)                         // Ten represents the decimal value of 10.
-	Hundred             = MustNew(100, 0)                        // Hundred represents the decimal value of 100.
-	Thousand            = MustNew(1_000, 0)                      // Thousand represents the decimal value of 1,000.
-	E                   = MustNew(2_718_281_828_459_045_235, 18) // E represents Euler’s number rounded to 18 digits.
-	Pi                  = MustNew(3_141_592_653_589_793_238, 18) // Pi represents the value of π rounded to 18 digits.
-	errDecimalOverflow  = errors.New("decimal overflow")
-	errInvalidDecimal   = errors.New("invalid decimal")
-	errScaleRange       = errors.New("scale out of range")
-	errInvalidOperation = errors.New("invalid operation")
-	errInexactDivision  = errors.New("inexact division")
-	errDivisionByZero   = errors.New("division by zero")
+	MarshalJSONWithoutQuotes = false                                  // MarshalJSONWithoutQuotes set to true if you want decimals to be JSON marshaled to number instead of string
+	NegOne                   = MustNew(-1, 0)                         // NegOne represents the decimal value of -1.
+	Zero                     = MustNew(0, 0)                          // Zero represents the decimal value of 0. For comparison purposes, use the IsZero method.
+	One                      = MustNew(1, 0)                          // One represents the decimal value of 1.
+	Two                      = MustNew(2, 0)                          // Two represents the decimal value of 2.
+	Ten                      = MustNew(10, 0)                         // Ten represents the decimal value of 10.
+	Hundred                  = MustNew(100, 0)                        // Hundred represents the decimal value of 100.
+	Thousand                 = MustNew(1_000, 0)                      // Thousand represents the decimal value of 1,000.
+	E                        = MustNew(2_718_281_828_459_045_235, 18) // E represents Euler’s number rounded to 18 digits.
+	Pi                       = MustNew(3_141_592_653_589_793_238, 18) // Pi represents the value of π rounded to 18 digits.
+	errDecimalOverflow       = errors.New("decimal overflow")
+	errInvalidDecimal        = errors.New("invalid decimal")
+	errScaleRange            = errors.New("scale out of range")
+	errInvalidOperation      = errors.New("invalid operation")
+	errInexactDivision       = errors.New("inexact division")
+	errDivisionByZero        = errors.New("division by zero")
 )
 
 // newUnsafe creates a new decimal without checking the scale and coefficient.
@@ -626,9 +627,13 @@ func (d *Decimal) UnmarshalJSON(data []byte) error {
 // [json.Marshaler]: https://pkg.go.dev/encoding/json#Marshaler
 func (d Decimal) MarshalJSON() ([]byte, error) {
 	text := make([]byte, 0, 26)
-	text = append(text, '"')
-	text = d.append(text)
-	text = append(text, '"')
+	if MarshalJSONWithoutQuotes {
+		text = d.append(text)
+	} else {
+		text = append(text, '"')
+		text = d.append(text)
+		text = append(text, '"')
+	}
 	return text, nil
 }
 

@@ -541,6 +541,43 @@ func TestDecimalUnmarshalBinary(t *testing.T) {
 	})
 }
 
+func TestDecimalMarshalJSON(t *testing.T) {
+	tests := []struct {
+		d    Decimal
+		want string
+	}{
+		{MustNew(1000, 0), "1000"},
+		{MustNew(200002, 2), "2000.02"},
+		{MustNew(3000300, 3), "3000.300"},
+	}
+	t.Run("success", func(t *testing.T) {
+		for _, tt := range tests {
+			got, err := tt.d.MarshalJSON()
+			if err != nil {
+				t.Errorf("MarshalJSON(%s) failed: %v", tt.d.String(), err)
+				continue
+			}
+			if string(got) != `"`+tt.want+`"` {
+				t.Errorf("MarshalJSON(%s): got %s, want %s", tt.d.String(), string(got), tt.want)
+			}
+		}
+	})
+	MarshalJSONWithoutQuotes = true
+	t.Run("success", func(t *testing.T) {
+		for _, tt := range tests {
+			got, err := tt.d.MarshalJSON()
+			if err != nil {
+				t.Errorf("MarshalJSON(%s) failed: %v", tt.d.String(), err)
+				continue
+			}
+			if string(got) != tt.want {
+				t.Errorf("MarshalJSON(%s): got %s, want %s", tt.d.String(), string(got), tt.want)
+			}
+		}
+	})
+	MarshalJSONWithoutQuotes = false
+}
+
 func TestDecimalUnmarshalJSON(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
